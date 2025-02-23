@@ -1,0 +1,162 @@
+* {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    scroll-behavior: smooth;
+}
+
+.App {}
+
+.index {
+    height: 100vh;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 20px;
+
+    background-color: rgba(0, 0, 0, 0.763);
+}
+
+.controlPanel {
+    width: 100%;
+    padding: 5px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+
+    box-shadow: 0px 5px 8px rgba(0, 0, 0, 0.224);
+
+    position: fixed;
+    top: 0px;
+    z-index: 1000;
+    background-color: rgb(0, 0, 0);
+}
+
+.controlPanel .btn {
+    color: whitesmoke;
+}
+
+.controlPanel .btn:hover {
+    color: red;
+    background-color: rgb(255, 255, 255);
+}
+
+.infoBox {
+    padding: 10px;
+    margin: 10px;
+    width: 98%;
+    height: 100vh;
+
+    overflow: scroll;
+    margin-top: 120px;
+    border-radius: 10px;
+
+    background-color: black;
+    color: whitesmoke;
+}
+
+.infoBox .studentInfo {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 10px;
+    border-radius: 10px;
+}
+
+.studentInfo thead {
+    position: sticky;
+    top: 0; 
+    z-index: 10; 
+
+    background-color: black;
+    box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.525);
+}
+
+.studentInfo thead tr th,
+td {
+    font-weight: 500;
+    border-bottom: 1px solid rgba(75, 75, 75, 0.289);
+    padding: 5px;
+}
+
+.studentInfo tbody tr {
+    border-radius: 10px;
+    transition: 0.1s ease-in-out;
+}
+
+.studentInfo tbody tr:hover {
+    box-shadow: 0px 5px 10px rgba(255, 255, 255, 0.46);
+    background-color: white;
+    color: black;
+    transform: scale(1.01);
+    cursor: pointer;
+}
+
+.modal {
+    color: black;
+    background-color: rgba(0, 0, 0, 0.809);
+}
+
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    background-color: rgba(139, 139, 139, 0.255);
+}
+
+.infoBox .modal-body ul {
+    list-style: none;
+    padding: 0px;
+}
+
+.infoBox .modal-body ul li {
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 0.5px solid rgba(86, 86, 86, 0.611);
+}
+
+.infoBox .modal-body ul li strong {
+    font-weight: 500;
+}
+
+.SearchFilter {
+    padding: 5px;
+    width: 100%;
+
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    gap: 10px;
+    border: 1px solid rgba(0, 0, 0, 0.252);
+    position: fixed;
+    top: 50px;
+    z-index: 1000;
+    background-color: black;
+    box-shadow: 0px 5px 8px rgba(0, 0, 0, 0.502);
+}
+
+.SearchFilter .form-select, .SearchFilter .btn {
+    background-color: black;
+    color: white;
+}
+
+.SearchFilter .form-select:hover, .SearchFilter .btn:hover {
+    cursor: pointer;
+    background-color: white;
+    color: black;
+}
+
+.yearFilter {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.yearFilter .collapse .card {
+    gap: 5px;
+}
+
+.SearchFilter input {
+    width: 50%;
+    height: 30px;
+}
