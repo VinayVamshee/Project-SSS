@@ -396,25 +396,30 @@ app.get('/get-marks', async (req, res) => {
 
 // Add or update payment details
 app.post("/saveFees", async (req, res) => {
-    const { studentId, academicYear, totalFees, discount, newPayment, isNewStudent } = req.body; // ✅ Add `discount`
+    const { studentId, academicYear, totalFees, discount, newPayment, isNewStudent } = req.body;
 
     try {
         let paymentEntry = await Payment.findOne({ studentId });
 
         if (!paymentEntry) {
-            // 🔹 If no record exists for the student, create a new one
+            // 🔹 Create a new payment record if none exists for the student
             paymentEntry = new Payment({
                 studentId,
                 academicYears: [{
                     academicYear,
                     totalFees,
-                    discount, // ✅ Store discount
+                    discount, 
                     isNewStudent,
-                    payments: newPayment ? [{ amount: newPayment.amount, date: new Date(newPayment.date) }] : []
+                    payments: newPayment ? [{
+                        amount: newPayment.amount,
+                        date: new Date(newPayment.date),
+                        paymentMethod: newPayment.paymentMethod || "Unknown",
+                        paymentBy: newPayment.paymentBy || "Unknown"
+                    }] : []
                 }]
             });
         } else {
-            // 🔹 Check if the academic year exists
+            // 🔹 Check if the academic year already exists
             const academicYearIndex = paymentEntry.academicYears.findIndex(ay => ay.academicYear === academicYear);
 
             if (academicYearIndex !== -1) {
@@ -426,7 +431,9 @@ app.post("/saveFees", async (req, res) => {
                 if (newPayment) {
                     paymentEntry.academicYears[academicYearIndex].payments.push({
                         amount: newPayment.amount,
-                        date: new Date(newPayment.date)
+                        date: new Date(newPayment.date),
+                        paymentMethod: newPayment.paymentMethod || "Unknown",
+                        paymentBy: newPayment.paymentBy || "Unknown"
                     });
                 }
             } else {
@@ -434,9 +441,14 @@ app.post("/saveFees", async (req, res) => {
                 paymentEntry.academicYears.push({
                     academicYear,
                     totalFees,
-                    discount, // ✅ Store discount
+                    discount,
                     isNewStudent,
-                    payments: newPayment ? [{ amount: newPayment.amount, date: newPayment.date }] : []
+                    payments: newPayment ? [{
+                        amount: newPayment.amount,
+                        date: new Date(newPayment.date),
+                        paymentMethod: newPayment.paymentMethod || "Unknown",
+                        paymentBy: newPayment.paymentBy || "Unknown"
+                    }] : []
                 });
             }
         }
@@ -489,19 +501,24 @@ app.get("/getFees", async (req, res) => {
             return res.status(404).json({ error: "No fees record found for this class" });
         }
 
-        // Step 5: Fetch previous payments from a Payments collection (Assuming payments are stored separately)
+        // Step 5: Fetch previous payments from Payments collection
         const paymentRecord = await Payment.findOne({ studentId: studentId });
 
         let payments = [];
         let isNewStudent = false;
-        let discount = 0; // Default discount
+        let discount = 0; 
 
         if (paymentRecord) {
             const yearData = paymentRecord.academicYears.find(year => year.academicYear === academicYear);
             if (yearData) {
-                payments = yearData.payments || [];
-                isNewStudent = yearData.isNewStudent ?? false; // Ensure it's always a boolean
-                discount = yearData.discount ?? 0; // Ensure it's always a number
+                payments = yearData.payments.map(payment => ({
+                    amount: payment.amount,
+                    date: payment.date,
+                    paymentMethod: payment.paymentMethod || "Unknown",
+                    paymentBy: payment.paymentBy || "Unknown"
+                }));
+                isNewStudent = yearData.isNewStudent ?? false;
+                discount = yearData.discount ?? 0;
             }
         }
 
@@ -510,8 +527,8 @@ app.get("/getFees", async (req, res) => {
             admission_fees: classFees.admission_fees,
             school_fees: classFees.school_fees,
             tuition_fees: classFees.tuition_fees,
-            discount: discount || 0, // If discount exists
-            payments: payments || [], // Ensure payments array is always returned
+            discount: discount || 0, 
+            payments: payments || [], 
             isNewStudent: isNewStudent
         });
 

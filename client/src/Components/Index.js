@@ -587,7 +587,7 @@ export default function Index() {
     payments: []  // Array of { amount, date }
   });
 
-  const [paymentInput, setPaymentInput] = useState({ amount: '', date: '' });
+  const [paymentInput, setPaymentInput] = useState({ amount: '', date: '', paymentMethod: '', paymentBy: '' });
 
   const [selectedPaymentView, setSelectedPaymentView] = useState(null);
   const [selectedStudentForFees, setSelectedStudentForFees] = useState(null);
@@ -616,7 +616,9 @@ export default function Index() {
       isNewStudent: fees.isNewStudent,
       newPayment: {
         amount: Number(paymentInput.amount),
-        date: paymentInput.date ? new Date(paymentInput.date) : new Date()
+        date: paymentInput.date ? new Date(paymentInput.date) : new Date(),
+        paymentMethod: paymentInput.paymentMethod,
+        paymentBy: paymentInput.paymentBy
       }
     };
 
@@ -636,16 +638,18 @@ export default function Index() {
 
         const finalFees = totalFees - discount;
 
+        const reversedPayments = (payments || []).slice().reverse();
+
         // ✅ Update fees state with the new calculated values
         setFees({
           totalFees: finalFees,
-          payments: payments || [],
+          payments: reversedPayments,
           discount: discount,
           isNewStudent: isNewStudent
         });
 
         // ✅ Reset input fields after submission
-        setPaymentInput({ amount: "", date: "" });
+        setPaymentInput({ amount: "", date: "", paymentBy: "", paymentMethod: "" });
       }
     } catch (error) {
       console.error("Error saving fees:", error.response?.data || error.message);
@@ -670,10 +674,12 @@ export default function Index() {
         // Calculate total fees
         const totalFees = isNewStudent ? admission_fees + school_fees + tuition_fees : school_fees + tuition_fees;
 
+        const reversedPayments = (payments || []).slice().reverse();
+
         // Update fees state with the new calculated values
         setFees({
           totalFees: totalFees,
-          payments: payments || [], // You may want to populate this with actual payment data
+          payments: reversedPayments, // You may want to populate this with actual payment data
           discount: discount,
           isNewStudent: isNewStudent
         });
@@ -915,7 +921,7 @@ useEffect(() => {
                   <td>{student.name}</td>
                   <td>{new Date(student.dob).toLocaleDateString("en-GB")}</td>
                   <td>{student.age}</td>
-                  <td><button className="btn btn-outline-success btn-sm" onClick={() => handleMarksViewClick(student)}> Add Marks </button></td>
+                  <td><button className="btn btn-outline-success btn-sm" onClick={() => handleMarksViewClick(student)}> View Marks </button></td>
                   <td><button className="btn btn-outline-info btn-sm" onClick={() => handleStudentClick(student)}> View Details </button></td>
                   <td><button className='btn btn-outline-warning btn-sm' onClick={() => handlePaymentViewClick(student)}> Payments </button></td>
                 </tr>
@@ -931,7 +937,7 @@ useEffect(() => {
         {/* Fees Modal */}
         {selectedPaymentView && (
           <div className="modal fade show d-block" tabIndex="-1" aria-labelledby="FeesModalLabel" aria-hidden="true">
-            <div className="modal-dialog modal-lg">
+            <div className="modal-dialog modal-xl">
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">
@@ -978,6 +984,16 @@ useEffect(() => {
                         <label className="form-label">Payment Date</label>
                         <input type="date" className="form-control" value={paymentInput.date} onChange={(e) => setPaymentInput(prev => ({ ...prev, date: e.target.value }))} />
                       </div>
+                      
+                      <div className="mb-3">
+                        <label className="form-label">Payment By</label>
+                        <input type="text" className="form-control" value={paymentInput.paymentBy} onChange={(e) => setPaymentInput(prev => ({ ...prev, paymentBy: e.target.value }))} />
+                      </div>
+
+                      <div className="mb-3">
+                        <label className="form-label">Payment Method</label>
+                        <input type="text" className="form-control" value={paymentInput.paymentMethod} onChange={(e) => setPaymentInput(prev => ({ ...prev, paymentMethod: e.target.value }))} />
+                      </div>
 
                       <button className="btn btn-primary" onClick={handleSubmitPayment}>Submit Payment</button>
 
@@ -997,6 +1013,8 @@ useEffect(() => {
                         <thead>
                           <tr>
                             <th>S. No</th>
+                            <th>Payment From</th>
+                            <th>Payment Method</th>
                             <th>Payment Date</th>
                             <th>Amount (₹)</th>
                             <th>Receipt</th>
@@ -1007,6 +1025,8 @@ useEffect(() => {
                             fees.payments.map((payment, index) => (
                               <tr key={index}>
                                 <td>{index + 1}</td>
+                                <td>{payment.paymentBy}</td>
+                                <td>{payment.paymentMethod}</td>
                                 <td>{new Date(payment.date).toLocaleDateString('en-GB')}</td>
                                 <td>₹{payment.amount}</td>
                                 <td><button className="btn btn-sm btn-outline-success" onClick={() => generatePdf(fees, payment, selectedPaymentView, selectedYear)}>Download Receipt</button></td>

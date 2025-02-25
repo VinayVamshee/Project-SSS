@@ -11,7 +11,9 @@ const paymentSchema = new mongoose.Schema({
             payments: [
                 {
                     amount: { type: Number, required: true }, // Amount Paid
-                    date: {type : Date} // Defaults to the current date if not provided
+                    date: {type : Date}, // Defaults to the current date if not provided
+                    paymentMethod: {type : String},
+                    paymentBy: {type : String}
                 }
             ]
         }
