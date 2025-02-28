@@ -802,42 +802,42 @@ export default function Index() {
 
 
   //Select All Students
-const [selectAllChecked, setSelectAllChecked] = useState(false);
+  const [selectAllChecked, setSelectAllChecked] = useState(false);
 
-// Get filtered students
-const filteredStudents = students.filter((student) =>
-  (
-    (selectedYear === "" && selectedClass === "") ||
-    student.academicYears.some((year) =>
-      (selectedYear === "" || year.academicYear === selectedYear) &&
-      (selectedClass === "" || String(year.class) === String(selectedClass))
-    )
-  ) &&
-  (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
-);
+  // Get filtered students
+  const filteredStudents = students.filter((student) =>
+    (
+      (selectedYear === "" && selectedClass === "") ||
+      student.academicYears.some((year) =>
+        (selectedYear === "" || year.academicYear === selectedYear) &&
+        (selectedClass === "" || String(year.class) === String(selectedClass))
+      )
+    ) &&
+    (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
+  );
 
-// Handle individual selection
+  // Handle individual selection
 
-// Handle "Select All"
-const handleSelectAll = () => {
-  if (selectAllChecked) {
-    // Uncheck all
-    setSelectedStudents([]);
-  } else {
-    // Select only displayed students
-    setSelectedStudents(filteredStudents.map((student) => student._id));
-  }
-  setSelectAllChecked(!selectAllChecked);
-};
+  // Handle "Select All"
+  const handleSelectAll = () => {
+    if (selectAllChecked) {
+      // Uncheck all
+      setSelectedStudents([]);
+    } else {
+      // Select only displayed students
+      setSelectedStudents(filteredStudents.map((student) => student._id));
+    }
+    setSelectAllChecked(!selectAllChecked);
+  };
 
-// Keep "Select All" in sync with individual selections
-useEffect(() => {
-  if (filteredStudents.length > 0) {
-    setSelectAllChecked(filteredStudents.every((student) => selectedStudents.includes(student._id)));
-  } else {
-    setSelectAllChecked(false);
-  }
-}, [selectedStudents, filteredStudents]);
+  // Keep "Select All" in sync with individual selections
+  useEffect(() => {
+    if (filteredStudents.length > 0) {
+      setSelectAllChecked(filteredStudents.every((student) => selectedStudents.includes(student._id)));
+    } else {
+      setSelectAllChecked(false);
+    }
+  }, [selectedStudents, filteredStudents]);
 
 
 
@@ -929,7 +929,10 @@ useEffect(() => {
             </tbody>
           </table>
         ) : (
-          <p>No student data available.</p>
+          <div id="loading-screen">
+            <div class="spinner"></div>
+            <p>Loading student data...</p>
+          </div>
         )}
 
 
@@ -984,7 +987,7 @@ useEffect(() => {
                         <label className="form-label">Payment Date</label>
                         <input type="date" className="form-control" value={paymentInput.date} onChange={(e) => setPaymentInput(prev => ({ ...prev, date: e.target.value }))} />
                       </div>
-                      
+
                       <div className="mb-3">
                         <label className="form-label">Payment By</label>
                         <input type="text" className="form-control" value={paymentInput.paymentBy} onChange={(e) => setPaymentInput(prev => ({ ...prev, paymentBy: e.target.value }))} />
@@ -1100,7 +1103,10 @@ useEffect(() => {
 
                     </>
                   ) : (
-                    <p>Loading marks...</p>
+                    <div id="loading-screen">
+                      <div class="spinner"></div>
+                      <p>Loading Marks...</p>
+                    </div>
                   )}
                   <hr />
                   {marksView ? (
@@ -1138,7 +1144,10 @@ useEffect(() => {
                       )}
                     </>
                   ) : (
-                    <p>Loading marks...</p>
+                    <div id="loading-screen">
+                      <div class="spinner"></div>
+                      <p>Loading Marks...</p>
+                    </div>
                   )}
 
                 </div>
@@ -1185,7 +1194,10 @@ useEffect(() => {
                       )}
                     </>
                   ) : (
-                    <p>Loading student details...</p>
+                    <div id="loading-screen">
+                      <div class="spinner"></div>
+                      <p>Loading student details...</p>
+                    </div>
                   )}
                 </div>
                 <div className="modal-footer">
