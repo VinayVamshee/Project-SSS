@@ -17,8 +17,8 @@ export default function AddNewStudent() {
         const fetchData = async () => {
             try {
                 const [academicYearsRes, classesRes] = await Promise.all([
-                    axios.get('http://localhost:3001/GetAcademicYear'),
-                    axios.get('http://localhost:3001/getClasses'),
+                    axios.get('https://sss-server-eosin.vercel.app/GetAcademicYear'),
+                    axios.get('https://sss-server-eosin.vercel.app/getClasses'),
                 ]);
         
                 // Ensure years array exists
@@ -54,7 +54,7 @@ export default function AddNewStudent() {
     const [personalInfoList, setpersonalInfoList] = useState([]);
     const fetchPersonalInformationList = async () => {
         try {
-            const response = await axios.get('http://localhost:3001/GetPersonalInformationList');
+            const response = await axios.get('https://sss-server-eosin.vercel.app/GetPersonalInformationList');
             setpersonalInfoList(response.data.data || []); // Default to an empty array if no data is returned
         } catch (error) {
             console.error('Error fetching personal information list:', error);
@@ -80,7 +80,7 @@ export default function AddNewStudent() {
         };
 
         try {
-            await axios.post('http://localhost:3001/addStudent', studentData);
+            await axios.post('https://sss-server-eosin.vercel.app/addStudent', studentData);
             setMessage('Student added successfully!');
             setStudent({
                 name: '',
