@@ -14,16 +14,16 @@ export default function Classes() {
     useEffect(() => {
         const fetchClassesAndSubjects = async () => {
             try {
-                const classResponse = await axios.get("http://localhost:3001/getClasses");
+                const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
                 const sortedClasses = (classResponse.data.classes || []).sort((a, b) =>
                     parseInt(a.class) - parseInt(b.class)
                 );
                 setClasses(sortedClasses);
 
-                const response = await axios.get("http://localhost:3001/class-subjects");
+                const response = await axios.get("https://sss-server-eosin.vercel.app/class-subjects");
                 setClassSubjectsData(response.data.data || []);
 
-                const subjectResponse = await axios.get("http://localhost:3001/getSubjects");
+                const subjectResponse = await axios.get("https://sss-server-eosin.vercel.app/getSubjects");
                 setSubjects(subjectResponse.data.subjects || []);
             } catch (error) {
                 console.error("Error fetching data:", error);
@@ -48,7 +48,7 @@ export default function Classes() {
     const handleAddNewSubject = async (e) => {
         e.preventDefault();
         try {
-            const response = await axios.post("http://localhost:3001/AddNewSubject", { subjectName });
+            const response = await axios.post("https://sss-server-eosin.vercel.app/AddNewSubject", { subjectName });
             setSubjects([...subjects, response.data.subject] || []);
             setMessage("Subject added successfully!");
             setSubjectName("");
@@ -59,7 +59,7 @@ export default function Classes() {
 
     const handleDeleteSubject = async (subjectId) => {
         try {
-            await axios.delete(`http://localhost:3001/deleteSubject/${subjectId}`);
+            await axios.delete(`https://sss-server-eosin.vercel.app/deleteSubject/${subjectId}`);
             setSubjects(subjects.filter((subject) => subject._id !== subjectId));
         } catch (error) {
             console.error("Error deleting subject:", error);
@@ -84,7 +84,7 @@ export default function Classes() {
         }
 
         try {
-            await axios.post("http://localhost:3001/ClassSubjectLink", {
+            await axios.post("https://sss-server-eosin.vercel.app/ClassSubjectLink", {
                 className: selectedClass,
                 subjectNames: newSelectedSubjects,
             });
@@ -105,7 +105,7 @@ export default function Classes() {
 
     const fetchExamsData = async () => {
         try {
-            const response = await axios.get('http://localhost:3001/getExams');
+            const response = await axios.get('https://sss-server-eosin.vercel.app/getExams');
             const sortedExams = response.data.exams.sort((a, b) => parseInt(a.class) - parseInt(b.class));
             setExamsData(sortedExams || []);
         } catch (error) {
@@ -149,7 +149,7 @@ export default function Classes() {
             return;
         }
         try {
-            const response = await axios.post('http://localhost:3001/addExams', {
+            const response = await axios.post('https://sss-server-eosin.vercel.app/addExams', {
                 className: selectedClass, // Use selectedClass instead of examData.selectedClass
                 numExams: examData.numExams,
                 examNames: examData.examNames,
@@ -165,7 +165,7 @@ export default function Classes() {
 
     // const handleClassSelection = async (className) => {
     //     try {
-    //         const response = await axios.get(`http://localhost:3001/getExams/${className}`);
+    //         const response = await axios.get(`https://sss-server-eosin.vercel.app/getExams/${className}`);
     //         setExamData((prevState) => ({
     //             ...prevState,
     //             selectedClass: className,
