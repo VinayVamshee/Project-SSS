@@ -16,10 +16,10 @@ export default function Students() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const studentResponse = await axios.get("http://localhost:3001/getStudent");
+                const studentResponse = await axios.get("https://sss-server-eosin.vercel.app/getStudent");
                 setStudents(studentResponse.data.students || []);
 
-                const yearResponse = await axios.get("http://localhost:3001/GetAcademicYear");
+                const yearResponse = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");
                 const sortedYears = (yearResponse.data.data || []).sort((a, b) => {
                     return parseInt(b.year.split("-")[0]) - parseInt(a.year.split("-")[0]);
                 });
@@ -29,7 +29,7 @@ export default function Students() {
                     setSelectedYear(sortedYears[0].year);
                 }
 
-                const classResponse = await axios.get("http://localhost:3001/getClasses");
+                const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
                 const sortedClasses = (classResponse.data.classes || []).sort((a, b) =>
                     parseInt(a.class) - parseInt(b.class)
                 );
@@ -104,7 +104,7 @@ export default function Students() {
         }
 
         try {
-            const response = await axios.post("http://localhost:3001/pass-students-to", {
+            const response = await axios.post("https://sss-server-eosin.vercel.app/pass-students-to", {
                 studentIds: selectedStudents,
                 newAcademicYear: passToSelectedYear,
                 newClass: passToSelectedClass,
