@@ -17,7 +17,7 @@ export default function Index() {
   const handleAddNewClass = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3001/AddNewClass', {
+      await axios.post('https://sss-server-eosin.vercel.app/AddNewClass', {
         className,
       });
 
@@ -32,7 +32,7 @@ export default function Index() {
   const deleteClass = async (classId) => {
     try {
       // Send request to delete class
-      await axios.delete(`http://localhost:3001/deleteClass/${classId}`);
+      await axios.delete(`https://sss-server-eosin.vercel.app/deleteClass/${classId}`);
       // Remove the deleted class from the state
       setClasses(classes.filter(cls => cls._id !== classId));
     } catch (error) {
@@ -46,7 +46,7 @@ export default function Index() {
   const handleAddNewSubject = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3001/AddNewSubject', { subjectName });
+      await axios.post('https://sss-server-eosin.vercel.app/AddNewSubject', { subjectName });
 
       setMessage('Subject added successfully!');
       setSubjectName('');
@@ -73,7 +73,7 @@ export default function Index() {
     }
 
     try {
-      await axios.post('http://localhost:3001/ClassSubjectLink', {
+      await axios.post('https://sss-server-eosin.vercel.app/ClassSubjectLink', {
         className: selectedClass,      // Correct field name expected by backend
         subjectNames: selectedSubjects // This will be an array of selected subjects
       });
@@ -119,12 +119,12 @@ export default function Index() {
   const [subjects, setSubjects] = useState([]);
   const fetchClassesAndSubjects = async () => {
     try {
-      const classResponse = await axios.get('http://localhost:3001/getClasses');
+      const classResponse = await axios.get('https://sss-server-eosin.vercel.app/getClasses');
       const sortedClasses = classResponse.data.classes.sort((a, b) => {
         return parseInt(a.class) - parseInt(b.class); // Sort numerically
       });
       setClasses(sortedClasses); // Set sorted classes
-      const subjectResponse = await axios.get('http://localhost:3001/getSubjects');
+      const subjectResponse = await axios.get('https://sss-server-eosin.vercel.app/getSubjects');
       setSubjects(subjectResponse.data.subjects);
     } catch (error) {
       console.error('Error fetching classes and subjects:', error);
@@ -138,7 +138,7 @@ export default function Index() {
   const handleDeleteSubject = async (subjectId) => {
     try {
       // Call delete API
-      await axios.delete(`http://localhost:3001/deleteSubject/${subjectId}`);
+      await axios.delete(`https://sss-server-eosin.vercel.app/deleteSubject/${subjectId}`);
       // Remove the deleted subject from state
       setSubjects(subjects.filter(subject => subject._id !== subjectId));
     } catch (error) {
@@ -153,7 +153,7 @@ export default function Index() {
   const handleAddAdditionalPersonalInformation = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:3001/AddAdditionalPersonalInformation', { name: PersonalInformationList_name });  // Updated field to match new variable
+      await axios.post('https://sss-server-eosin.vercel.app/AddAdditionalPersonalInformation', { name: PersonalInformationList_name });  // Updated field to match new variable
 
       setMessage('Personal information added successfully!');
       setPersonalInformationList_name('');
@@ -168,7 +168,7 @@ export default function Index() {
 
   const fetchPersonalInformationList = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/GetPersonalInformationList');
+      const response = await axios.get('https://sss-server-eosin.vercel.app/GetPersonalInformationList');
       setpersonalInfoList(response.data.data || []); // Default to an empty array if no data is returned
     } catch (error) {
       console.error('Error fetching personal information list:', error);
@@ -183,7 +183,7 @@ export default function Index() {
   const handleDeletePersonalInfo = async (infoId) => {
     try {
       // Call delete API
-      await axios.delete(`http://localhost:3001/DeletePersonalInfo/${infoId}`);
+      await axios.delete(`https://sss-server-eosin.vercel.app/DeletePersonalInfo/${infoId}`);
       // Remove the deleted info from state
       setpersonalInfoList(personalInfoList.filter(info => info._id !== infoId));
     } catch (error) {
@@ -219,7 +219,7 @@ export default function Index() {
     };
 
     try {
-      await axios.post('http://localhost:3001/addStudent', studentData);
+      await axios.post('https://sss-server-eosin.vercel.app/addStudent', studentData);
       setMessage('Student added successfully!');
       setStudent({
         name: '',
@@ -250,7 +250,7 @@ export default function Index() {
   useEffect(() => {
     const fetchStudents = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/getStudent');
+        const response = await axios.get('https://sss-server-eosin.vercel.app/getStudent');
         setStudents((response.data.students || []).sort((a, b) => a.name.localeCompare(b.name)));        // Store students data
       } catch (error) {
         console.error('Error fetching students:', error);
@@ -294,7 +294,7 @@ export default function Index() {
 
     // Fetch existing exam data (optional)
     try {
-      const response = await axios.get(`http://localhost:3001/getExams/${className}`);
+      const response = await axios.get(`https://sss-server-eosin.vercel.app/getExams/${className}`);
       setExamData({
         ...examData,
         numExams: response.data.numExams,
@@ -308,7 +308,7 @@ export default function Index() {
   const handleSubmitExam = async (e) => {
     e.preventDefault();
     try {
-      const response = await axios.post('http://localhost:3001/addExams', {
+      const response = await axios.post('https://sss-server-eosin.vercel.app/addExams', {
         className: examData.selectedClass,
         numExams: examData.numExams,
         examNames: examData.examNames,
@@ -324,7 +324,7 @@ export default function Index() {
   const [examsData, setExamsData] = useState([]);
   const fetchExamsData = async () => {
     try {
-      const response = await axios.get('http://localhost:3001/getExams');
+      const response = await axios.get('https://sss-server-eosin.vercel.app/getExams');
       const sortedExams = response.data.exams.sort((a, b) => {
         return parseInt(a.class) - parseInt(b.class); // Sorting classes in ascending order
       });
@@ -344,7 +344,7 @@ export default function Index() {
   useEffect(() => {
     const fetchClassSubjects = async () => {
       try {
-        const response = await axios.get('http://localhost:3001/class-subjects'); // Adjust API endpoint
+        const response = await axios.get('https://sss-server-eosin.vercel.app/class-subjects'); // Adjust API endpoint
         if (response.data.success) {
           setClassSubjectsData(response.data.data || []);
         }
@@ -428,7 +428,7 @@ export default function Index() {
   };
 
   const submitMarksToDatabase = (marksInfo) => {
-    axios.post('http://localhost:3001/submit-marks', marksInfo)
+    axios.post('https://sss-server-eosin.vercel.app/submit-marks', marksInfo)
       .then(response => {
         setMarksView(null); // Close modal
       })
@@ -447,7 +447,7 @@ export default function Index() {
     const fetchMarks = async () => {
 
       try {
-        const response = await axios.get(`http://localhost:3001/get-marks`, {
+        const response = await axios.get(`https://sss-server-eosin.vercel.app/get-marks`, {
           params: { studentId: marksView._id, academicYear: selectedYear }
         });
 
@@ -520,7 +520,7 @@ export default function Index() {
     e.preventDefault();
     try {
       // POST request to add new academic year
-      await axios.post('http://localhost:3001/AddAcademicYear', { year: academicYear });
+      await axios.post('https://sss-server-eosin.vercel.app/AddAcademicYear', { year: academicYear });
 
       // Set success message and reset the input field
       setMessage('Academic Year added successfully!');
@@ -535,7 +535,7 @@ export default function Index() {
   const fetchAcademicYears = async () => {
     try {
       // GET request to fetch academic years
-      const response = await axios.get('http://localhost:3001/GetAcademicYear');
+      const response = await axios.get('https://sss-server-eosin.vercel.app/GetAcademicYear');
       setAcademicYears(
         (response.data.data || []).sort((a, b) => {
 
@@ -554,7 +554,7 @@ export default function Index() {
   const handleDeleteAcademicYear = async (yearId) => {
     try {
       // DELETE request to remove the academic year
-      await axios.delete(`http://localhost:3001/DeleteAcademicYear/${yearId}`);
+      await axios.delete(`https://sss-server-eosin.vercel.app/DeleteAcademicYear/${yearId}`);
       // Remove the deleted year from the state
       setAcademicYears(academicYears.filter(year => year._id !== yearId));
     } catch (error) {
@@ -652,11 +652,11 @@ export default function Index() {
     };
 
     try {
-      const response = await axios.post("http://localhost:3001/saveFees", paymentData);
+      const response = await axios.post("https://sss-server-eosin.vercel.app/saveFees", paymentData);
       if (response.data) {
         // ✅ Fetch updated fees data after saving
         const response = await axios.get(
-          `http://localhost:3001/getFees?studentId=${selectedStudentForFees._id}&academicYear=${selectedYear}`
+          `https://sss-server-eosin.vercel.app/getFees?studentId=${selectedStudentForFees._id}&academicYear=${selectedYear}`
         );
 
         // Extract the relevant fee data from the response
@@ -690,7 +690,7 @@ export default function Index() {
     const fetchFees = async () => {
       try {
         const response = await axios.get(
-          `http://localhost:3001/getFees?studentId=${selectedStudentForFees._id}&academicYear=${selectedYear}`
+          `https://sss-server-eosin.vercel.app/getFees?studentId=${selectedStudentForFees._id}&academicYear=${selectedYear}`
         );
   
         // Check if the response contains valid data
@@ -772,7 +772,7 @@ export default function Index() {
   }, []);
   const fetchClassFees = async () => {
     try {
-      const res = await axios.get('http://localhost:3001/class-fees');
+      const res = await axios.get('https://sss-server-eosin.vercel.app/class-fees');
       setFeesList(res.data);
     } catch (error) {
       console.error("Error fetching class fees", error);
@@ -780,7 +780,7 @@ export default function Index() {
   };
   const handleSubmitClassFees = async () => {
     try {
-      await axios.post('http://localhost:3001/class-fees', classFees);
+      await axios.post('https://sss-server-eosin.vercel.app/class-fees', classFees);
       fetchClassFees();
     } catch (error) {
       console.error("Error saving class fees", error);
@@ -810,7 +810,7 @@ export default function Index() {
     }
 
     try {
-      const response = await axios.post("http://localhost:3001/pass-students-to", {
+      const response = await axios.post("https://sss-server-eosin.vercel.app/pass-students-to", {
         studentIds: selectedStudents,
         newAcademicYear: passToSelectedYear,
         newClass: passToSelectedClass,
