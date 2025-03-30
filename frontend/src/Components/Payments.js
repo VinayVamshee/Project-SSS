@@ -20,10 +20,10 @@ export default function Payments() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const studentResponse = await axios.get("http://localhost:3001/getStudent");
+                const studentResponse = await axios.get("https://sss-server-eosin.vercel.app/getStudent");
                 setStudents(studentResponse.data.students || []);
 
-                const yearResponse = await axios.get("http://localhost:3001/GetAcademicYear");
+                const yearResponse = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");
                 const sortedYears = (yearResponse.data.data || []).sort((a, b) =>
                     parseInt(b.year.split("-")[0]) - parseInt(a.year.split("-")[0])
                 );
@@ -33,15 +33,15 @@ export default function Payments() {
                     setSelectedYear(sortedYears[0].year);
                 }
 
-                const classResponse = await axios.get("http://localhost:3001/getClasses");
+                const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
                 setClasses(classResponse.data.classes || []);
 
                 // Fetch fees data for students
-                const feesResponse = await axios.get("http://localhost:3001/getFees");
+                const feesResponse = await axios.get("https://sss-server-eosin.vercel.app/getFees");
                 setFeesData(feesResponse.data || []);
 
                 // Fetch fee structure for all classes
-                const classFeesResponse = await axios.get("http://localhost:3001/class-fees");
+                const classFeesResponse = await axios.get("https://sss-server-eosin.vercel.app/class-fees");
                 setClassFeesData(classFeesResponse.data || []);
 
             } catch (error) {
@@ -166,7 +166,7 @@ export default function Payments() {
 
         try {
             const response = await axios.get(
-                `http://localhost:3001/getFees?studentId=${student._id}&academicYear=${selectedYear}`
+                `https://sss-server-eosin.vercel.app/getFees?studentId=${student._id}&academicYear=${selectedYear}`
             );
             const { discount, isNewStudent } = response.data;
 
@@ -221,7 +221,7 @@ export default function Payments() {
         };
 
         try {
-            const response = await axios.post("http://localhost:3001/saveFees", paymentData);
+            const response = await axios.post("https://sss-server-eosin.vercel.app/saveFees", paymentData);
 
             if (response.status === 200) {
                 alert("Payment added successfully!");
