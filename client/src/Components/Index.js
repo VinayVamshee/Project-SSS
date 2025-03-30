@@ -450,7 +450,6 @@ export default function Index() {
         const response = await axios.get(`http://localhost:3001/get-marks`, {
           params: { studentId: marksView._id, academicYear: selectedYear }
         });
-        console.log(response.data);
 
         if (response.data.studentMarks) {
           setStudentMarks(response.data.studentMarks.marks);
@@ -592,6 +591,7 @@ export default function Index() {
   const [selectedPaymentView, setSelectedPaymentView] = useState(null);
   const [selectedStudentForFees, setSelectedStudentForFees] = useState(null);
 
+
   const handleSubmitPayment = async () => {
     if (!selectedStudentForFees || !selectedStudentForFees._id) {
       alert("No student selected for payment.");
@@ -608,10 +608,39 @@ export default function Index() {
       return;
     }
 
+
+
+    const studentAcademicYear = selectedStudentForFees.academicYears.find(year => year.academicYear === selectedYear);
+
+    const studentClass = studentAcademicYear.class; // Get class
+    const classObject = classes.find(cls => cls.class === studentClass);
+    const classId = classObject ? classObject._id : null;
+    // Step 2: Find the corresponding fee structure from feesList
+    const studentClassFee = feesList.find(fee => fee.class_id === classId);
+
+    if (!studentClassFee) {
+      console.error("❌ No fee structure found for this class.");
+      alert("Fee structure not found for this student.");
+      return;
+    }
+
+    // Step 3: Extract fees safely
+    const admissionFees = Number(studentClassFee.admission_fees) || 0;
+    const schoolFees = Number(studentClassFee.school_fees) || 0;
+    const tuitionFees = Number(studentClassFee.tuition_fees) || 0;
+
+    // Calculate total fees
+    let adjustedTotalFees = schoolFees + tuitionFees;
+
+
+    if (fees.isNewStudent) {
+      adjustedTotalFees += admissionFees; // Add admission fees only if the student is new
+    }
+
     const paymentData = {
       studentId: selectedStudentForFees._id,
       academicYear: selectedYear,
-      totalFees: Number(fees.totalFees),
+      totalFees: adjustedTotalFees,
       discount: Number(fees.discount) || 0, // ✅ Send discount to backend
       isNewStudent: fees.isNewStudent,
       newPayment: {
@@ -626,26 +655,22 @@ export default function Index() {
       const response = await axios.post("http://localhost:3001/saveFees", paymentData);
       if (response.data) {
         // ✅ Fetch updated fees data after saving
-        const updatedResponse = await axios.get(
+        const response = await axios.get(
           `http://localhost:3001/getFees?studentId=${selectedStudentForFees._id}&academicYear=${selectedYear}`
         );
 
         // Extract the relevant fee data from the response
-        const { admission_fees, school_fees, tuition_fees, isNewStudent, payments, discount } = updatedResponse.data;
+        const { totalFees, isNewStudent, payments, discount } = response.data;
 
-        // Calculate total fees
-        const totalFees = isNewStudent ? admission_fees + school_fees + tuition_fees : school_fees + tuition_fees;
-
-        const finalFees = totalFees - discount;
-
+        // Reverse the payments array for latest transactions first
         const reversedPayments = (payments || []).slice().reverse();
 
-        // ✅ Update fees state with the new calculated values
+        // Update fees state with the new calculated values
         setFees({
-          totalFees: finalFees,
+          totalFees: totalFees || 0,  // Ensure default value if null/undefined
           payments: reversedPayments,
-          discount: discount,
-          isNewStudent: isNewStudent
+          discount: discount || 0,    // Default discount if missing
+          isNewStudent: isNewStudent ?? false // Ensure boolean value
         });
 
         // ✅ Reset input fields after submission
@@ -661,36 +686,41 @@ export default function Index() {
     if (!selectedStudentForFees || !selectedYear) {
       return;
     }
-
+  
     const fetchFees = async () => {
       try {
         const response = await axios.get(
           `http://localhost:3001/getFees?studentId=${selectedStudentForFees._id}&academicYear=${selectedYear}`
         );
-
+  
+        // Check if the response contains valid data
+        if (!response.data || Object.keys(response.data).length === 0) {
+          setFees({ totalFees: "", payments: [], discount: 0, isNewStudent: false });
+          return;
+        }
+  
         // Extract the relevant fee data from the response
-        const { admission_fees, school_fees, tuition_fees, isNewStudent, payments, discount } = response.data;
-
-        // Calculate total fees
-        const totalFees = isNewStudent ? admission_fees + school_fees + tuition_fees : school_fees + tuition_fees;
-
+        const { totalFees, isNewStudent, payments, discount } = response.data;
+  
+        // Reverse the payments array for latest transactions first
         const reversedPayments = (payments || []).slice().reverse();
-
+  
         // Update fees state with the new calculated values
         setFees({
-          totalFees: totalFees,
-          payments: reversedPayments, // You may want to populate this with actual payment data
-          discount: discount,
-          isNewStudent: isNewStudent
+          totalFees: totalFees ?? "",  // Ensure default value if null/undefined
+          payments: reversedPayments,
+          discount: discount || 0,    // Default discount if missing
+          isNewStudent: isNewStudent ?? false // Ensure boolean value
         });
       } catch (error) {
         console.error("❌ Error fetching fees:", error.response?.data || error.message);
-        setFees({ totalFees: "", payments: [], discount: 0 });
+        setFees({ totalFees: "", payments: [], discount: 0, isNewStudent: false });
       }
     };
-
+  
     fetchFees();
   }, [selectedStudentForFees, selectedYear]);
+  
 
   const handlePaymentViewClick = (student) => {
     setSelectedStudentForFees(student); // Store the student for payment
@@ -802,42 +832,42 @@ export default function Index() {
 
 
   //Select All Students
-const [selectAllChecked, setSelectAllChecked] = useState(false);
+  const [selectAllChecked, setSelectAllChecked] = useState(false);
 
-// Get filtered students
-const filteredStudents = students.filter((student) =>
-  (
-    (selectedYear === "" && selectedClass === "") ||
-    student.academicYears.some((year) =>
-      (selectedYear === "" || year.academicYear === selectedYear) &&
-      (selectedClass === "" || String(year.class) === String(selectedClass))
-    )
-  ) &&
-  (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
-);
+  // Get filtered students
+  const filteredStudents = students.filter((student) =>
+    (
+      (selectedYear === "" && selectedClass === "") ||
+      student.academicYears.some((year) =>
+        (selectedYear === "" || year.academicYear === selectedYear) &&
+        (selectedClass === "" || String(year.class) === String(selectedClass))
+      )
+    ) &&
+    (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
+  );
 
-// Handle individual selection
+  // Handle individual selection
 
-// Handle "Select All"
-const handleSelectAll = () => {
-  if (selectAllChecked) {
-    // Uncheck all
-    setSelectedStudents([]);
-  } else {
-    // Select only displayed students
-    setSelectedStudents(filteredStudents.map((student) => student._id));
-  }
-  setSelectAllChecked(!selectAllChecked);
-};
+  // Handle "Select All"
+  const handleSelectAll = () => {
+    if (selectAllChecked) {
+      // Uncheck all
+      setSelectedStudents([]);
+    } else {
+      // Select only displayed students
+      setSelectedStudents(filteredStudents.map((student) => student._id));
+    }
+    setSelectAllChecked(!selectAllChecked);
+  };
 
-// Keep "Select All" in sync with individual selections
-useEffect(() => {
-  if (filteredStudents.length > 0) {
-    setSelectAllChecked(filteredStudents.every((student) => selectedStudents.includes(student._id)));
-  } else {
-    setSelectAllChecked(false);
-  }
-}, [selectedStudents, filteredStudents]);
+  // Keep "Select All" in sync with individual selections
+  useEffect(() => {
+    if (filteredStudents.length > 0) {
+      setSelectAllChecked(filteredStudents.every((student) => selectedStudents.includes(student._id)));
+    } else {
+      setSelectAllChecked(false);
+    }
+  }, [selectedStudents, filteredStudents]);
 
 
 
@@ -929,7 +959,10 @@ useEffect(() => {
             </tbody>
           </table>
         ) : (
-          <p>No student data available.</p>
+          <div id="loading-screen">
+            <div class="spinner"></div>
+            <p>Loading student data...</p>
+          </div>
         )}
 
 
@@ -984,7 +1017,7 @@ useEffect(() => {
                         <label className="form-label">Payment Date</label>
                         <input type="date" className="form-control" value={paymentInput.date} onChange={(e) => setPaymentInput(prev => ({ ...prev, date: e.target.value }))} />
                       </div>
-                      
+
                       <div className="mb-3">
                         <label className="form-label">Payment By</label>
                         <input type="text" className="form-control" value={paymentInput.paymentBy} onChange={(e) => setPaymentInput(prev => ({ ...prev, paymentBy: e.target.value }))} />
@@ -1100,7 +1133,10 @@ useEffect(() => {
 
                     </>
                   ) : (
-                    <p>Loading marks...</p>
+                    <div id="loading-screen">
+                      <div class="spinner"></div>
+                      <p>Loading Marks...</p>
+                    </div>
                   )}
                   <hr />
                   {marksView ? (
@@ -1138,7 +1174,10 @@ useEffect(() => {
                       )}
                     </>
                   ) : (
-                    <p>Loading marks...</p>
+                    <div id="loading-screen">
+                      <div class="spinner"></div>
+                      <p>Loading Marks...</p>
+                    </div>
                   )}
 
                 </div>
@@ -1185,7 +1224,10 @@ useEffect(() => {
                       )}
                     </>
                   ) : (
-                    <p>Loading student details...</p>
+                    <div id="loading-screen">
+                      <div class="spinner"></div>
+                      <p>Loading student details...</p>
+                    </div>
                   )}
                 </div>
                 <div className="modal-footer">
@@ -1345,15 +1387,27 @@ useEffect(() => {
                   </tr>
                 </thead>
                 <tbody>
-                  {feesList.filter((fee) => fee.class_id).sort((a, b) => Number(a.class_id.class) - Number(b.class_id.class)).map((fee) => (
-                    <tr key={fee._id}>
-                      <td>{fee.class_id?.class || "Deleted Class"}</td>
-                      <td>{fee.admission_fees || 0}</td>
-                      <td>{fee.school_fees || 0}</td>
-                      <td>{fee.tuition_fees || 0}</td>
-                      <td>{(fee.admission_fees || 0) + (fee.school_fees || 0) + (fee.tuition_fees || 0)}</td>
-                    </tr>
-                  ))}
+                  {feesList
+                    .filter((fee) => fee.class_id) // Ensure class_id exists
+                    .sort((a, b) => {
+                      const classA = classes.find(cls => cls._id === a.class_id)?.class || "0";
+                      const classB = classes.find(cls => cls._id === b.class_id)?.class || "0";
+                      return Number(classA) - Number(classB);
+                    })
+                    .map((fee) => {
+                      const className = classes.find(cls => cls._id === fee.class_id)?.class || "Deleted Class";
+
+                      return (
+                        <tr key={fee._id}>
+                          <td>{className}</td> {/* Display class name instead of ID */}
+                          <td>{fee.admission_fees || 0}</td>
+                          <td>{fee.school_fees || 0}</td>
+                          <td>{fee.tuition_fees || 0}</td>
+                          <td>{(fee.admission_fees || 0) + (fee.school_fees || 0) + (fee.tuition_fees || 0)}</td>
+                        </tr>
+                      );
+                    })}
+
                 </tbody>
               </table>
             </div>

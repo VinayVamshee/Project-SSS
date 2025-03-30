@@ -408,7 +408,7 @@ app.post("/saveFees", async (req, res) => {
                 academicYears: [{
                     academicYear,
                     totalFees,
-                    discount, 
+                    discount,
                     isNewStudent,
                     payments: newPayment ? [{
                         amount: newPayment.amount,
@@ -464,21 +464,24 @@ app.post("/saveFees", async (req, res) => {
     }
 });
 
-
 app.get("/getFees", async (req, res) => {
     const { studentId, academicYear } = req.query;
 
     try {
+        if (!studentId || !academicYear) {
+            // Fetch all students' fees if no specific query params are provided
+            const allFees = await Payment.find({});
+            return res.json(allFees);
+        }
+
         // Step 1: Find the student
         const student = await Student.findById(studentId);
-
         if (!student) {
             return res.status(404).json({ error: "Student not found" });
         }
 
         // Step 2: Match the academic year
         const academicData = student.academicYears.find(year => year.academicYear === academicYear);
-
         if (!academicData) {
             return res.status(404).json({ error: "No matching academic year found" });
         }
@@ -487,7 +490,6 @@ app.get("/getFees", async (req, res) => {
 
         // Step 3: Find the class
         const classData = await Class.findOne({ class: className });
-
         if (!classData) {
             return res.status(404).json({ error: "Class not found" });
         }
@@ -496,7 +498,6 @@ app.get("/getFees", async (req, res) => {
 
         // Step 4: Find the class fees
         const classFees = await ClassFees.findOne({ class_id: classId });
-
         if (!classFees) {
             return res.status(404).json({ error: "No fees record found for this class" });
         }
@@ -506,7 +507,7 @@ app.get("/getFees", async (req, res) => {
 
         let payments = [];
         let isNewStudent = false;
-        let discount = 0; 
+        let discount = 0;
 
         if (paymentRecord) {
             const yearData = paymentRecord.academicYears.find(year => year.academicYear === academicYear);
@@ -524,21 +525,18 @@ app.get("/getFees", async (req, res) => {
 
         // ✅ Step 6: Respond with the fees & payments
         res.json({
-            admission_fees: classFees.admission_fees,
-            school_fees: classFees.school_fees,
-            tuition_fees: classFees.tuition_fees,
-            discount: discount || 0, 
-            payments: payments || [], 
-            isNewStudent: isNewStudent
+            totalFees: paymentRecord?.academicYears.find(y => y.academicYear === academicYear)?.totalFees || 0,
+            discount: discount || 0,
+            isNewStudent: isNewStudent,
+            payments: payments || []
         });
+
 
     } catch (error) {
         console.error("❌ Database error:", error);
         res.status(500).json({ error: "Failed to fetch fees" });
     }
 });
-
-
 
 
 // Add and Get class-fees
@@ -575,37 +573,38 @@ app.post('/class-fees', async (req, res) => {
 // ✅ Fetch All Class Fees (With Class Name)
 app.get('/class-fees', async (req, res) => {
     try {
-        const classFees = await ClassFees.find().populate("class_id", "class");
-        res.status(200).json(classFees);
+        const classFees = await ClassFees.find(); // Fetch all class fees data
+        res.status(200).json(classFees); // Send only the data
     } catch (error) {
-        res.status(500).json({ message: "Server error", error: error.message });
+        res.status(500).json({ error: error.message });
     }
 });
+
 
 //pass students to
 app.post("/pass-students-to", async (req, res) => {
     try {
-      const { studentIds, newAcademicYear, newClass } = req.body;
-  
-      // Validation: Ensure required data is provided
-      if (!studentIds || studentIds.length === 0 || !newAcademicYear || !newClass) {
-        return res.status(400).json({ message: "Missing required data." });
-      }
-  
-      // Update each selected student
-      await Student.updateMany(
-        { _id: { $in: studentIds } }, // Find all students with matching IDs
-        { 
-          $push: { academicYears: { academicYear: newAcademicYear, class: newClass } } // Add new year & class
+        const { studentIds, newAcademicYear, newClass } = req.body;
+
+        // Validation: Ensure required data is provided
+        if (!studentIds || studentIds.length === 0 || !newAcademicYear || !newClass) {
+            return res.status(400).json({ message: "Missing required data." });
         }
-      );
-  
-      res.status(200).json({ message: "Students updated successfully!" });
+
+        // Update each selected student
+        await Student.updateMany(
+            { _id: { $in: studentIds } }, // Find all students with matching IDs
+            {
+                $push: { academicYears: { academicYear: newAcademicYear, class: newClass } } // Add new year & class
+            }
+        );
+
+        res.status(200).json({ message: "Students updated successfully!" });
     } catch (error) {
-      console.error("Error updating students:", error);
-      res.status(500).json({ message: "Internal server error." });
+        console.error("Error updating students:", error);
+        res.status(500).json({ message: "Internal server error." });
     }
-  });
+});
 
 
 
