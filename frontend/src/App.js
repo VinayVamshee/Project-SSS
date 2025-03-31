@@ -7,6 +7,7 @@ import Students from './Components/Students';
 import AddNewStudent from './Components/AddNewStudent';
 import Classes from './Components/Classes';
 import Payments from './Components/Payments';
+import Results from './Components/Results';
 
 function App() {
   return (
@@ -19,6 +20,7 @@ function App() {
           <Route path="/Students" element={<Students />} />
           <Route path="/AddNewStudent" element={<AddNewStudent />} />
           <Route path="/Classes" element={<Classes />} />
+          <Route path="/Results" element={<Results />} />
           <Route path="/Payments" element={<Payments />} />
         </Routes>
         </div>
