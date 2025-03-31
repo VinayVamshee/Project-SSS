@@ -15,10 +15,10 @@ export default function Results() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const studentResponse = await axios.get("http://localhost:3001/getStudent");
+                const studentResponse = await axios.get("https://sss-server-eosin.vercel.app/getStudent");
                 setStudents(studentResponse.data.students || []);
 
-                const yearResponse = await axios.get("http://localhost:3001/GetAcademicYear");
+                const yearResponse = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");
                 const sortedYears = (yearResponse.data.data || []).sort((a, b) =>
                     parseInt(b.year.split("-")[0]) - parseInt(a.year.split("-")[0])
                 );
@@ -28,7 +28,7 @@ export default function Results() {
                     setSelectedYear(sortedYears[0].year);
                 }
 
-                const classResponse = await axios.get("http://localhost:3001/getClasses");
+                const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
                 const sortedClasses = classResponse.data.classes.sort((a, b) => Number(a.class) - Number(b.class));
                 setClasses(sortedClasses || []);
 
@@ -60,10 +60,10 @@ export default function Results() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const studentResponse = await axios.get("http://localhost:3001/getStudent");
+                const studentResponse = await axios.get("https://sss-server-eosin.vercel.app/getStudent");
                 setStudents(studentResponse.data.students || []);
 
-                const yearResponse = await axios.get("http://localhost:3001/GetAcademicYear");
+                const yearResponse = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");
                 const sortedYears = (yearResponse.data.data || []).sort((a, b) =>
                     parseInt(b.year.split("-")[0]) - parseInt(a.year.split("-")[0])
                 );
@@ -72,7 +72,7 @@ export default function Results() {
                     setSelectedYear(sortedYears[0].year);
                 }
 
-                const classResponse = await axios.get("http://localhost:3001/getClasses");
+                const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
                 const sortedClasses = classResponse.data.classes.sort((a, b) => Number(a.class) - Number(b.class));
                 setClasses(sortedClasses || []);
 
@@ -88,11 +88,11 @@ export default function Results() {
 
     const fetchExamsData = async () => {
         try {
-            const response = await axios.get('http://localhost:3001/getExams');
+            const response = await axios.get('https://sss-server-eosin.vercel.app/getExams');
             const sortedExams = response.data.exams.sort((a, b) => parseInt(a.class) - parseInt(b.class));
             setExamsData(sortedExams || []);
 
-            const responseData = await axios.get("http://localhost:3001/class-subjects");
+            const responseData = await axios.get("https://sss-server-eosin.vercel.app/class-subjects");
             setClassSubjectsData(responseData.data.data || []);
         } catch (error) {
             console.error('Error fetching exams data:', error);
@@ -108,7 +108,7 @@ export default function Results() {
     const handleViewMarks = async (student) => {
         setMarksView(student);
         try {
-            const response = await axios.get(`http://localhost:3001/get-marks`, {
+            const response = await axios.get(`https://sss-server-eosin.vercel.app/get-marks`, {
                 params: { studentId: student._id, academicYear: selectedYear }
             });
 
@@ -180,7 +180,7 @@ export default function Results() {
     };
 
     const submitMarksToDatabase = (marksInfo) => {
-        axios.post('http://localhost:3001/submit-marks', marksInfo)
+        axios.post('https://sss-server-eosin.vercel.app/submit-marks', marksInfo)
             .then(response => {
                 alert('Marks Added Successfully')
                 setMarksView(null);
