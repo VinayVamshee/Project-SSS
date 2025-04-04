@@ -627,7 +627,7 @@ app.post("/pass-students-to", async (req, res) => {
 const start = async () => {
     try {
         await connectDB();
-        app.listen(PORT, '0.0.0.0', () => {
+        app.listen(PORT, () => {
             console.log('Server Connected');
         })
     } catch (error) {
