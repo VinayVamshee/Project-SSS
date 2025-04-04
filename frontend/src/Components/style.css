@@ -12,20 +12,19 @@
 }
 
 [data-theme="midnight-red"] {
-    --button-color: #FF204E;
-    --button-hover: #FF204E98;
-    --background-color: #00224D;
-    --text-color: #EEEEEE;
+    --background-color: #1A0A0A; 
+    --text-color: #F5D7D7;
+    --button-color: #D91E36; 
+    --button-hover: #D91E3680; 
     --active-color: #A0153E;
 }
 
-
 [data-theme="Ocean"] {
-    --button-color: #2C74B3;
-    --button-hover: #2C74B398;
-    --background-color: #0A2647;
-    --text-color: #EEEEEE;
-    --active-color: #006eff;
+    --button-color: #4A90E2;
+    --button-hover: #4A90E280;
+    --background-color: #E3F2FD;
+    --text-color: #0A2647;
+    --active-color: #1565C0;
 }
 
 [data-theme="Earth"] {
@@ -34,6 +33,14 @@
     --button-color: #AB886D;
     --button-hover: #AB886D98;
     --active-color: #332720;
+}
+
+[data-theme="Deep Ocean"] {
+    --background-color: #031A2E;
+    --text-color: #D0E4FF;
+    --button-color: #1B6FA8;
+    --button-hover: #1B6FA880;
+    --active-color: #3EA6FF;
 }
 
 [data-theme="Rose Blush"] {
@@ -45,11 +52,11 @@
 }
 
 [data-theme="dark"] {
-    --background-color: #1D1616;
-    --text-color: #EEEEEE;
-    --button-color: #8E1616;
-    --button-hover: #D84040;
-    --active-color: #B32626;
+    --background-color: #2B1A1A;
+    --text-color: #F5E8D9;
+    --button-color: #D84224;
+    --button-hover: #D8422480;
+    --active-color: #FE4F2D;
 }
 
 .App {
@@ -444,7 +451,8 @@
     width: 100%;
     height: 100vh;
     padding: 20px;
-    background-color: #f7f9fc;
+    background-color: var(--background-color);
+    overflow-y: scroll;
 
     display: flex;
     flex-direction: column;
