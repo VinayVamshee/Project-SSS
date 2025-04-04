@@ -3,7 +3,7 @@ import { Link, NavLink } from 'react-router-dom';
 import vts from './Images/Bada school logo.png';
 
 export default function Navigation() {
-    const themes = ["light", "dark", "midnight-red", "Ocean", "Earth", "Rose Blush"];
+    const themes = ["light", "dark", "midnight-red", "Ocean","Deep Ocean", "Earth", "Rose Blush", ];
     const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
     useEffect(() => {
