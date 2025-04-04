@@ -219,14 +219,18 @@ app.delete('/DeletePersonalInfo/:id', async (req, res) => {
 // Route to add a student
 app.post('/addStudent', async (req, res) => {
     try {
-        const { name, dob, additionalInfo, academicYears } = req.body;
+        const { name, dob ,gender, bloodGroup ,image, caste, additionalInfo, academicYears } = req.body;
 
         // Create a new student
         const age = moment().diff(dob, 'years');
         const newStudent = new Student({
             name,
             dob,
+            gender,
+            bloodGroup,
             age, // Store calculated age
+            image,
+            caste,
             additionalInfo,
             academicYears, // Store academic years array
         });
