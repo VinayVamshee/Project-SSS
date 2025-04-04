@@ -11,11 +11,24 @@ const studentSchema = new mongoose.Schema(
       type: Date,
       required: true,
     },
+    gender: {
+      type: String,
+      required:true,
+    },
+    bloodGroup: {
+      type: String,
+    },
     age: {
       type: Number,
       get: function () {
         return moment().diff(this.dob, 'years');
       },
+    },
+    image: {
+      type: String,
+    },
+    caste: {
+      type: String,
     },
     academicYears: [{
       academicYear: {
