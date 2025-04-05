@@ -34,7 +34,9 @@ export default function Payments() {
                 }
 
                 const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
-                setClasses(classResponse.data.classes || []);
+                const sortedClasses = classResponse.data.classes.sort((a, b) => Number(a.class) - Number(b.class));
+                setClasses(sortedClasses || []);
+
 
                 // Fetch fees data for students
                 const feesResponse = await axios.get("https://sss-server-eosin.vercel.app/getFees");
@@ -186,7 +188,7 @@ export default function Payments() {
 
         const studentAcademicYear = selectedStudent.academicYears.find(year => year.academicYear === selectedYear);
 
-        const studentClass = studentAcademicYear?.class; 
+        const studentClass = studentAcademicYear?.class;
         const classObject = classes.find(cls => cls.class === studentClass);
         const classId = classObject ? classObject._id : null;
         const studentClassFee = classFeesData.find(fee => fee.class_id === classId);
@@ -210,10 +212,10 @@ export default function Payments() {
             studentId: selectedStudent._id,
             academicYear: selectedYear,
             totalFees: adjustedTotalFees,
-            discount: Number(discount) || 0, 
+            discount: Number(discount) || 0,
             isNewStudent: isNewStudent,
             newPayment: {
-                amount: Number(paymentAmount), 
+                amount: Number(paymentAmount),
                 date: paymentDate ? new Date(paymentDate) : new Date(),
                 paymentMethod: paymentMethod,
                 paymentBy: paymentBy
@@ -237,6 +239,24 @@ export default function Payments() {
             alert("Failed to add payment.");
         }
     };
+
+    const [classFees, setClassFees] = useState({
+        class_id: '',
+        school_fees: '',
+        tuition_fees: '',
+        admission_fees: ''
+    });
+
+    const handleSubmitClassFees = async () => {
+        try {
+            await axios.post('https://sss-server-eosin.vercel.app/class-fees', classFees);
+            alert('Fee Strucutre Updated');
+            window.location.reload();
+        } catch (error) {
+            console.error("Error saving class fees", error);
+        }
+    };
+
 
     return (
         <div className='PaymentsPage'>
@@ -274,10 +294,97 @@ export default function Payments() {
                 </div>
 
                 <input type="text" placeholder="Search Student..." value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} className="SearchStudent" />
-                <button className="btn btn-save"><i class="fa-solid fa-money-check-dollar fa-lg me-2"></i>Fee Structure</button>
+                <button className="btn btn-save" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFeeStructure" aria-expanded="false" aria-controls="collapseFeeStructure"><i class="fa-solid fa-money-check-dollar fa-lg me-2"></i>Fee Structure</button>
+            </div>
+
+            <div className="collapse" id="collapseFeeStructure">
+                <div className="card card-body">
+                    <table className="table table-bordered">
+                        <thead>
+                            <tr>
+                                <th>Class</th>
+                                <th>Admission Fees</th>
+                                <th>School Fees</th>
+                                <th>Tuition Fees</th>
+                                <th>Total Fees</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {classFeesData
+                                .filter((fee) => fee.class_id) // Ensure class_id exists
+                                .sort((a, b) => {
+                                    const classA = classes.find(cls => cls._id === a.class_id)?.class || "0";
+                                    const classB = classes.find(cls => cls._id === b.class_id)?.class || "0";
+                                    return Number(classA) - Number(classB);
+                                })
+                                .map((fee) => {
+                                    const className = classes.find(cls => cls._id === fee.class_id)?.class || "Deleted Class";
+
+                                    return (
+                                        <tr key={fee._id}>
+                                            <td>{className}</td> {/* Display class name instead of ID */}
+                                            <td>{fee.admission_fees || 0}</td>
+                                            <td>{fee.school_fees || 0}</td>
+                                            <td>{fee.tuition_fees || 0}</td>
+                                            <td>{(fee.admission_fees || 0) + (fee.school_fees || 0) + (fee.tuition_fees || 0)}</td>
+                                        </tr>
+                                    );
+                                })}
+                        </tbody>
+                    </table>
+
+                    <button type="button" class="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#AddClassFees">
+                        Add/Edit Fee Strucutre
+                    </button>
+
+
+                    <div className="modal fade" id="AddClassFees" tabIndex="-1" aria-labelledby="AddClassFeesLabel" aria-hidden="true">
+                        <div className="modal-dialog modal-lg">
+                            <div className="modal-content">
+                                <div className="modal-header">
+                                    <h5 className="modal-title" id="AddClassFeesLabel">Manage Class Fees</h5>
+                                    <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+
+                                <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="form-label">Select Class</label>
+                                        <select className="form-control" name="class_id" value={classFees.class_id} onChange={(e) => setClassFees({ ...classFees, class_id: e.target.value })} >
+                                            <option value="">Select a class</option>
+                                            {classes.map((cls) => (
+                                                <option key={cls._id} value={cls._id}>{cls.class}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="mb-3">
+                                        <label className="form-label">School Fees</label>
+                                        <input type="number" className="form-control" name="school_fees" value={classFees.school_fees} onChange={(e) => setClassFees({ ...classFees, school_fees: e.target.value })} />
+                                    </div>
+
+                                    <div className="mb-3">
+                                        <label className="form-label">Tuition Fees</label>
+                                        <input type="number" className="form-control" name="tuition_fees" value={classFees.tuition_fees} onChange={(e) => setClassFees({ ...classFees, tuition_fees: e.target.value })} />
+                                    </div>
+
+                                    <div className="mb-3">
+                                        <label className="form-label">Admission Fees</label>
+                                        <input type="number" className="form-control" name="admission_fees" value={classFees.admission_fees} onChange={(e) => setClassFees({ ...classFees, admission_fees: e.target.value })} />
+                                    </div>
+                                </div>
+
+                                <div className="modal-footer">
+                                    <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                                    <button type="button" className="btn btn-primary" onClick={handleSubmitClassFees}>Save Changes</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <div className="Payments">
+
                 {filteredStudents.map((element, idx) => {
                     const studentClass = element.academicYears.find(
                         (year) => year.academicYear === selectedYear)?.class || "N/A";
@@ -314,7 +421,7 @@ export default function Payments() {
                     return (
                         <div key={element._id}>
 
-                            <div className="Payment" key={idx}>
+                            <div className="Payment" key={idx} style={{ animationDelay: `${idx * 0.15}s` }}>
                                 <div className="Name">
                                     <img src={element.image || boy} alt="..." />
                                     <strong>{element.name}</strong>
@@ -336,7 +443,7 @@ export default function Payments() {
                                 <button type="button" className="btn btn-paymentHistory" onClick={() => handleDownloadExcel(element, feesData, selectedYear)} > <i className="fa-solid fa-file-arrow-down me-2"></i>Download History </button>
                                 <button className="btn btn-paymentHistory" type="button" data-bs-toggle="collapse" data-bs-target={`#collapseExample-${element._id}`} aria-expanded="false" aria-controls={`collapseExample-${element._id}`}><i className="fa-solid fa-clock-rotate-left me-1"></i> History<i className="fa-solid fa-caret-down ms-2"></i></button>
                                 <button type="button" className="btn btn-paymentHistory" data-bs-toggle="modal" data-bs-target="#addPaymentModal" onClick={() => handleOpenPaymentModal(element)}>
-                                <i class="fa-solid fa-credit-card me-1"></i> Add Payment
+                                    <i class="fa-solid fa-credit-card me-1"></i> Add Payment
                                 </button>
 
                             </div>
@@ -346,7 +453,7 @@ export default function Payments() {
                                 <div className="card card-body">
                                     <h6 style={{ textAlign: 'center' }}>Payment History</h6>
                                     <table className="table table-bordered mt-3">
-                                        <thead>
+                                        <thead className="table-dark">
                                             <tr>
                                                 <th>S. No</th>
                                                 <th>Payment From</th>
