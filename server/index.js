@@ -14,6 +14,7 @@ const AcademicYear = require('./Models/AcademicYear')
 const Marks = require('./Models/Marks')
 const Payment = require('./Models/Payment')
 const ClassFees = require('./Models/ClassFees')
+const ReceiptBook = require('./Models/ReceiptBook')
 
 const app = express();
 app.use(cors());
@@ -219,7 +220,7 @@ app.delete('/DeletePersonalInfo/:id', async (req, res) => {
 // Route to add a student
 app.post('/addStudent', async (req, res) => {
     try {
-        const { name, dob ,gender, bloodGroup ,image, caste, additionalInfo, academicYears } = req.body;
+        const { name, dob, gender, bloodGroup, image, caste, additionalInfo, academicYears } = req.body;
 
         // Create a new student
         const age = moment().diff(dob, 'years');
@@ -418,7 +419,19 @@ app.post("/saveFees", async (req, res) => {
                         amount: newPayment.amount,
                         date: new Date(newPayment.date),
                         paymentMethod: newPayment.paymentMethod || "Unknown",
-                        paymentBy: newPayment.paymentBy || "Unknown"
+                        paymentBy: newPayment.paymentBy || "Unknown",
+                        admission_fees: newPayment.admission_fees || 0,
+                        development_fee: newPayment.development_fee || 0,
+                        exam_fee: newPayment.exam_fee || 0,
+                        progress_card: newPayment.progress_card || 0,
+                        identity_card: newPayment.identity_card || 0,
+                        school_diary: newPayment.school_diary || 0,
+                        school_activity: newPayment.school_activity || 0,
+                        tuition_fee: newPayment.tuition_fee || 0,
+                        late_fee: newPayment.late_fee || 0,
+                        miscellaneous: newPayment.miscellaneous || 0,
+                        receiptBookName: newPayment.receiptBookName || "",
+                        receiptNumber: newPayment.receiptNumber || 0,
                     }] : []
                 }]
             });
@@ -437,7 +450,19 @@ app.post("/saveFees", async (req, res) => {
                         amount: newPayment.amount,
                         date: new Date(newPayment.date),
                         paymentMethod: newPayment.paymentMethod || "Unknown",
-                        paymentBy: newPayment.paymentBy || "Unknown"
+                        paymentBy: newPayment.paymentBy || "Unknown",
+                        admission_fees: newPayment.admission_fees || 0,
+                        development_fee: newPayment.development_fee || 0,
+                        exam_fee: newPayment.exam_fee || 0,
+                        progress_card: newPayment.progress_card || 0,
+                        identity_card: newPayment.identity_card || 0,
+                        school_diary: newPayment.school_diary || 0,
+                        school_activity: newPayment.school_activity || 0,
+                        tuition_fee: newPayment.tuition_fee || 0,
+                        late_fee: newPayment.late_fee || 0,
+                        miscellaneous: newPayment.miscellaneous || 0,
+                        receiptBookName: newPayment.receiptBookName || "",
+                        receiptNumber: newPayment.receiptNumber || 0,
                     });
                 }
             } else {
@@ -451,7 +476,19 @@ app.post("/saveFees", async (req, res) => {
                         amount: newPayment.amount,
                         date: new Date(newPayment.date),
                         paymentMethod: newPayment.paymentMethod || "Unknown",
-                        paymentBy: newPayment.paymentBy || "Unknown"
+                        paymentBy: newPayment.paymentBy || "Unknown",
+                        admission_fees: newPayment.admission_fees || 0,
+                        development_fee: newPayment.development_fee || 0,
+                        exam_fee: newPayment.exam_fee || 0,
+                        progress_card: newPayment.progress_card || 0,
+                        identity_card: newPayment.identity_card || 0,
+                        school_diary: newPayment.school_diary || 0,
+                        school_activity: newPayment.school_activity || 0,
+                        tuition_fee: newPayment.tuition_fee || 0,
+                        late_fee: newPayment.late_fee || 0,
+                        miscellaneous: newPayment.miscellaneous || 0,
+                        receiptBookName: newPayment.receiptBookName || "",
+                        receiptNumber: newPayment.receiptNumber || 0,
                     }] : []
                 });
             }
@@ -467,6 +504,7 @@ app.post("/saveFees", async (req, res) => {
         res.status(500).json({ error: "Failed to save payment" });
     }
 });
+
 
 app.get("/getFees", async (req, res) => {
     const { studentId, academicYear } = req.query;
@@ -514,14 +552,12 @@ app.get("/getFees", async (req, res) => {
         let discount = 0;
 
         if (paymentRecord) {
-            const yearData = paymentRecord.academicYears.find(year => year.academicYear === academicYear);
+            const yearData = paymentRecord.academicYears.find(
+                year => year.academicYear === academicYear
+            );
+
             if (yearData) {
-                payments = yearData.payments.map(payment => ({
-                    amount: payment.amount,
-                    date: payment.date,
-                    paymentMethod: payment.paymentMethod || "Unknown",
-                    paymentBy: payment.paymentBy || "Unknown"
-                }));
+                payments = yearData.payments; 
                 isNewStudent = yearData.isNewStudent ?? false;
                 discount = yearData.discount ?? 0;
             }
@@ -529,7 +565,9 @@ app.get("/getFees", async (req, res) => {
 
         // ✅ Step 6: Respond with the fees & payments
         res.json({
-            totalFees: paymentRecord?.academicYears.find(y => y.academicYear === academicYear)?.totalFees || 0,
+            totalFees:
+                paymentRecord?.academicYears.find(y => y.academicYear === academicYear)
+                    ?.totalFees || 0,
             discount: discount || 0,
             isNewStudent: isNewStudent,
             payments: payments || []
@@ -546,33 +584,68 @@ app.get("/getFees", async (req, res) => {
 // Add and Get class-fees
 app.post('/class-fees', async (req, res) => {
     try {
-        const { class_id, school_fees, tuition_fees, admission_fees } = req.body;
+        const {
+            class_id,
+            admission_fees,
+            development_fee,
+            exam_fee,
+            progress_card,
+            identity_card,
+            school_diary,
+            school_activity,
+            tuition_fee
+        } = req.body;
 
+        // Validation to ensure class_id is provided
         if (!class_id) {
             return res.status(400).json({ message: "Class ID is required." });
         }
 
+        // Find the class by ID
         const classData = await Class.findById(class_id);
         if (!classData) {
             return res.status(404).json({ message: "Class not found." });
         }
 
+        // Check if class fees entry exists for the class
         let classFees = await ClassFees.findOne({ class_id });
 
+        // If class fees entry exists, update the fields with the provided values or keep the existing ones
         if (classFees) {
-            classFees.school_fees = school_fees || classFees.school_fees;
-            classFees.tuition_fees = tuition_fees || classFees.tuition_fees;
             classFees.admission_fees = admission_fees || classFees.admission_fees;
+            classFees.development_fee = development_fee || classFees.development_fee;
+            classFees.exam_fee = exam_fee || classFees.exam_fee;
+            classFees.progress_card = progress_card || classFees.progress_card;
+            classFees.identity_card = identity_card || classFees.identity_card;
+            classFees.school_diary = school_diary || classFees.school_diary;
+            classFees.school_activity = school_activity || classFees.school_activity;
+            classFees.tuition_fee = tuition_fee || classFees.tuition_fee;
         } else {
-            classFees = new ClassFees({ class_id, school_fees, tuition_fees, admission_fees });
+            // If no existing class fees entry, create a new one
+            classFees = new ClassFees({
+                class_id,
+                admission_fees,
+                development_fee,
+                exam_fee,
+                progress_card,
+                identity_card,
+                school_diary,
+                school_activity,
+                tuition_fee
+            });
         }
 
+        // Save the updated or new class fees record
         await classFees.save();
+
+        // Respond with the updated class fees data
         res.status(201).json(classFees);
     } catch (error) {
+        console.error("❌ Server error:", error);
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
+
 
 // ✅ Fetch All Class Fees (With Class Name)
 app.get('/class-fees', async (req, res) => {
@@ -609,6 +682,65 @@ app.post("/pass-students-to", async (req, res) => {
         res.status(500).json({ message: "Internal server error." });
     }
 });
+
+
+app.get("/receiptBook", async (req, res) => {
+    try {
+        let receiptBook = await ReceiptBook.findOne();
+
+        // If not found, create a default one
+        if (!receiptBook) {
+            receiptBook = new ReceiptBook({ bookName: "Book A", currentNumber: 1 });
+            await receiptBook.save();
+        }
+
+        res.json(receiptBook);
+    } catch (err) {
+        res.status(500).json({ message: "Error fetching receipt book" });
+    }
+});
+
+// POST to update/reset the book name and start number
+app.post("/updateReceiptBook", async (req, res) => {
+    try {
+        const { bookName, startNumber } = req.body;
+
+        let receiptBook = await ReceiptBook.findOne();
+
+        if (!receiptBook) {
+            receiptBook = new ReceiptBook({ bookName, currentNumber: startNumber });
+        } else {
+            receiptBook.bookName = bookName;
+            receiptBook.currentNumber = startNumber;
+        }
+
+        await receiptBook.save();
+        res.json(receiptBook);
+    } catch (err) {
+        res.status(500).json({ message: "Error updating receipt book" });
+    }
+});
+
+
+app.patch("/incrementReceipt", async (req, res) => {
+    try {
+        const receiptBook = await ReceiptBook.findOne();
+
+        if (!receiptBook) {
+            return res.status(404).json({ message: "Receipt book not found" });
+        }
+
+        receiptBook.currentNumber += 1;
+        await receiptBook.save();
+
+        res.json(receiptBook);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: "Error incrementing receipt number" });
+    }
+});
+
+
 
 
 
