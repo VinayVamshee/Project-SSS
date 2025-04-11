@@ -6,15 +6,35 @@ const classFeesSchema = new mongoose.Schema({
     ref: "Class",  // Reference to Class model
     default: null
   },
-  school_fees: {
-    type: Number,
-    default: null
-  },
-  tuition_fees: {
-    type: Number,
-    default: null
-  },
   admission_fees: {
+    type: Number,
+    default: null
+  },
+  development_fee: {
+    type: Number,
+    default: null
+  },
+  exam_fee: {
+    type: Number,
+    default: null
+  },
+  progress_card: {
+    type: Number,
+    default: null
+  },
+  identity_card: {
+    type: Number,
+    default: null
+  },
+  school_diary: {
+    type: Number,
+    default: null
+  },
+  school_activity: {
+    type: Number,
+    default: null
+  },
+  tuition_fee: {
     type: Number,
     default: null
   }

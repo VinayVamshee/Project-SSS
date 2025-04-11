@@ -2,10 +2,20 @@ import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend} from "chart.js";
+import { useNavigate } from "react-router-dom";
 
 ChartJS.register( CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend) 
 
 export default function OverView() {
+
+    const navigate = useNavigate();
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/login');
+        }
+    }, [navigate]);    
+
     const [students, setStudents] = useState([]);
     const [classes, setClasses] = useState([]);
     const [academicYears, setAcademicYears] = useState([]);
@@ -16,15 +26,15 @@ export default function OverView() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const studentResponse = await axios.get("http://localhost:3001/getStudent");
+                const studentResponse = await axios.get("https://sss-server-eosin.vercel.app/getStudent");
                 const studentsList = studentResponse.data.students || [];
                 setStudents(studentsList);
 
-                const classResponse = await axios.get("http://localhost:3001/getClasses");
+                const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
                 const sortedClasses = (classResponse.data.classes || []).sort((a, b) => parseInt(a.class) - parseInt(b.class));
                 setClasses(sortedClasses);
 
-                const yearResponse = await axios.get("http://localhost:3001/GetAcademicYear");
+                const yearResponse = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");
                 const sortedYears = (yearResponse.data.data || []).sort((a, b) => {
                     const yearA = a.year ? a.year.split("-")[0] : "";
                     const yearB = b.year ? b.year.split("-")[0] : "";
@@ -52,7 +62,7 @@ export default function OverView() {
                 setStudentCountPerYear(studentPerYearCount);
 
                 // ✅ Fetch fees and calculate total paid amount
-                const feesResponse = await axios.get("http://localhost:3001/getFees");
+                const feesResponse = await axios.get("https://sss-server-eosin.vercel.app/getFees");
                 const allFees = feesResponse.data || [];
 
                 let totalPaid = 0;
@@ -80,7 +90,7 @@ export default function OverView() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const feesResponse = await axios.get("http://localhost:3001/getFees");
+                const feesResponse = await axios.get("https://sss-server-eosin.vercel.app/getFees");
                 const allFees = feesResponse.data || [];
     
                 let totalPaid = 0;

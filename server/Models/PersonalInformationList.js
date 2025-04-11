@@ -1,7 +1,8 @@
 const mongoose = require('mongoose');
 
 const PersonalInformationListSchema = new mongoose.Schema({
-    name: { type: String, required: true }
+  sno: { type: String, required: true },
+  name: { type: String, required: true }
 });
 
 module.exports = mongoose.model('PersonalInformationList', PersonalInformationListSchema);

@@ -5,31 +5,26 @@
 
 :root {
     --button-color: #FE4F2D;
-    /* Bright cyan for buttons */
     --button-hover: #fe502daf;
-    /* Deep teal for hover effect */
     --background-color: #FDFBEE;
-    /* Light cream for a softer dark theme */
     --text-color: black;
-    /* Dark teal for strong readability */
     --active-color: #FE4F2D;
 }
 
 [data-theme="midnight-red"] {
-    --button-color: #FF204E;
-    --button-hover: #FF204E98;
-    --background-color: #00224D;
-    --text-color: #EEEEEE;
+    --background-color: #1A0A0A; 
+    --text-color: #F5D7D7;
+    --button-color: #D91E36; 
+    --button-hover: #D91E3680; 
     --active-color: #A0153E;
 }
 
-
 [data-theme="Ocean"] {
-    --button-color: #2C74B3;
-    --button-hover: #2C74B398;
-    --background-color: #0A2647;
-    --text-color: #EEEEEE;
-    --active-color: #006eff;
+    --button-color: #4A90E2;
+    --button-hover: #4A90E280;
+    --background-color: #E3F2FD;
+    --text-color: #0A2647;
+    --active-color: #1565C0;
 }
 
 [data-theme="Earth"] {
@@ -38,6 +33,14 @@
     --button-color: #AB886D;
     --button-hover: #AB886D98;
     --active-color: #332720;
+}
+
+[data-theme="Deep Ocean"] {
+    --background-color: #031A2E;
+    --text-color: #D0E4FF;
+    --button-color: #1B6FA8;
+    --button-hover: #1B6FA880;
+    --active-color: #3EA6FF;
 }
 
 [data-theme="Rose Blush"] {
@@ -49,18 +52,12 @@
 }
 
 [data-theme="dark"] {
-    --background-color: #1D1616;
-    --text-color: #EEEEEE;
-    --button-color: #8E1616;
-    --button-hover: #D84040;
-    --active-color: #B32626;
+    --background-color: #2B1A1A;
+    --text-color: #F5E8D9;
+    --button-color: #D84224;
+    --button-hover: #D8422480;
+    --active-color: #FE4F2D;
 }
-
-
-
-
-
-
 
 .App {
     display: flex;
@@ -169,61 +166,6 @@
     border: 1px solid #ccc;
     cursor: pointer;
 }
-
-
-/* .theme-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 10px;
-    gap: 10px;
-}
-
-.switch {
-    position: relative;
-    display: inline-block;
-    width: 40px;
-    height: 20px;
-}
-
-.switch input {
-    opacity: 0;
-    width: 0;
-    height: 0;
-}
-
-.slider {
-    position: absolute;
-    cursor: pointer;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-color: #ccc;
-    transition: 0.4s;
-    border-radius: 20px;
-}
-
-.slider:before {
-    position: absolute;
-    content: "";
-    height: 14px;
-    width: 14px;
-    left: 3px;
-    bottom: 3px;
-    background-color: white;
-    transition: 0.4s;
-    border-radius: 50%;
-}
-
-input:checked + .slider {
-    background-color: var(--active-color);
-}
-
-input:checked + .slider:before {
-    transform: translateX(20px);
-} */
-
 
 .OverView {
     width: 100%;
@@ -496,24 +438,21 @@ input:checked + .slider:before {
     font-weight: 500;
 }
 
-.modal {}
-
 .modal-body .student-details img {
-    width: 200px;
-    filter: drop-shadow(0px 5px 8px rgba(0, 0, 0, 0.255));
+    width: 300px;
+    filter: drop-shadow(0px 8px 10px rgba(0, 0, 0, 0.78));
 }
 
 .modal-body .AdditionalTable {
     width: 100%;
 }
 
-.modal-body .AdditionalTable p {}
-
 .AddNewStudent {
     width: 100%;
     height: 100vh;
     padding: 20px;
-    background-color: #f7f9fc;
+    background-color: var(--background-color);
+    overflow-y: scroll;
 
     display: flex;
     flex-direction: column;
@@ -689,6 +628,9 @@ td {
     justify-content: flex-start;
     gap: 20px;
     transition: 0.3s ease-in-out;
+
+    opacity: 0; 
+    animation: slideDown 0.3s ease-in-out forwards;
 }
 
 .Payment:hover {
@@ -706,6 +648,9 @@ td {
 
 .Payment .Name img {
     width: 50px;
+    height: 50px;
+    object-fit: cover;
+    object-position: center;
 }
 
 .Payment .class {
@@ -716,7 +661,6 @@ td {
     display: flex;
     align-items: center;
     gap: 10px;
-    /* Space between progress bar and text */
     width: 250px;
 }
 
@@ -724,7 +668,6 @@ td {
     flex-grow: 1;
     height: 13px;
     background-color: var(--button-hover);
-    /* Light blue */
     border-radius: 50px;
     position: relative;
     overflow: hidden;
@@ -733,7 +676,6 @@ td {
 .fees-progress {
     height: 13px;
     background-color: var(--button-color);
-    /* Dark blue */
     border-radius: 0px;
     transition: width 0.5s ease-in-out;
 }
@@ -741,16 +683,86 @@ td {
 .fees-text {
     color: #000;
     white-space: nowrap;
-    /* Prevent text from wrapping */
 }
 
-.Payment .btn-paymentHistory {
+.btn-paymentHistory {
     background-color: var(--button-color);
     ;
     color: white;
 }
 
-.Payment .btn-paymentHistory:hover {
+.btn-paymentHistory:hover {
     background-color: var(--button-hover);
     color: white;
 }
+
+.ResultsPage {
+    width: 100%;
+    padding: 20px;
+    background-color: var(--background-color);
+
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+
+    min-height: 100vh;
+}
+
+.Results {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+
+    padding: 10px;
+
+    height: 86vh;
+    overflow: scroll;
+}
+
+.Result {
+    background-color: white;
+    padding: 5px 10px;
+
+    display: flex;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 20px;
+    transition: 0.3s ease-in-out;
+
+    opacity: 0; 
+    animation: slideDown 0.3s ease-in-out forwards;
+}
+
+.Result:hover {
+    cursor: pointer;
+}
+
+.Result .Name {
+    display: flex;
+    justify-content: flex-start;
+    align-items: center;
+    gap: 10px;
+
+    width: 200px;
+}
+
+.Result .Name img {
+    width: 50px;
+}
+
+.Result .class {
+    width: 100px;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-50px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+

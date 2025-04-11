@@ -1,8 +1,36 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import boy from "./Images/bussiness-man.png";
+import { useNavigate } from "react-router-dom";
 
 export default function Students() {
+
+    const navigate = useNavigate();
+    useEffect(() => {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            navigate('/login');
+        }
+    }, [navigate]);    
+
+    // useEffect(() => {
+    //     const checkAuth = async () => {
+    //         const token = localStorage.getItem('token');
+    //         if (!token) return navigate('/login');
+    
+    //         try {
+    //             await axios.get('https://sss-server-eosin.vercel.app/verifyToken', {
+    //                 headers: { Authorization: `Bearer ${token}` }
+    //             });
+    //         } catch (err) {
+    //             localStorage.removeItem('token');
+    //             navigate('/login');
+    //         }
+    //     };
+    
+    //     checkAuth();
+    // }, [navigate]);
+
     const [students, setStudents] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
     const [selectedYear, setSelectedYear] = useState("");
@@ -16,10 +44,10 @@ export default function Students() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const studentResponse = await axios.get("http://localhost:3001/getStudent");
+                const studentResponse = await axios.get("https://sss-server-eosin.vercel.app/getStudent");
                 setStudents(studentResponse.data.students || []);
 
-                const yearResponse = await axios.get("http://localhost:3001/GetAcademicYear");
+                const yearResponse = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");
                 const sortedYears = (yearResponse.data.data || []).sort((a, b) => {
                     return parseInt(b.year.split("-")[0]) - parseInt(a.year.split("-")[0]);
                 });
@@ -29,7 +57,7 @@ export default function Students() {
                     setSelectedYear(sortedYears[0].year);
                 }
 
-                const classResponse = await axios.get("http://localhost:3001/getClasses");
+                const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
                 const sortedClasses = (classResponse.data.classes || []).sort((a, b) =>
                     parseInt(a.class) - parseInt(b.class)
                 );
@@ -104,7 +132,7 @@ export default function Students() {
         }
 
         try {
-            const response = await axios.post("http://localhost:3001/pass-students-to", {
+            const response = await axios.post("https://sss-server-eosin.vercel.app/pass-students-to", {
                 studentIds: selectedStudents,
                 newAcademicYear: passToSelectedYear,
                 newClass: passToSelectedClass,
@@ -206,28 +234,67 @@ export default function Students() {
                                 </div>
 
                                 <div className="modal-body">
-                                    <div className="student-details d-flex justify-content-between">
-                                        <div>
-                                            <p><strong>Name:</strong> {selectedStudent.name}</p>
-                                            <p><strong>DOB:</strong> {new Date(selectedStudent.dob).toLocaleDateString()}</p>
-                                            <p><strong>Age:</strong> {selectedStudent.age}</p>
+                                    <div className="student-details d-flex justify-content-between align-items-start">
+                                        {/* Left: Details in pairs */}
+                                        <div className="w-75">
+                                            <div className="row mb-2">
+                                                <div className="col-md-6 p-2"><strong>Name:</strong> {selectedStudent.name}</div>
+                                                <div className="col-md-6 p-2"><strong>Name (Hindi):</strong> {selectedStudent.nameHindi}</div>
+                                            </div>
+                                            <div className="row mb-2">
+                                                <div className="col-md-6 p-2"><strong>DOB:</strong> {new Date(selectedStudent.dob).toLocaleDateString()}</div>
+                                                <div className="col-md-6 p-2"><strong>DOB in Words:</strong> {selectedStudent.dobInWords}</div>
+                                            </div>
+                                            <div className="row mb-2">
+                                                <div className="col-md-6 p-2"><strong>Age:</strong> {selectedStudent.age}</div>
+                                                <div className="col-md-6 p-2"><strong>Gender:</strong> {selectedStudent.gender}</div>
+                                            </div>
+                                            <div className="row mb-2">
+                                                <div className="col-md-6 p-2"><strong>Aadhar No:</strong> {selectedStudent.aadharNo}</div>
+                                                <div className="col-md-6 p-2"><strong>Blood Group:</strong> {selectedStudent.bloodGroup}</div>
+                                            </div>
+                                            <div className="row mb-2">
+                                                <div className="col-md-6 p-2"><strong>Category:</strong> {selectedStudent.category}</div>
+                                                <div className="col-md-6 p-2"><strong>Admission No:</strong> {selectedStudent.AdmissionNo}</div>
+                                            </div>
+                                            <div className="row mb-2">
+                                                <div className="col-md-6 p-2"><strong>Caste:</strong> {selectedStudent.Caste}</div>
+                                                <div className="col-md-6 p-2"><strong>Caste (Hindi):</strong> {selectedStudent.CasteHindi}</div>
+                                            </div>
+                                            <div className="row mb-2">
+                                                <div className="col-md-6 p-2"><strong>Free Student:</strong> {selectedStudent.FreeStud}</div>
+                                            </div>
 
                                             {/* Additional Information */}
-                                            {selectedStudent.additionalInfo.length > 0 && (
+                                            {selectedStudent.additionalInfo?.length > 0 && (
                                                 <>
-                                                    {selectedStudent.additionalInfo.map((info) => (
-                                                        <p key={info._id}>
-                                                            <strong>{info.key}:</strong> {info.value}
-                                                        </p>
-                                                    ))}
+                                                    <hr />
+                                                    <div className="row">
+                                                        {selectedStudent.additionalInfo
+                                                            .sort((a, b) => parseInt(a.sno) - parseInt(b.sno)) // sort by sno
+                                                            .map((info, index) => (
+                                                                <div className="col-md-6 mb-1 p-2" key={index}>
+                                                                    <strong>{info.key}:</strong> {info.value}
+                                                                </div>
+                                                            ))}
+                                                    </div>
                                                 </>
                                             )}
+
                                         </div>
 
-                                        <img src={selectedStudent.image || "default.jpg"} alt={selectedStudent.name} className="student-img" />
+                                        {/* Right: Image */}
+                                        <div className="ms-3">
+                                            <img
+                                                src={selectedStudent.image || "default.jpg"}
+                                                alt={selectedStudent.name}
+                                                className="student-img"
+                                            />
+                                        </div>
                                     </div>
 
                                     {/* Academic History */}
+                                    <h6 className="mt-4"><strong>Academic History:</strong></h6>
                                     <table className="table table-striped table-bordered academic-table">
                                         <thead className="bg-thead">
                                             <tr>
@@ -236,36 +303,21 @@ export default function Students() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {selectedStudent.academicYears.map((entry) => (
-                                                <tr key={entry._id}>
+                                            {selectedStudent.academicYears.map((entry, index) => (
+                                                <tr key={index}>
                                                     <td>{entry.academicYear}</td>
-                                                    <td>Class {entry.class}</td>
+                                                    <td>{entry.class}</td>
                                                 </tr>
                                             ))}
                                         </tbody>
                                     </table>
-
-                                    {/* Additional Information
-                                    {selectedStudent.additionalInfo.length > 0 && (
-                                        <>
-                                            <table className="table table-bordered AdditionalTable">
-                                                <tbody>
-                                                    {selectedStudent.additionalInfo.map((info) => (
-                                                        <tr key={info._id}>
-                                                            <td><strong>{info.key}</strong></td>
-                                                            <td>{info.value}</td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </>
-                                    )} */}
 
                                     <div className="modal-footer">
                                         <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
                                             Close
                                         </button>
                                     </div>
+
                                 </div>
                             </>
                         )}
