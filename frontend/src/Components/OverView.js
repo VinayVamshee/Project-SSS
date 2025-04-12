@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
 import axios from "axios";
 import { Bar, Doughnut, Line } from "react-chartjs-2";
-import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend} from "chart.js";
+import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend } from "chart.js";
 import { useNavigate } from "react-router-dom";
 
-ChartJS.register( CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend) 
+ChartJS.register(CategoryScale, LinearScale, BarElement, ArcElement, PointElement, LineElement, Title, Tooltip, Legend)
 
 export default function OverView() {
 
@@ -14,7 +14,7 @@ export default function OverView() {
         if (!token) {
             navigate('/login');
         }
-    }, [navigate]);    
+    }, [navigate]);
 
     const [students, setStudents] = useState([]);
     const [classes, setClasses] = useState([]);
@@ -43,14 +43,26 @@ export default function OverView() {
                 setAcademicYears(sortedYears);
 
                 // Count students per class
-                const studentCount = {};
+                // ✅ Step 1: Find the latest academic year from allYears list
+                const allYears = studentsList.flatMap(student =>
+                    student.academicYears.map(y => y.academicYear)
+                );
+                const sortedAcademicYears = allYears
+                    .filter(Boolean)
+                    .sort((a, b) => parseInt(b.split("-")[0]) - parseInt(a.split("-")[0]));
+                const latestYear = sortedAcademicYears[0];
+
+                // ✅ Step 2: Count only students from latest academic year per class
+                const latestYearStudentCount = {};
                 studentsList.forEach((student) => {
-                    student.academicYears.forEach((year) => {
-                        const cls = year.class;
-                        studentCount[cls] = (studentCount[cls] || 0) + 1;
-                    });
+                    const latestEntry = student.academicYears.find(y => y.academicYear === latestYear);
+                    if (latestEntry) {
+                        const cls = latestEntry.class;
+                        latestYearStudentCount[cls] = (latestYearStudentCount[cls] || 0) + 1;
+                    }
                 });
-                setClassStudentCount(studentCount);
+                setClassStudentCount(latestYearStudentCount);
+
 
                 const studentPerYearCount = {};
                 studentsList.forEach((student) => {
@@ -92,10 +104,10 @@ export default function OverView() {
             try {
                 const feesResponse = await axios.get("https://sss-server-eosin.vercel.app/getFees");
                 const allFees = feesResponse.data || [];
-    
+
                 let totalPaid = 0;
                 let totalFees = 0;
-    
+
                 allFees.forEach((fee) => {
                     fee.academicYears.forEach((year) => {
                         if (year.payments && Array.isArray(year.payments)) {
@@ -107,17 +119,17 @@ export default function OverView() {
                         }
                     });
                 });
-    
+
                 setTotalPaidFees(totalPaid);
                 setTotalFeesAmount(totalFees); // ✅ Store total fees
             } catch (error) {
                 console.error("Error fetching fees:", error);
             }
         };
-    
+
         fetchData();
     }, []);
-    
+
 
     const buttonColor = getComputedStyle(document.documentElement).getPropertyValue("--button-color").trim();
     const backgroundColor = getComputedStyle(document.documentElement).getPropertyValue("--background-color").trim();
@@ -135,27 +147,27 @@ export default function OverView() {
                 borderRadius: { topLeft: 50, topRight: 50, bottomLeft: 0, bottomRight: 0 }, // Top rounded, bottom sharp
                 borderSkipped: 'bottom',
                 barThickness: 15, // ✅ Set a fixed bar width (adjust as needed)
-            maxBarThickness: 20, 
+                maxBarThickness: 20,
             },
         ],
     };
 
 
-const amountPaid = totalPaidFees; // Use the already calculated total paid amount
+    const amountPaid = totalPaidFees; // Use the already calculated total paid amount
 
-const pieData = {
-    labels: ["Amount Paid", "Remaining Amount"],
-    datasets: [
-        {
-            label: "Fee Payment",
-            data: [amountPaid, totalFeesAmount - amountPaid],
-            backgroundColor: [buttonColor, backgroundColor], // Green for paid, Red for remaining
-            hoverOffset: 4,
-            cutout: "90%", // Adjust thickness of doughnut
-            radius:"80%"
-        },
-    ],
-};
+    const pieData = {
+        labels: ["Amount Paid", "Remaining Amount"],
+        datasets: [
+            {
+                label: "Fee Payment",
+                data: [amountPaid, totalFeesAmount - amountPaid],
+                backgroundColor: [buttonColor, backgroundColor], // Green for paid, Red for remaining
+                hoverOffset: 4,
+                cutout: "90%", // Adjust thickness of doughnut
+                radius: "80%"
+            },
+        ],
+    };
 
 
     const lineData = {
@@ -243,7 +255,7 @@ const pieData = {
             }
         }
     };
-    
+
 
     return (
         <div className="OverView">
@@ -257,7 +269,7 @@ const pieData = {
                 </div>
 
                 <div className="totalCard">
-                <i class="fa-solid fa-id-badge fa-xl"></i>
+                    <i class="fa-solid fa-id-badge fa-xl"></i>
                     <div className="totalValue">
                         <strong>10</strong>
                         <p>Total Staff</p>
@@ -274,7 +286,7 @@ const pieData = {
                 </div>
 
                 <div className="totalCard">
-                <i className="fa-solid fa-school bg-classes fa-xl"></i>
+                    <i className="fa-solid fa-school bg-classes fa-xl"></i>
                     <div className="totalValue">
                         <strong>{classes.length}</strong>
                         <p>Total Classes</p>
@@ -292,7 +304,7 @@ const pieData = {
 
             <div className="ClassStudentsChart">
                 <Bar className="BarGraph" data={BarData} options={chartOptions} />
-                <Doughnut className="PieGraph" data={pieData} options={pieOptions}/>
+                <Doughnut className="PieGraph" data={pieData} options={pieOptions} />
             </div>
             <div className="AcademicYearStudentsChart">
                 <Line className="LineGraph" data={lineData} options={lineOptions} />
