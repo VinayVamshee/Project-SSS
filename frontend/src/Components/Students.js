@@ -11,13 +11,13 @@ export default function Students() {
         if (!token) {
             navigate('/login');
         }
-    }, [navigate]);    
+    }, [navigate]);
 
     // useEffect(() => {
     //     const checkAuth = async () => {
     //         const token = localStorage.getItem('token');
     //         if (!token) return navigate('/login');
-    
+
     //         try {
     //             await axios.get('https://sss-server-eosin.vercel.app/verifyToken', {
     //                 headers: { Authorization: `Bearer ${token}` }
@@ -27,7 +27,7 @@ export default function Students() {
     //             navigate('/login');
     //         }
     //     };
-    
+
     //     checkAuth();
     // }, [navigate]);
 
@@ -85,7 +85,7 @@ export default function Students() {
             ) &&
             (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
         )
-        .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by name
+        .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || ""));
 
 
     // Handle individual student selection
@@ -152,6 +152,34 @@ export default function Students() {
         }
     };
 
+    const calculateAge = (dob) => {
+        const birthDate = new Date(dob);
+        const currentDate = new Date();
+        let age = currentDate.getFullYear() - birthDate.getFullYear();
+        const month = currentDate.getMonth();
+        const day = currentDate.getDate();
+
+        // Adjust if birthday hasn't occurred this year
+        if (month < birthDate.getMonth() || (month === birthDate.getMonth() && day < birthDate.getDate())) {
+            age--;
+        }
+        return age;
+    };
+
+    const [isGrid, setIsGrid] = useState(true);
+    useEffect(() => {
+        const savedView = localStorage.getItem('isGrid');
+        if (savedView !== null) {
+            setIsGrid(savedView === 'true');
+        }
+    }, []);
+
+    const toggleButton = (button) => {
+        const newValue = button === 'Grid';
+        setIsGrid(newValue);
+        localStorage.setItem('isGrid', newValue);
+    };
+
     return (
         <div className="Students">
             <div className="SearchFilter">
@@ -195,32 +223,60 @@ export default function Students() {
                     <label>Select All</label>
                 </div>
 
-                <button type="button" className=" btn btn-sm border" data-bs-toggle="modal" data-bs-target="#passtoModal"><i class="fa-solid fa-forward me-2 fa-lg"></i>Pass to</button>
+                <button type="button" className=" btn btn-sm border" data-bs-toggle="modal" data-bs-target="#passtoModal"><i className="fa-solid fa-forward me-2 fa-lg"></i>Pass to</button>
+                <button type="button" className="btn" onClick={() => toggleButton('Grid')}><i class="fa-solid fa-table-columns fa-lg me-2"></i>Grid</button>
+                <button type="button" className="btn" onClick={() => toggleButton('list')}><i class="fa-solid fa-list fa-lg me-2"></i>List</button>
             </div>
 
             {/* Student Cards */}
-            <div className="student-grid">
-                {filteredStudents.map((student, index) => (
-                    <div className="student-card" style={{ animationDelay: `${index * 0.1}s` }}>
-                        <div key={student._id} data-bs-toggle="modal" data-bs-target="#studentModal" onClick={() => setSelectedStudent(student)}>
-                            <img src={student.image || boy} alt="..." />
-                            <strong>{student.name}</strong>
-                            <p>Age: {student.age}</p>
-                            <p>Class: {student.academicYears.find(y => y.academicYear === selectedYear)?.class || "N/A"}</p>
-                            <p>Year: {selectedYear}</p>
-                        </div>
-                        <input
-                            type="checkbox"
-                            className="select-checkbox"
-                            checked={selectedStudents.includes(student._id)}
-                            onChange={(e) => {
-                                handleSelectStudent(student._id);
-                            }}
-                        />
+            {
+                isGrid ?
+                    <div className="student-grid">
+                        {filteredStudents.map((student, index) => (
+                            <div className="student-card" style={{ animationDelay: `${index * 0.1}s` }}>
+                                <div key={student._id} data-bs-toggle="modal" data-bs-target="#studentModal" onClick={() => setSelectedStudent(student)}>
+                                    <img src={student.image || boy} alt="..." />
+                                    <strong>{student.name}</strong>
+                                    <p>Age: {calculateAge(student.dob)}</p>
+                                    <p>Class: {student.academicYears.find(y => y.academicYear === selectedYear)?.class || "N/A"}</p>
+                                    <p>Year: {selectedYear}</p>
+                                </div>
+                                <input
+                                    type="checkbox"
+                                    className="select-checkbox"
+                                    checked={selectedStudents.includes(student._id)}
+                                    onChange={(e) => {
+                                        handleSelectStudent(student._id);
+                                    }}
+                                />
+                            </div>
+                        ))}
                     </div>
+                    :
+                    <div className="students-list">
+                        {filteredStudents.map((student, index) => (
+                            <div className="student-list" style={{ animationDelay: `${index * 0.1}s` }}>
+                                <input
+                                    type="checkbox"
+                                    className="select-checkbox"
+                                    checked={selectedStudents.includes(student._id)}
+                                    onChange={(e) => {
+                                        handleSelectStudent(student._id);
+                                    }}
+                                />
+                                <div className="student-list-view" key={student._id} data-bs-toggle="modal" data-bs-target="#studentModal" onClick={() => setSelectedStudent(student)}>
+                                    <img src={student.image || boy} alt="..." />
+                                    <strong>{student.name}</strong>
+                                    <div style={{width:'200px'}}><label>Admission No:</label> {student.AdmissionNo}</div>
+                                    <div><label>Age:</label> {calculateAge(student.dob)}</div>
+                                    <div style={{width:'100px'}}><label>Class:</label> {student.academicYears.find(y => y.academicYear === selectedYear)?.class || "N/A"}</div>
+                                    <div>Year: {selectedYear}</div>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+            }
 
-                ))}
-            </div>
 
             {/* Student Modal */}
             <div className="modal fade" id="studentModal" tabIndex="-1" aria-hidden="true">
@@ -246,7 +302,7 @@ export default function Students() {
                                                 <div className="col-md-6 p-2"><strong>DOB in Words:</strong> {selectedStudent.dobInWords}</div>
                                             </div>
                                             <div className="row mb-2">
-                                                <div className="col-md-6 p-2"><strong>Age:</strong> {selectedStudent.age}</div>
+                                                <p>Age: {selectedStudent && selectedStudent.dob ? calculateAge(selectedStudent?.dob) : 'Date of Birth not available'}</p>
                                                 <div className="col-md-6 p-2"><strong>Gender:</strong> {selectedStudent.gender}</div>
                                             </div>
                                             <div className="row mb-2">
