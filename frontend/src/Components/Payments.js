@@ -77,7 +77,7 @@ export default function Payments() {
             ) &&
             (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
         )
-        .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by name
+        .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || ""));
 
     const handleGeneratePdf = (studentFees, payment, student, selectedYear, paidFees) => {
         if (!studentFees || !student || !selectedYear) {
