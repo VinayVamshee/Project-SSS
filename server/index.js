@@ -16,6 +16,7 @@ const Payment = require('./Models/Payment')
 const ClassFees = require('./Models/ClassFees')
 const ReceiptBook = require('./Models/ReceiptBook')
 const User = require('./Models/User')
+const Master = require('./Models/Master')
 const jwt = require('jsonwebtoken');
 
 const app = express();
@@ -23,47 +24,47 @@ app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT;
-const SECRET = 'School-Scholastic-System';
+const SECRET = process.env.SECRET;
 
 app.post('/register', async (req, res) => {
     try {
-      const { username, password } = req.body;
-      const exists = await User.findOne({ username });
-      if (exists) return res.status(400).json({ message: 'User already exists' });
-  
-      const user = new User({ username, password });
-      await user.save();
-      res.status(201).json({ message: 'User registered successfully' });
+        const { username, password } = req.body;
+        const exists = await User.findOne({ username });
+        if (exists) return res.status(400).json({ message: 'User already exists' });
+
+        const user = new User({ username, password });
+        await user.save();
+        res.status(201).json({ message: 'User registered successfully' });
     } catch (err) {
-      res.status(500).json({ message: 'Registration failed', error: err.message });
+        res.status(500).json({ message: 'Registration failed', error: err.message });
     }
-  });
-  
-  // Login (compare plain text)
-  app.post('/login', async (req, res) => {
+});
+
+// Login (compare plain text)
+app.post('/login', async (req, res) => {
     const { username, password } = req.body;
     const user = await User.findOne({ username });
     if (!user || user.password !== password) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+        return res.status(401).json({ message: 'Invalid credentials' });
     }
-  
+
     const token = jwt.sign({ id: user._id, username: user.username }, SECRET);
     res.json({ token });
-  });
+});
 
-  app.get('/verifyToken', (req, res) => {
+app.get('/verifyToken', (req, res) => {
     const token = req.headers.authorization?.split(" ")[1];
     if (!token) return res.status(401).json({ message: "Unauthorized" });
-  
+
     try {
-      const decoded = jwt.verify(token, 'School-Scholastic-System');
-      res.json({ valid: true, user: decoded });
+        const decoded = jwt.verify(token, 'School-Scholastic-System');
+        res.json({ valid: true, user: decoded });
     } catch (err) {
-      res.status(401).json({ message: "Invalid or expired token" });
+        res.status(401).json({ message: "Invalid or expired token" });
     }
-  });
-  
-  
+});
+
+
 
 
 app.post('/AddNewClass', async (req, res) => {
@@ -220,40 +221,40 @@ app.get('/class-subjects', async (req, res) => {
 // Route to add additional personal information
 app.post('/AddAdditionalPersonalInformation', async (req, res) => {
     try {
-      const { sno, personalInformationList_name } = req.body;
-  
-      if (!sno || !personalInformationList_name) {
-        return res.status(400).json({ message: "S.No and Name are required" });
-      }
-  
-      // Check if the name already exists
-      const existingInfo = await PersonalInformationList.findOne({ name: personalInformationList_name });
-  
-      if (existingInfo) {
-        // Update the sno if it's different
-        if (existingInfo.sno !== sno) {
-          existingInfo.sno = sno;
-          await existingInfo.save();
-          return res.status(200).json({ message: "S.No updated for existing name", data: existingInfo });
-        } else {
-          return res.status(200).json({ message: "No changes made. Same S.No already exists for this name.", data: existingInfo });
+        const { sno, personalInformationList_name } = req.body;
+
+        if (!sno || !personalInformationList_name) {
+            return res.status(400).json({ message: "S.No and Name are required" });
         }
-      }
-  
-      // Create new entry if name doesn't exist
-      const newInfo = new PersonalInformationList({
-        sno,
-        name: personalInformationList_name
-      });
-  
-      await newInfo.save();
-      res.status(201).json({ message: "New personal information added successfully", data: newInfo });
-  
+
+        // Check if the name already exists
+        const existingInfo = await PersonalInformationList.findOne({ name: personalInformationList_name });
+
+        if (existingInfo) {
+            // Update the sno if it's different
+            if (existingInfo.sno !== sno) {
+                existingInfo.sno = sno;
+                await existingInfo.save();
+                return res.status(200).json({ message: "S.No updated for existing name", data: existingInfo });
+            } else {
+                return res.status(200).json({ message: "No changes made. Same S.No already exists for this name.", data: existingInfo });
+            }
+        }
+
+        // Create new entry if name doesn't exist
+        const newInfo = new PersonalInformationList({
+            sno,
+            name: personalInformationList_name
+        });
+
+        await newInfo.save();
+        res.status(201).json({ message: "New personal information added successfully", data: newInfo });
+
     } catch (error) {
-      res.status(500).json({ message: "Internal server error", error: error.message });
+        res.status(500).json({ message: "Internal server error", error: error.message });
     }
-  });
-  
+});
+
 // Route to get all personal information
 app.get('/GetPersonalInformationList', async (req, res) => {
     try {
@@ -283,34 +284,34 @@ app.delete('/DeletePersonalInfo/:id', async (req, res) => {
 // Route to add a student
 app.post('/addStudent', async (req, res) => {
     try {
-      const { name, nameHindi, dob, dobInWords,aadharNo, gender, bloodGroup, image, category, AdmissionNo, Caste, CasteHindi, FreeStud, additionalInfo, academicYears } = req.body;
-  
-      const newStudent = new Student({
-        name,
-        nameHindi,
-        dob,
-        dobInWords,
-        aadharNo,
-        gender,
-        bloodGroup,
-        image,
-        category,
-        AdmissionNo,
-        Caste,
-        CasteHindi,
-        FreeStud,
-        additionalInfo,
-        academicYears
-      });
-  
-      await newStudent.save();
-      res.status(201).json({ message: 'Student added successfully', data: newStudent });
+        const { name, nameHindi, dob, dobInWords, aadharNo, gender, bloodGroup, image, category, AdmissionNo, Caste, CasteHindi, FreeStud, additionalInfo, academicYears } = req.body;
+
+        const newStudent = new Student({
+            name,
+            nameHindi,
+            dob,
+            dobInWords,
+            aadharNo,
+            gender,
+            bloodGroup,
+            image,
+            category,
+            AdmissionNo,
+            Caste,
+            CasteHindi,
+            FreeStud,
+            additionalInfo,
+            academicYears
+        });
+
+        await newStudent.save();
+        res.status(201).json({ message: 'Student added successfully', data: newStudent });
     } catch (error) {
-      console.error(error);
-      res.status(500).json({ message: 'Error adding student', error: error.message });
+        console.error(error);
+        res.status(500).json({ message: 'Error adding student', error: error.message });
     }
-  });
-  
+});
+
 
 // Route to get all students
 app.get('/getStudent', async (req, res) => {
@@ -624,7 +625,7 @@ app.get("/getFees", async (req, res) => {
             );
 
             if (yearData) {
-                payments = yearData.payments; 
+                payments = yearData.payments;
                 isNewStudent = yearData.isNewStudent ?? false;
                 discount = yearData.discount ?? 0;
             }
@@ -807,7 +808,48 @@ app.patch("/incrementReceipt", async (req, res) => {
     }
 });
 
+app.post('/masters', async (req, res) => {
+    try {
+        const newMaster = new Master(req.body);
+        const savedMaster = await newMaster.save();
+        res.status(201).json(savedMaster);
+    } catch (err) {
+        res.status(400).json({ error: err.message });
+    }
+});
 
+app.get('/masters', async (req, res) => {
+    try {
+        const latestMaster = await Master.findOne().sort({ _id: -1 });
+        if (!latestMaster) return res.status(404).json({ message: 'No master found' });
+        res.json(latestMaster);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.get('/get-all-masters', async (req, res) => {
+    try {
+        const allMasters = await Master.find().sort({ _id: -1 });
+        res.json(allMasters);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
+app.put('/masters/:id', async (req, res) => {
+    try {
+      const updatedMaster = await Master.findByIdAndUpdate(
+        req.params.id,
+        req.body,
+        { new: true } // returns updated doc
+      );
+      if (!updatedMaster) return res.status(404).json({ message: 'Master not found' });
+      res.json(updatedMaster);
+    } catch (err) {
+      res.status(500).json({ error: err.message });
+    }
+  });
 
 
 
