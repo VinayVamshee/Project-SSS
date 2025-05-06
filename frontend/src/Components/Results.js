@@ -61,7 +61,7 @@ export default function Results() {
             ) &&
             (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
         )
-        .sort((a, b) => a.name.localeCompare(b.name));
+        .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || ""));
 
     const [StudentMarks, setStudentMarks] = useState(null);
     const [marksView, setMarksView] = useState(null);
@@ -235,13 +235,13 @@ export default function Results() {
                 </div>
 
                 <input type="text" placeholder="Search Student..." value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} className="SearchStudent" />
-                <button class="btn" type="button" data-bs-toggle="collapse" data-bs-target="#Subject-Class-Marks-Collapse" aria-expanded="false" aria-controls="Subject-Class-Marks-Collapse">
+                <button className="btn" type="button" data-bs-toggle="collapse" data-bs-target="#Subject-Class-Marks-Collapse" aria-expanded="false" aria-controls="Subject-Class-Marks-Collapse">
                     Subject / Class / Marks
                 </button>
             </div>
 
-            <div class="collapse" id="Subject-Class-Marks-Collapse">
-                <div class="card card-body">
+            <div className="collapse" id="Subject-Class-Marks-Collapse">
+                <div className="card card-body">
                     Some placeholder content for the collapse component. This panel is hidden by default but revealed when the user activates the relevant trigger.
                 </div>
             </div>
@@ -265,7 +265,7 @@ export default function Results() {
                                     <button type="button" className="btn btn-paymentHistory dropdown-toggle" data-bs-toggle="collapse" data-bs-target={`#ViewMarksCollapse-${element._id}`} aria-expanded="false" aria-controls={`ViewMarksCollapse-${element._id}`} onClick={() => handleViewMarks(element)}>
                                         <i className="fa-solid fa-sheet-plastic fa-lg me-2"></i>View Marks
                                     </button>
-                                    <button type="button" className="btn btn-paymentHistory" data-bs-toggle="modal" data-bs-target="#AddMarksModal" onClick={() => handleAddMarksClick(element)}><i class="fa-solid fa-pen-to-square fa-lg me-2"></i>Add/Edit Marks</button>
+                                    <button type="button" className="btn btn-paymentHistory" data-bs-toggle="modal" data-bs-target="#AddMarksModal" onClick={() => handleAddMarksClick(element)}><i className="fa-solid fa-pen-to-square fa-lg me-2"></i>Add/Edit Marks</button>
                                     <button type="button" className="btn btn-outline-success" onClick={() => {
                                             const studentClass = element.academicYears.find(year => year.academicYear === selectedYear)?.class || "N/A";
                                             const marksInfo = {
@@ -277,7 +277,7 @@ export default function Results() {
                                             };
                                             generatePDF(marksInfo);
                                         }}>
-                                        <i class="fa-solid fa-file-pdf fa-lg me-2"></i>Download Report Card
+                                        <i className="fa-solid fa-file-pdf fa-lg me-2"></i>Download Report Card
                                     </button>
 
                                 </div>
