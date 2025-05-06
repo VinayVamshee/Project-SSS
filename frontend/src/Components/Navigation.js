@@ -64,6 +64,9 @@ export default function Navigation() {
                     <NavLink to="/Payments" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                         <i className="fa-solid fa-money-check-dollar fa-lg"></i> Payments
                     </NavLink>
+    <NavLink to="/Master" className={({ isActive }) => isActive ? "Link active" : "Link"}>
+                        <i className="fa-solid fa-gears fa-lg"></i>Master
+                    </NavLink>
                 </div>
 
                 {/* Theme Toggle Button */}
