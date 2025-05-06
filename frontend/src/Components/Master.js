@@ -15,7 +15,7 @@ export default function Master() {
 
     // Load latest master on mount
     useEffect(() => {
-        axios.get('http://localhost:3001/masters')
+        axios.get('https://sss-server-eosin.vercel.app/masters')
             .then(res => {
                 const data = res.data;
                 setForm({
@@ -51,7 +51,7 @@ export default function Master() {
     };
 
     const postNewMaster = () => {
-        axios.post('http://localhost:3001/masters', form)
+        axios.post('https://sss-server-eosin.vercel.app/masters', form)
             .then(res => {
                 alert('✅ New master added!');
                 setLatestId(res.data._id);
@@ -62,7 +62,7 @@ export default function Master() {
     const updateLatestMaster = () => {
         if (!latestId) return alert('⚠️ No master record to update.');
 
-        axios.put(`http://localhost:3001/masters/${latestId}`, form)
+        axios.put(`https://sss-server-eosin.vercel.app/masters/${latestId}`, form)
             .then(() => alert('✅ Master updated successfully!'))
             .catch(err => alert('Error updating master: ' + err.message));
     };
@@ -70,7 +70,7 @@ export default function Master() {
     const [allMasters, setAllMasters] = useState([]);
 
     useEffect(() => {
-        axios.get('http://localhost:3001/get-all-masters')
+        axios.get('https://sss-server-eosin.vercel.app/get-all-masters')
             .then(res => setAllMasters(res.data))
             .catch(err => console.error('Error fetching all masters:', err.message));
     }, [latestId]);
