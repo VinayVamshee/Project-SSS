@@ -64,7 +64,7 @@ export default function Navigation() {
                     <NavLink to="/Payments" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                         <i className="fa-solid fa-money-check-dollar fa-lg"></i> Payments
                     </NavLink>
-    <NavLink to="/Master" className={({ isActive }) => isActive ? "Link active" : "Link"}>
+                    <NavLink to="/Master" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                         <i className="fa-solid fa-gears fa-lg"></i>Master
                     </NavLink>
                 </div>
@@ -108,8 +108,8 @@ export default function Navigation() {
                 </div>
             </div>
 
-            <div class="modal" id="RegisterModal" tabindex="-1" aria-labelledby="RegisterModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
+            <div className="modal" id="RegisterModal" tabIndex="-1" aria-labelledby="RegisterModalLabel" aria-hidden="true">
+                <div className="modal-dialog">
                     <div className="modal-content">
                         <form onSubmit={handleRegister}>
                             <div className="modal-header">
@@ -131,8 +131,8 @@ export default function Navigation() {
                 </div>
             </div>
 
-            <div class="modal fade" id="LoginModal" tabindex="-1" aria-labelledby="LoginModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
+            <div className="modal fade" id="LoginModal" tabIndex="-1" aria-labelledby="LoginModalLabel" aria-hidden="true">
+                <div className="modal-dialog">
                     <div className="modal-content">
                         <form onSubmit={handleLogin}>
                             <div className="modal-header">
