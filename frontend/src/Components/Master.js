@@ -1,7 +1,17 @@
 import React, { useEffect, useState } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 export default function Master() {
+
+    const navigate = useNavigate();
+    // Redirect to login if no token
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (!token) navigate("/login");
+    }, [navigate]);
+
+
     const [form, setForm] = useState({
         imageUrl: '',
         name: '',
@@ -144,7 +154,7 @@ export default function Master() {
                             {master.sessions.map((session, i) => (
                                 <li key={i}>
                                     {new Date(session.from).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                     <br/>to<br/>
+                                    <br />to<br />
                                     {new Date(session.to).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                 </li>
                             ))}
