@@ -323,6 +323,25 @@ app.get('/getStudent', async (req, res) => {
     }
 });
 
+// Route to update a student
+app.put('/updateStudent/:id', async (req, res) => {
+    try {
+        const studentId = req.params.id;
+        const updatedData = req.body;
+
+        const updatedStudent = await Student.findByIdAndUpdate(studentId, updatedData, { new: true });
+
+        if (!updatedStudent) {
+            return res.status(404).json({ message: 'Student not found' });
+        }
+
+        res.status(200).json({ message: 'Student updated successfully', data: updatedStudent });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error updating student', error: error.message });
+    }
+});
+
 
 // Exam post
 app.post('/addExams', async (req, res) => {
@@ -839,17 +858,17 @@ app.get('/get-all-masters', async (req, res) => {
 
 app.put('/masters/:id', async (req, res) => {
     try {
-      const updatedMaster = await Master.findByIdAndUpdate(
-        req.params.id,
-        req.body,
-        { new: true } // returns updated doc
-      );
-      if (!updatedMaster) return res.status(404).json({ message: 'Master not found' });
-      res.json(updatedMaster);
+        const updatedMaster = await Master.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true } // returns updated doc
+        );
+        if (!updatedMaster) return res.status(404).json({ message: 'Master not found' });
+        res.json(updatedMaster);
     } catch (err) {
-      res.status(500).json({ error: err.message });
+        res.status(500).json({ error: err.message });
     }
-  });
+});
 
 
 

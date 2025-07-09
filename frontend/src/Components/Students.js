@@ -180,6 +180,28 @@ export default function Students() {
         localStorage.setItem('isGrid', newValue);
     };
 
+    const [isEditMode, setIsEditMode] = useState(false);
+    const [editStudentData, setEditStudentData] = useState(null);
+
+    const uploadToImgBB = async (file) => {
+        const formData = new FormData();
+        formData.append("key", "8451f34223c6e62555eec9187d855f8f"); // Your API key
+        formData.append("image", file);
+
+        const res = await fetch("https://api.imgbb.com/1/upload", {
+            method: "POST",
+            body: formData,
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            return data.data.display_url || data.data.url;
+        } else {
+            throw new Error("Image upload failed");
+        }
+    };
+
+
     return (
         <div className="Students">
             <div className="SearchFilter">
@@ -224,8 +246,8 @@ export default function Students() {
                 </div>
 
                 <button type="button" className=" btn btn-sm border" data-bs-toggle="modal" data-bs-target="#passtoModal"><i className="fa-solid fa-forward me-2 fa-lg"></i>Pass to</button>
-                <button type="button" className="btn" onClick={() => toggleButton('Grid')}><i class="fa-solid fa-table-columns fa-lg me-2"></i>Grid</button>
-                <button type="button" className="btn" onClick={() => toggleButton('list')}><i class="fa-solid fa-list fa-lg me-2"></i>List</button>
+                <button type="button" className="btn" onClick={() => toggleButton('Grid')}><i className="fa-solid fa-table-columns fa-lg me-2"></i>Grid</button>
+                <button type="button" className="btn" onClick={() => toggleButton('list')}><i className="fa-solid fa-list fa-lg me-2"></i>List</button>
             </div>
 
             {/* Student Cards */}
@@ -267,9 +289,9 @@ export default function Students() {
                                 <div className="student-list-view" key={student._id} data-bs-toggle="modal" data-bs-target="#studentModal" onClick={() => setSelectedStudent(student)}>
                                     <img src={student.image || boy} alt="..." />
                                     <strong>{student.name}</strong>
-                                    <div style={{width:'200px'}}><label>Admission No:</label> {student.AdmissionNo}</div>
+                                    <div style={{ width: '200px' }}><label>Admission No:</label> {student.AdmissionNo}</div>
                                     <div><label>Age:</label> {calculateAge(student.dob)}</div>
-                                    <div style={{width:'100px'}}><label>Class:</label> {student.academicYears.find(y => y.academicYear === selectedYear)?.class || "N/A"}</div>
+                                    <div style={{ width: '100px' }}><label>Class:</label> {student.academicYears.find(y => y.academicYear === selectedYear)?.class || "N/A"}</div>
                                     <div>Year: {selectedYear}</div>
                                 </div>
                             </div>
@@ -290,35 +312,128 @@ export default function Students() {
                                 </div>
 
                                 <div className="modal-body">
+                                    <div className="w-100 d-flex justify-content-end">
+                                        <button className="btn btn-sm btn-warning mb-2" onClick={() => {
+                                            setIsEditMode(!isEditMode);
+                                            setEditStudentData({ ...selectedStudent }); // clone original
+                                        }}>
+                                            {isEditMode ? "Cancel" : "Edit"}
+                                        </button>
+                                    </div>
+
                                     <div className="student-details d-flex justify-content-between align-items-start">
                                         {/* Left: Details in pairs */}
                                         <div className="w-75">
                                             <div className="row mb-2">
-                                                <div className="col-md-6 p-2"><strong>Name:</strong> {selectedStudent.name}</div>
-                                                <div className="col-md-6 p-2"><strong>Name (Hindi):</strong> {selectedStudent.nameHindi}</div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Name:</strong>
+                                                    {isEditMode ? (
+                                                        <input className="form-control" value={editStudentData.name} onChange={(e) => setEditStudentData(prev => ({ ...prev, name: e.target.value }))} />
+                                                    ) : selectedStudent.name}
+                                                </div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Name (Hindi):</strong>
+                                                    {isEditMode ? (
+                                                        <input className="form-control" value={editStudentData.nameHindi} onChange={(e) => setEditStudentData(prev => ({ ...prev, nameHindi: e.target.value }))} />
+                                                    ) : selectedStudent.nameHindi}
+                                                </div>
                                             </div>
+
                                             <div className="row mb-2">
-                                                <div className="col-md-6 p-2"><strong>DOB:</strong> {new Date(selectedStudent.dob).toLocaleDateString()}</div>
-                                                <div className="col-md-6 p-2"><strong>DOB in Words:</strong> {selectedStudent.dobInWords}</div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>DOB:</strong>
+                                                    {isEditMode ? (
+                                                        <input type="date" className="form-control" value={editStudentData.dob?.substring(0, 10)} onChange={(e) => setEditStudentData(prev => ({ ...prev, dob: e.target.value }))} />
+                                                    ) : new Date(selectedStudent.dob).toLocaleDateString()}
+                                                </div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>DOB in Words:</strong>
+                                                    {isEditMode ? (
+                                                        <input className="form-control" value={editStudentData.dobInWords} onChange={(e) => setEditStudentData(prev => ({ ...prev, dobInWords: e.target.value }))} />
+                                                    ) : selectedStudent.dobInWords}
+                                                </div>
                                             </div>
+
                                             <div className="row mb-2">
-                                                <p>Age: {selectedStudent && selectedStudent.dob ? calculateAge(selectedStudent?.dob) : 'Date of Birth not available'}</p>
-                                                <div className="col-md-6 p-2"><strong>Gender:</strong> {selectedStudent.gender}</div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Age:</strong> {selectedStudent && selectedStudent.dob ? calculateAge(selectedStudent?.dob) : 'Date of Birth not available'}
+                                                </div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Gender:</strong>
+                                                    {isEditMode ? (
+                                                        <select className="form-select" value={editStudentData.gender} onChange={(e) => setEditStudentData(prev => ({ ...prev, gender: e.target.value }))}>
+                                                            <option value="">Select</option>
+                                                            <option value="Male">Male</option>
+                                                            <option value="Female">Female</option>
+                                                        </select>
+                                                    ) : selectedStudent.gender}
+                                                </div>
                                             </div>
+
                                             <div className="row mb-2">
-                                                <div className="col-md-6 p-2"><strong>Aadhar No:</strong> {selectedStudent.aadharNo}</div>
-                                                <div className="col-md-6 p-2"><strong>Blood Group:</strong> {selectedStudent.bloodGroup}</div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Aadhar No:</strong>
+                                                    {isEditMode ? (
+                                                        <input className="form-control" value={editStudentData.aadharNo} onChange={(e) => setEditStudentData(prev => ({ ...prev, aadharNo: e.target.value }))} />
+                                                    ) : selectedStudent.aadharNo}
+                                                </div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Blood Group:</strong>
+                                                    {isEditMode ? (
+                                                        <select className="form-select" value={editStudentData.bloodGroup} onChange={(e) => setEditStudentData(prev => ({ ...prev, bloodGroup: e.target.value }))}>
+                                                            <option value="">Select</option>
+                                                            {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map((group) => (
+                                                                <option key={group} value={group}>{group}</option>
+                                                            ))}
+                                                        </select>
+                                                    ) : selectedStudent.bloodGroup}
+                                                </div>
                                             </div>
+
                                             <div className="row mb-2">
-                                                <div className="col-md-6 p-2"><strong>Category:</strong> {selectedStudent.category}</div>
-                                                <div className="col-md-6 p-2"><strong>Admission No:</strong> {selectedStudent.AdmissionNo}</div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Category:</strong>
+                                                    {isEditMode ? (
+                                                        <select className="form-select" value={editStudentData.category} onChange={(e) => setEditStudentData(prev => ({ ...prev, category: e.target.value }))}>
+                                                            <option value="">Select</option>
+                                                            <option value="General">General</option>
+                                                            <option value="OBC">OBC</option>
+                                                            <option value="SC">SC</option>
+                                                            <option value="ST">ST</option>
+                                                            <option value="EWS">EWS</option>
+                                                        </select>
+                                                    ) : selectedStudent.category}
+                                                </div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Admission No:</strong>
+                                                    {isEditMode ? (
+                                                        <input className="form-control" value={editStudentData.AdmissionNo} onChange={(e) => setEditStudentData(prev => ({ ...prev, AdmissionNo: e.target.value }))} />
+                                                    ) : selectedStudent.AdmissionNo}
+                                                </div>
                                             </div>
+
                                             <div className="row mb-2">
-                                                <div className="col-md-6 p-2"><strong>Caste:</strong> {selectedStudent.Caste}</div>
-                                                <div className="col-md-6 p-2"><strong>Caste (Hindi):</strong> {selectedStudent.CasteHindi}</div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Caste:</strong>
+                                                    {isEditMode ? (
+                                                        <input className="form-control" value={editStudentData.Caste} onChange={(e) => setEditStudentData(prev => ({ ...prev, Caste: e.target.value }))} />
+                                                    ) : selectedStudent.Caste}
+                                                </div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Caste (Hindi):</strong>
+                                                    {isEditMode ? (
+                                                        <input className="form-control" value={editStudentData.CasteHindi} onChange={(e) => setEditStudentData(prev => ({ ...prev, CasteHindi: e.target.value }))} />
+                                                    ) : selectedStudent.CasteHindi}
+                                                </div>
                                             </div>
+
                                             <div className="row mb-2">
-                                                <div className="col-md-6 p-2"><strong>Free Student:</strong> {selectedStudent.FreeStud}</div>
+                                                <div className="col-md-6 p-2">
+                                                    <strong>Free Student:</strong>
+                                                    {isEditMode ? (
+                                                        <input className="form-control" value={editStudentData.FreeStud} onChange={(e) => setEditStudentData(prev => ({ ...prev, FreeStud: e.target.value }))} />
+                                                    ) : selectedStudent.FreeStud}
+                                                </div>
                                             </div>
 
                                             {/* Additional Information */}
@@ -326,28 +441,61 @@ export default function Students() {
                                                 <>
                                                     <hr />
                                                     <div className="row">
-                                                        {selectedStudent.additionalInfo
-                                                            .sort((a, b) => parseInt(a.sno) - parseInt(b.sno)) // sort by sno
-                                                            .map((info, index) => (
-                                                                <div className="col-md-6 mb-1 p-2" key={index}>
-                                                                    <strong>{info.key}:</strong> {info.value}
-                                                                </div>
-                                                            ))}
+                                                        {selectedStudent.additionalInfo.map((info, index) => (
+                                                            <div className="col-md-6 mb-2 p-2" key={index}>
+                                                                <strong>{info.key}:</strong>
+                                                                {isEditMode ? (
+                                                                    <input
+                                                                        className="form-control mt-1"
+                                                                        value={editStudentData.additionalInfo?.find(i => i.key === info.key)?.value || ""}
+                                                                        onChange={(e) => {
+                                                                            const newAdditional = [...editStudentData.additionalInfo];
+                                                                            const idx = newAdditional.findIndex(i => i.key === info.key);
+                                                                            if (idx > -1) newAdditional[idx].value = e.target.value;
+                                                                            setEditStudentData(prev => ({ ...prev, additionalInfo: newAdditional }));
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    info.value
+                                                                )}
+                                                            </div>
+                                                        ))}
                                                     </div>
                                                 </>
                                             )}
-
                                         </div>
 
                                         {/* Right: Image */}
                                         <div className="ms-3">
                                             <img
-                                                src={selectedStudent.image || "default.jpg"}
+                                                src={isEditMode ? editStudentData.image || "default.jpg" : selectedStudent.image || "default.jpg"}
                                                 alt={selectedStudent.name}
-                                                className="student-img"
+                                                className="student-img mb-2"
                                             />
+                                            {isEditMode && (
+                                                <input
+                                                    type="file"
+                                                    className="form-control"
+                                                    id="imageUpload"
+                                                    accept="image/*"
+                                                    onChange={async (e) => {
+                                                        const file = e.target.files[0];
+                                                        if (file) {
+                                                            try {
+                                                                const imageUrl = await uploadToImgBB(file);
+                                                                setEditStudentData((prev) => ({ ...prev, image: imageUrl }));
+                                                            } catch (err) {
+                                                                alert("Image upload failed");
+                                                                console.error(err);
+                                                            }
+                                                        }
+                                                    }}
+                                                    required
+                                                />
+                                            )}
                                         </div>
                                     </div>
+
 
                                     {/* Academic History */}
                                     <h6 className="mt-4"><strong>Academic History:</strong></h6>
@@ -369,6 +517,26 @@ export default function Students() {
                                     </table>
 
                                     <div className="modal-footer">
+                                        {isEditMode && (
+                                            <button className="btn btn-success" onClick={async () => {
+                                                try {
+                                                    const response = await axios.put(`https://sss-server-eosin.vercel.app/updateStudent/${selectedStudent._id}`, editStudentData);
+                                                    if (response.status === 200) {
+                                                        alert("Student updated successfully!");
+                                                        setIsEditMode(false);
+                                                        setSelectedStudent(response.data.data); // update modal view
+                                                        const updatedList = students.map(s => s._id === selectedStudent._id ? response.data.data : s);
+                                                        setStudents(updatedList); // update main list
+                                                    }
+                                                } catch (err) {
+                                                    alert("Failed to update student");
+                                                    console.error(err);
+                                                }
+                                            }}>
+                                                Save Changes
+                                            </button>
+                                        )}
+
                                         <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
                                             Close
                                         </button>
