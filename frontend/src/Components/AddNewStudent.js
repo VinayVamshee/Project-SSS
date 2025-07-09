@@ -10,7 +10,7 @@ export default function AddNewStudent() {
         if (!token) {
             navigate('/login');
         }
-    }, [navigate]);    
+    }, [navigate]);
     const [student, setStudent] = useState({
         name: '',
         nameHindi: '',
@@ -174,6 +174,24 @@ export default function AddNewStudent() {
         }
     };
 
+    const uploadToImgBB = async (file) => {
+        const formData = new FormData();
+        formData.append("key", "8451f34223c6e62555eec9187d855f8f"); // Replace with your actual key
+        formData.append("image", file);
+
+        const res = await fetch("https://api.imgbb.com/1/upload", {
+            method: "POST",
+            body: formData
+        });
+
+        const data = await res.json();
+        if (data.success) {
+            return data.data.display_url || data.data.url;
+        } else {
+            throw new Error("Image upload failed");
+        }
+    };
+
 
     return (
         <div className="AddNewStudent">
@@ -229,13 +247,24 @@ export default function AddNewStudent() {
                         />
 
                         {/* Student Image URL */}
-                        <label htmlFor="imageUrl" className="form-label">Student Image URL</label>
+                        <label htmlFor="imageUpload" className="form-label">Student Image Upload</label>
                         <input
-                            type="text"
+                            type="file"
                             className="form-control"
-                            id="imageUrl"
-                            value={student.image}
-                            onChange={(e) => setStudent((prev) => ({ ...prev, image: e.target.value }))}
+                            id="imageUpload"
+                            accept="image/*"
+                            onChange={async (e) => {
+                                const file = e.target.files[0];
+                                if (file) {
+                                    try {
+                                        const imageUrl = await uploadToImgBB(file);
+                                        setStudent((prev) => ({ ...prev, image: imageUrl }));
+                                    } catch (err) {
+                                        alert("Image upload failed");
+                                        console.error(err);
+                                    }
+                                }
+                            }}
                             required
                         />
                     </div>
