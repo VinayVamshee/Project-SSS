@@ -47,12 +47,9 @@ export default function Navigation() {
     };
 
     useEffect(() => {
-        axios.get('https://sss-server-eosin.vercel.app/get-all-masters')
+        axios.get('https://sss-server-eosin.vercel.app/masters')
             .then(res => {
-                const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                if (sorted.length > 0) {
-                    setLatestMaster(sorted[0]);
-                }
+                setLatestMaster(res.data);
             })
             .catch(err => console.error('Error fetching all masters:', err.message));
     }, []);
@@ -94,6 +91,10 @@ export default function Navigation() {
                     <NavLink to="/Payments" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                         <i className="fa-solid fa-money-check-dollar fa-lg"></i>
                         {!isCollapsed && " Payments"}
+                    </NavLink>
+                    <NavLink to="/QuestionPaper" className={({ isActive }) => isActive ? "Link active" : "Link"}>
+                        <i className="fa-solid fa-clipboard-question fa-lg"></i>
+                        {!isCollapsed && " QuestionPaper"}
                     </NavLink>
                     <NavLink to="/Master" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                         <i className="fa-solid fa-gears fa-lg"></i>

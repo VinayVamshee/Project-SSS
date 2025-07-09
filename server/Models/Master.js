@@ -12,6 +12,7 @@ const MasterSchema = new mongoose.Schema({
   address: { type: String, required: true },
   phoneNo: { type: String, required: true },
   email: { type: String, required: true },
+  inUse: { type: Boolean, default: false }
 },{ timestamps: true });
 
 module.exports = mongoose.model('Master', MasterSchema);

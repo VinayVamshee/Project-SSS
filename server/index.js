@@ -17,6 +17,7 @@ const ClassFees = require('./Models/ClassFees')
 const ReceiptBook = require('./Models/ReceiptBook')
 const User = require('./Models/User')
 const Master = require('./Models/Master')
+const QuestionPaper = require('./Models/QuestionPaper');
 const jwt = require('jsonwebtoken');
 
 const app = express();
@@ -839,9 +840,9 @@ app.post('/masters', async (req, res) => {
 
 app.get('/masters', async (req, res) => {
     try {
-        const latestMaster = await Master.findOne().sort({ _id: -1 });
-        if (!latestMaster) return res.status(404).json({ message: 'No master found' });
-        res.json(latestMaster);
+        const inUseMaster = await Master.findOne({ inUse: true });
+        if (!inUseMaster) return res.status(404).json({ message: 'No master with inUse: true' });
+        res.json(inUseMaster);
     } catch (err) {
         res.status(500).json({ error: err.message });
     }
@@ -870,6 +871,86 @@ app.put('/masters/:id', async (req, res) => {
     }
 });
 
+// ✅ SET ONE MASTER AS IN USE AND RESET OTHERS
+app.put('/masters/set-in-use/:id', async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        // 1. Set all masters' inUse to false
+        await Master.updateMany({}, { inUse: false });
+
+        // 2. Set selected one to true
+        const updated = await Master.findByIdAndUpdate(id, { inUse: true }, { new: true });
+
+        if (!updated) return res.status(404).json({ message: 'Master not found' });
+
+        res.json({ message: '✅ Master marked as in use', master: updated });
+    } catch (err) {
+        res.status(500).json({ error: '❌ Failed to update inUse status', details: err.message });
+    }
+});
+
+app.delete('/masters/:id', async (req, res) => {
+    try {
+        const deleted = await Master.findByIdAndDelete(req.params.id);
+        if (!deleted) return res.status(404).json({ message: "Not found" });
+        res.json({ message: "Master deleted" });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+// GET all questions for a specific class and subject
+app.get('/questions', async (req, res) => {
+  const { class: classId, subject: subjectId } = req.query;
+
+  try {
+    const paper = await QuestionPaper.findOne({ class: classId, subject: subjectId });
+    if (!paper) return res.json({ questions: [] });
+    res.json({ questions: paper.questions });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+// POST a new question to a question paper
+app.post('/questions', async (req, res) => {
+  const { class: classId, subject: subjectId, question } = req.body;
+  if (!classId || !subjectId || !question || !question.questionType) {
+    return res.status(400).json({ error: 'Missing fields' });
+  }
+
+  let paper = await QuestionPaper.findOne({ class: classId, subject: subjectId });
+  if (!paper) {
+    paper = new QuestionPaper({
+      class: classId,
+      subject: subjectId,
+      questions: [question],
+    });
+  } else {
+    paper.questions.push(question);
+  }
+  await paper.save();
+  res.status(201).json(paper.questions);
+});
+
+// DELETE a question by index
+app.delete('/questions', async (req, res) => {
+  const { class: classId, subject: subjectId, index } = req.body;
+
+  try {
+    const paper = await QuestionPaper.findOne({ class: classId, subject: subjectId });
+    if (!paper || index < 0 || index >= paper.questions.length) {
+      return res.status(404).json({ message: 'Question not found' });
+    }
+
+    paper.questions.splice(index, 1);
+    await paper.save();
+    res.json({ questions: paper.questions });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
 
 
 

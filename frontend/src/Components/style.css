@@ -876,3 +876,20 @@ td {
 .student-list-view label {
     font-weight: bold;
 }
+
+
+.QuestionPaper {
+     width: 100%;
+    padding: 20px;
+    background-color: var(--background-color);
+
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+
+    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.print-container {
+  padding: 1rem;
+}

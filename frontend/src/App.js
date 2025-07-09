@@ -9,6 +9,7 @@ import Classes from './Components/Classes';
 import Payments from './Components/Payments';
 import Results from './Components/Results';
 import Master from './Components/Master';
+import QuestionPaper from './Components/QuestionPaper';
 
 function App() {
   return (
@@ -23,6 +24,7 @@ function App() {
           <Route path="/Classes" element={<Classes />} />
           <Route path="/Results" element={<Results />} />
           <Route path="/Payments" element={<Payments />} />
+          <Route path="/QuestionPaper" element={<QuestionPaper />} />
           <Route path="/Master" element={<Master />} />
         </Routes>
         </div>
