@@ -157,31 +157,26 @@ export default function OverView() {
 
 
         // Sum actual total fees (including admission fees) supposed to be paid by students
-       let sumTotalFeesOfPaidStudents = 0;
+        let sumTotalFeesOfPaidStudents = 0;
 
-students.forEach((student) => {
-    const yearData = student.fees?.[0]?.academicYears?.find(
-        (y) => y.academicYear === latestYear
-    );
+        // students.forEach((student) => {
+        //     const yearData = student.fees?.[0]?.academicYears?.find(
+        //         (y) => y.academicYear === latestYear
+        //     );
 
-    if (yearData) {
-        console.log(`Student: ${student.name}, totalFees: ${yearData.totalFees}`);
-        sumTotalFeesOfPaidStudents += yearData.totalFees;
-    } else {
-        console.log(`Student: ${student.name} - No yearData for ${latestYear}`);
-    }
-});
-
-
-        console.log("✅ Total fees of students in latestYear:", sumTotalFeesOfPaidStudents);
-
+        //     if (yearData) {
+        //         console.log(`Student: ${student.name}, totalFees: ${yearData.totalFees}`);
+        //         sumTotalFeesOfPaidStudents += yearData.totalFees;
+        //     } else {
+        //         console.log(`Student: ${student.name} - No yearData for ${latestYear}`);
+        //     }
+        // });
+        // console.log("✅ Total fees of students in latestYear:", sumTotalFeesOfPaidStudents);
 
         // Corrected total fees to collect = total fees excluding admission minus total fees of paid students
         const correctedTotalFeesToCollect = totalFeesExclAdmission - sumTotalFeesOfPaidStudents;
 
-
         setTotalFeesAmount(correctedTotalFeesToCollect);
-
 
     }, [classes, classFeesData, classStudentCount, students, latestYear]);
 
