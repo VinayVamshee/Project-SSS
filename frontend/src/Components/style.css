@@ -77,6 +77,12 @@
     display: flex;
     flex-direction: column;
     align-items: center;
+    width: 220px;
+    transition: width 0.3s ease;
+}
+
+.Navigation.collapsed {
+    width: 60px;
 }
 
 .Navigation .logo {
@@ -95,8 +101,31 @@
     text-align: center;
 }
 
+.Navigation.collapsed .logo {
+    justify-content: center;
+}
+
 .Navigation .logo img {
     width: 50px;
+}
+
+.Navigation.collapsed .Link {
+    justify-content: center;
+}
+
+.Navigation.collapsed .Link>*:not(i) {
+    display: none;
+}
+
+.toggle-btn {
+    background: none;
+    border: none;
+    color: inherit;
+    font-size: 1.2rem;
+    margin: 10px;
+    cursor: pointer;
+    width: 100%;
+    text-align: start;
 }
 
 .AddStudent {
@@ -109,7 +138,10 @@
     text-decoration: none;
     background-color: var(--button-color);
     color: white;
-    margin-top: 50px;
+}
+
+.AddStudent i {
+    padding: 5px 0px;
 }
 
 .AddStudent:hover {
@@ -118,36 +150,31 @@
     cursor: pointer;
 }
 
-.logo {
-    height: 10%;
-}
+.logo {}
 
 .LinkToPages {
-    margin-top: 50px;
+    margin-top: 20px;
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     width: 100%;
 }
 
 .LinkToPages .Link {
-    padding: 10px 26px;
+    padding: 10px;
     width: 100%;
     height: 42.11px;
     text-decoration: none;
     color: #424242;
     display: flex;
+    gap: 30px;
     align-items: center;
     justify-content: flex-start;
-    gap: -10px;
 }
 
 .LinkToPages .Link:hover {
     cursor: pointer;
-}
-
-.LinkToPages .Link i {
-    padding: 0px 30px 0px 0px;
 }
 
 .LinkToPages .active {

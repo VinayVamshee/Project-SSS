@@ -299,10 +299,9 @@ export default function Students() {
                     </div>
             }
 
-
             {/* Student Modal */}
             <div className="modal fade" id="studentModal" tabIndex="-1" aria-hidden="true">
-                <div className="modal-dialog modal-xl">
+                <div className="modal-dialog modal-xl modal-dialog-scrollable">
                     <div className="modal-content">
                         {selectedStudent && (
                             <>
