@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
-import vts from './Images/Bada school logo.png';
 import axios from 'axios';
 
 export default function Navigation() {
@@ -41,10 +40,26 @@ export default function Navigation() {
         }
     };
 
+    // eslint-disable-next-line
+    const [latestId, setLatestId] = useState(null);
+    const [latestMaster, setLatestMaster] = useState([]);
+
+    useEffect(() => {
+        axios.get('https://sss-server-eosin.vercel.app/get-all-masters')
+            .then(res => {
+                const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                if (sorted.length > 0) {
+                    setLatestMaster(sorted[0]); // This is the latest one
+                }
+            })
+            .catch(err => console.error('Error fetching all masters:', err.message));
+    }, [latestId]);
+
+
     return (
         <>
             <div className="Navigation">
-                <div className="logo"><img src={vts} alt='...' />Vamshee Techno School</div>
+                <div className="logo"><img src={latestMaster.imageUrl} alt='...' />{latestMaster.name}</div>
                 <Link to='AddNewStudent' className="AddStudent">
                     <i className="fa-solid fa-address-book fa-xl"></i> Register Student
                 </Link>
@@ -63,6 +78,9 @@ export default function Navigation() {
                     </NavLink>
                     <NavLink to="/Payments" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                         <i className="fa-solid fa-money-check-dollar fa-lg"></i> Payments
+                    </NavLink>
+                    <NavLink to="/Master" className={({ isActive }) => isActive ? "Link active" : "Link"}>
+                        <i className="fa-solid fa-gears fa-lg"></i>Master
                     </NavLink>
                 </div>
 
@@ -105,8 +123,8 @@ export default function Navigation() {
                 </div>
             </div>
 
-            <div class="modal" id="RegisterModal" tabindex="-1" aria-labelledby="RegisterModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
+            <div className="modal" id="RegisterModal" tabIndex="-1" aria-labelledby="RegisterModalLabel" aria-hidden="true">
+                <div className="modal-dialog">
                     <div className="modal-content">
                         <form onSubmit={handleRegister}>
                             <div className="modal-header">
@@ -128,8 +146,8 @@ export default function Navigation() {
                 </div>
             </div>
 
-            <div class="modal fade" id="LoginModal" tabindex="-1" aria-labelledby="LoginModalLabel" aria-hidden="true">
-                <div class="modal-dialog">
+            <div className="modal fade" id="LoginModal" tabIndex="-1" aria-labelledby="LoginModalLabel" aria-hidden="true">
+                <div className="modal-dialog">
                     <div className="modal-content">
                         <form onSubmit={handleLogin}>
                             <div className="modal-header">

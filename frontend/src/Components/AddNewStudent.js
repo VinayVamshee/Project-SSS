@@ -179,13 +179,13 @@ export default function AddNewStudent() {
         <div className="AddNewStudent">
 
             <p style={{ margin: '0px' }}>
-                <button class="btn btn-save btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#AdditionalInformationCollapse" aria-expanded="false" aria-controls="AdditionalInformationCollapse">
+                <button className="btn btn-save btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#AdditionalInformationCollapse" aria-expanded="false" aria-controls="AdditionalInformationCollapse">
                     Add Additional Information
                 </button>
             </p>
             <div>
-                <div class="collapse" id="AdditionalInformationCollapse">
-                    <div class="card card-body">
+                <div className="collapse" id="AdditionalInformationCollapse">
+                    <div className="card card-body">
                         <form onSubmit={handleAddAdditionalPersonalInformation}>
                             <div className="mb-3">
                                 <label htmlFor="sno" className="form-label">S.No</label>

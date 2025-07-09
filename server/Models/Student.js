@@ -27,12 +27,6 @@ const studentSchema = new mongoose.Schema(
     bloodGroup: {
       type: String,
     },
-    age: {
-      type: Number,
-      get: function () {
-        return moment().diff(this.dob, 'years');
-      },
-    },
     image: {
       type: String,
     },

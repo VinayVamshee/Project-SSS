@@ -77,9 +77,9 @@ export default function Payments() {
             ) &&
             (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
         )
-        .sort((a, b) => a.name.localeCompare(b.name)); // Sort alphabetically by name
+        .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || ""));
 
-    const handleGeneratePdf = (studentFees, payment, student, selectedYear, paidFees) => {
+    const handleGeneratePdf = (studentFees, payment, student, selectedYear, paidFees, latestMaster) => {
         if (!studentFees || !student || !selectedYear) {
             console.error("Missing data for PDF:", { studentFees, student, selectedYear });
             return;
@@ -98,7 +98,7 @@ export default function Payments() {
             return;
         }
 
-        generatePdf(selectedFees, payment, student, selectedYear, paidFees);
+        generatePdf(selectedFees, payment, student, selectedYear, paidFees, latestMaster);
     };
 
 
@@ -358,6 +358,21 @@ export default function Payments() {
         }
     };
 
+    // eslint-disable-next-line
+    const [latestId, setLatestId] = useState(null);
+    const [latestMaster, setLatestMaster] = useState([]);
+
+    useEffect(() => {
+        axios.get('https://sss-server-eosin.vercel.app/get-all-masters')
+            .then(res => {
+                const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+                if (sorted.length > 0) {
+                    setLatestMaster(sorted[0]); // This is the latest one
+                }
+            })
+            .catch(err => console.error('Error fetching all masters:', err.message));
+    }, [latestId]);
+
     return (
         <div className='PaymentsPage'>
             <div className="SearchFilter">
@@ -616,7 +631,7 @@ export default function Payments() {
                                                         <td>
                                                             <button
                                                                 className="btn btn-sm btn-outline-success"
-                                                                onClick={() => handleGeneratePdf(studentFees, payment, element, selectedYear, paidFees)}
+                                                                onClick={() => handleGeneratePdf(studentFees, payment, element, selectedYear, paidFees, latestMaster)}
                                                             >
                                                                 <i className="fa-solid fa-download me-1"></i>Download Receipt
                                                             </button>
