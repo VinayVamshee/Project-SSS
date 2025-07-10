@@ -668,11 +668,11 @@ app.get("/getFees", async (req, res) => {
     }
 });
 
-
-// Add and Get class-fees
+// ✅ Add or Update Class Fee for an Academic Year
 app.post('/class-fees', async (req, res) => {
     try {
         const {
+            academicYear,
             class_id,
             admission_fees,
             development_fee,
@@ -684,67 +684,70 @@ app.post('/class-fees', async (req, res) => {
             tuition_fee
         } = req.body;
 
-        // Validation to ensure class_id is provided
-        if (!class_id) {
-            return res.status(400).json({ message: "Class ID is required." });
+        if (!academicYear || !class_id) {
+            return res.status(400).json({ message: "Academic Year and Class ID are required." });
         }
 
-        // Find the class by ID
-        const classData = await Class.findById(class_id);
-        if (!classData) {
+        const classExists = await Class.findById(class_id);
+        if (!classExists) {
             return res.status(404).json({ message: "Class not found." });
         }
 
-        // Check if class fees entry exists for the class
-        let classFees = await ClassFees.findOne({ class_id });
+        let classFeesDoc = await ClassFees.findOne({ academicYear });
 
-        // If class fees entry exists, update the fields with the provided values or keep the existing ones
-        if (classFees) {
-            classFees.admission_fees = admission_fees || classFees.admission_fees;
-            classFees.development_fee = development_fee || classFees.development_fee;
-            classFees.exam_fee = exam_fee || classFees.exam_fee;
-            classFees.progress_card = progress_card || classFees.progress_card;
-            classFees.identity_card = identity_card || classFees.identity_card;
-            classFees.school_diary = school_diary || classFees.school_diary;
-            classFees.school_activity = school_activity || classFees.school_activity;
-            classFees.tuition_fee = tuition_fee || classFees.tuition_fee;
-        } else {
-            // If no existing class fees entry, create a new one
-            classFees = new ClassFees({
-                class_id,
-                admission_fees,
-                development_fee,
-                exam_fee,
-                progress_card,
-                identity_card,
-                school_diary,
-                school_activity,
-                tuition_fee
+        const newFee = {
+            class_id,
+            admission_fees,
+            development_fee,
+            exam_fee,
+            progress_card,
+            identity_card,
+            school_diary,
+            school_activity,
+            tuition_fee
+        };
+
+        if (!classFeesDoc) {
+            // First time this year
+            classFeesDoc = new ClassFees({
+                academicYear,
+                classes: [newFee]
             });
+        } else {
+            // Check if class already has entry
+            const index = classFeesDoc.classes.findIndex(c => c.class_id.toString() === class_id);
+
+            if (index !== -1) {
+                // Update existing class fee
+                classFeesDoc.classes[index] = {
+                    ...classFeesDoc.classes[index]._doc,
+                    ...newFee
+                };
+            } else {
+                // Add new class fee
+                classFeesDoc.classes.push(newFee);
+            }
         }
 
-        // Save the updated or new class fees record
-        await classFees.save();
+        await classFeesDoc.save();
 
-        // Respond with the updated class fees data
-        res.status(201).json(classFees);
+        res.status(201).json({ message: "Class fees updated", data: classFeesDoc });
+
     } catch (error) {
         console.error("❌ Server error:", error);
         res.status(500).json({ message: "Server error", error: error.message });
     }
 });
 
-
-// ✅ Fetch All Class Fees (With Class Name)
+// ✅ Fetch All Class Fees (Grouped by Academic Year)
 app.get('/class-fees', async (req, res) => {
     try {
-        const classFees = await ClassFees.find(); // Fetch all class fees data
-        res.status(200).json(classFees); // Send only the data
+        const classFees = await ClassFees.find().populate('classes.class_id');
+        res.status(200).json(classFees);
     } catch (error) {
-        res.status(500).json({ error: error.message });
+        res.status(500).json({ message: "Error fetching fees", error: error.message });
     }
 });
-
 
 //pass students to
 app.post("/pass-students-to", async (req, res) => {
@@ -771,6 +774,45 @@ app.post("/pass-students-to", async (req, res) => {
     }
 });
 
+//Drop students 
+app.post("/drop-academic-year", async (req, res) => {
+    try {
+        const { studentId, academicYear } = req.body;
+
+        console.log("📩 Received request to drop academic year");
+        console.log("➡️ studentId:", studentId);
+        console.log("➡️ academicYear:", academicYear);
+
+        if (!studentId || !academicYear) {
+            console.warn("⚠️ Missing studentId or academicYear in request body");
+            return res.status(400).json({ message: "Missing studentId or academicYear" });
+        }
+
+        const student = await Student.findById(studentId);
+        if (!student) {
+            console.warn(`⚠️ Student not found for ID: ${studentId}`);
+            return res.status(404).json({ message: "Student not found" });
+        }
+
+        console.log("🧾 Current academicYears:", student.academicYears);
+
+        // Filter out the year to be dropped
+        student.academicYears = student.academicYears.filter(
+            (entry) => entry.academicYear !== academicYear
+        );
+
+        console.log("✅ Updated academicYears:", student.academicYears);
+
+        await student.save();
+        console.log("💾 Student record saved successfully");
+
+        res.status(200).json({ message: "Academic year removed successfully" });
+
+    } catch (err) {
+        console.error("❌ Error in /drop-academic-year:", err);
+        res.status(500).json({ message: "Server error" });
+    }
+});
 
 app.get("/receiptBook", async (req, res) => {
     try {
@@ -901,55 +943,55 @@ app.delete('/masters/:id', async (req, res) => {
 });
 // GET all questions for a specific class and subject
 app.get('/questions', async (req, res) => {
-  const { class: classId, subject: subjectId } = req.query;
+    const { class: classId, subject: subjectId } = req.query;
 
-  try {
-    const paper = await QuestionPaper.findOne({ class: classId, subject: subjectId });
-    if (!paper) return res.json({ questions: [] });
-    res.json({ questions: paper.questions });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+    try {
+        const paper = await QuestionPaper.findOne({ class: classId, subject: subjectId });
+        if (!paper) return res.json({ questions: [] });
+        res.json({ questions: paper.questions });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 
 // POST a new question to a question paper
 app.post('/questions', async (req, res) => {
-  const { class: classId, subject: subjectId, question } = req.body;
-  if (!classId || !subjectId || !question || !question.questionType) {
-    return res.status(400).json({ error: 'Missing fields' });
-  }
+    const { class: classId, subject: subjectId, question } = req.body;
+    if (!classId || !subjectId || !question || !question.questionType) {
+        return res.status(400).json({ error: 'Missing fields' });
+    }
 
-  let paper = await QuestionPaper.findOne({ class: classId, subject: subjectId });
-  if (!paper) {
-    paper = new QuestionPaper({
-      class: classId,
-      subject: subjectId,
-      questions: [question],
-    });
-  } else {
-    paper.questions.push(question);
-  }
-  await paper.save();
-  res.status(201).json(paper.questions);
+    let paper = await QuestionPaper.findOne({ class: classId, subject: subjectId });
+    if (!paper) {
+        paper = new QuestionPaper({
+            class: classId,
+            subject: subjectId,
+            questions: [question],
+        });
+    } else {
+        paper.questions.push(question);
+    }
+    await paper.save();
+    res.status(201).json(paper.questions);
 });
 
 // DELETE a question by index
 app.delete('/questions', async (req, res) => {
-  const { class: classId, subject: subjectId, index } = req.body;
+    const { class: classId, subject: subjectId, index } = req.body;
 
-  try {
-    const paper = await QuestionPaper.findOne({ class: classId, subject: subjectId });
-    if (!paper || index < 0 || index >= paper.questions.length) {
-      return res.status(404).json({ message: 'Question not found' });
+    try {
+        const paper = await QuestionPaper.findOne({ class: classId, subject: subjectId });
+        if (!paper || index < 0 || index >= paper.questions.length) {
+            return res.status(404).json({ message: 'Question not found' });
+        }
+
+        paper.questions.splice(index, 1);
+        await paper.save();
+        res.json({ questions: paper.questions });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
     }
-
-    paper.questions.splice(index, 1);
-    await paper.save();
-    res.json({ questions: paper.questions });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
 });
 
 

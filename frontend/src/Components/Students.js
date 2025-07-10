@@ -152,6 +152,27 @@ export default function Students() {
         }
     };
 
+    const handleDropStudents = async () => {
+        if (selectedStudents.length === 0 || !selectedYear) {
+            alert("Select students and an academic year to drop.");
+            return;
+        }
+
+        try {
+            const response = await axios.post("https://sss-server-eosin.vercel.app/drop-academic-year", {
+                studentId: selectedStudent._id,
+                academicYear: selectedYear
+            });
+
+            if (response.status === 200) {
+                alert("Selected academic year dropped successfully for selected students.");
+            }
+        } catch (error) {
+            console.error("❌ Error dropping academic year:", error);
+            alert("Failed to drop academic year.");
+        }
+    };
+
     const calculateAge = (dob) => {
         const birthDate = new Date(dob);
         const currentDate = new Date();
@@ -246,6 +267,7 @@ export default function Students() {
                 </div>
 
                 <button type="button" className=" btn btn-sm border" data-bs-toggle="modal" data-bs-target="#passtoModal"><i className="fa-solid fa-forward me-2 fa-lg"></i>Pass to</button>
+                <button type="button" className="btn btn-sm border" data-bs-toggle="modal" data-bs-target="#dropStudentModal"><i className="fa-solid fa-user-xmark me-2 fa-lg"></i>Drop Student</button>
                 <button type="button" className="btn" onClick={() => toggleButton('Grid')}><i className="fa-solid fa-table-columns fa-lg me-2"></i>Grid</button>
                 <button type="button" className="btn" onClick={() => toggleButton('list')}><i className="fa-solid fa-list fa-lg me-2"></i>List</button>
             </div>
@@ -624,6 +646,58 @@ export default function Students() {
                     </div>
                 </div>
             </div>
+
+            {/* Drop Student Modal */}
+            <div className="modal fade" id="dropStudentModal" tabIndex="-1" aria-labelledby="dropStudentModalLabel" aria-hidden="true">
+                <div className="modal-dialog modal-lg">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h5 className="modal-title">Drop Students from Academic Year</h5>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div className="modal-body">
+                            <p><strong>Academic Year to Drop:</strong> {selectedYear}</p>
+
+                            {selectedStudents.length > 0 ? (
+                                <table className="table table-bordered mt-3">
+                                    <thead className="table-dark">
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Academic Year</th>
+                                            <th>Class</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {students
+                                            .filter(student => selectedStudents.includes(student._id))
+                                            .map(student => {
+                                                const academicRecord = student.academicYears.find(y => y.academicYear === selectedYear);
+
+                                                return (
+                                                    <tr key={student._id}>
+                                                        <td>{student.name}</td>
+                                                        <td>{academicRecord?.academicYear || "N/A"}</td>
+                                                        <td>{academicRecord?.class || "N/A"}</td>
+                                                    </tr>
+                                                );
+                                            })}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <p className="text-danger">No students selected.</p>
+                            )}
+                        </div>
+
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                            <button type="button" className="btn btn-danger" onClick={handleDropStudents}>
+                                Drop Selected Students
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
 
         </div>
     );

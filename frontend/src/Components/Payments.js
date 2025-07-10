@@ -14,7 +14,7 @@ export default function Payments() {
         if (!token) {
             navigate('/login');
         }
-    }, [navigate]);    
+    }, [navigate]);
 
     const [students, setStudents] = useState([]);
     const [feesData, setFeesData] = useState([]);
@@ -29,41 +29,68 @@ export default function Payments() {
 
     const fetchData = async () => {
         try {
+            // 1. Get Students
             const studentResponse = await axios.get("https://sss-server-eosin.vercel.app/getStudent");
             setStudents(studentResponse.data.students || []);
 
+            // 2. Get Academic Years
             const yearResponse = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");
             const sortedYears = (yearResponse.data.data || []).sort((a, b) =>
                 parseInt(b.year.split("-")[0]) - parseInt(a.year.split("-")[0])
             );
-
             setAcademicYears(sortedYears);
-            if (sortedYears.length > 0) {
-                setSelectedYear(sortedYears[0].year);
-            }
 
+            const selectedYearValue = sortedYears[0]?.year || "";
+            setSelectedYear(selectedYearValue);
+
+            // 3. Get Classes
             const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
             const sortedClasses = classResponse.data.classes.sort((a, b) => Number(a.class) - Number(b.class));
             setClasses(sortedClasses || []);
 
-
-            // Fetch fees data for students
+            // 4. Get Fees (Other Fees)
             const feesResponse = await axios.get("https://sss-server-eosin.vercel.app/getFees");
             setFeesData(feesResponse.data || []);
 
-            // Fetch fee structure for all classes
+            // 5. Get Class Fees
             const classFeesResponse = await axios.get("https://sss-server-eosin.vercel.app/class-fees");
-            setClassFeesData(classFeesResponse.data || []);
+            const allFees = classFeesResponse.data || [];
+
+            const filteredFees = selectedYearValue
+                ? allFees.filter(fee => fee.academicYear?.trim() === selectedYearValue.trim())
+                : allFees;
+            setClassFeesData(filteredFees);
 
         } catch (error) {
-            console.error("Error fetching data:", error);
+            console.error("❌ Error fetching data:", error);
         }
     };
-
 
     useEffect(() => {
         fetchData();
     }, []);
+
+    useEffect(() => {
+        const fetchClassFeesForSelectedYear = async () => {
+            try {
+
+                const classFeesResponse = await axios.get("https://sss-server-eosin.vercel.app/class-fees");
+                const allFees = classFeesResponse.data || [];
+
+                const filteredFees = selectedYear
+                    ? allFees.filter(fee => fee.academicYear?.trim() === selectedYear.trim())
+                    : allFees;
+
+                setClassFeesData(filteredFees);
+            } catch (error) {
+                console.error("❌ Error fetching class fees for selected year:", error);
+            }
+        };
+
+        if (selectedYear) {
+            fetchClassFeesForSelectedYear();
+        }
+    }, [selectedYear]);
 
     // Filter students based on selected year, class, and search
     const filteredStudents = students
@@ -132,7 +159,7 @@ export default function Payments() {
             ["Is New Student:", academicYearFees.isNewStudent ? "Yes" : "No"],
             [],
             [
-                "S.No","Receipt No.", "Payment Date", "Amount (₹)", "Payment Method", "Payment By",
+                "S.No", "Receipt No.", "Payment Date", "Amount (₹)", "Payment Method", "Payment By",
                 "Admission Fees", "Development Fee", "Exam Fee", "Progress Card",
                 "Identity Card", "School Diary", "School Activity", "Tuition Fee",
                 "Late Fee", "Miscellaneous"
@@ -267,7 +294,11 @@ export default function Payments() {
         const studentClass = studentAcademicYear?.class;
         const classObject = classes.find(cls => cls.class === studentClass);
         const classId = classObject ? classObject._id : null;
-        const studentClassFee = classFeesData.find(fee => fee.class_id === classId);
+        const yearFees = classFeesData.find(fee => fee.academicYear === selectedYear);
+        const studentClassFee = yearFees?.classes.find(clsFee =>
+            clsFee.class_id?._id === classId
+        );
+
 
         if (!studentClassFee) {
             console.error("❌ No fee structure found for this class.");
@@ -337,6 +368,7 @@ export default function Payments() {
     };
 
     const [classFees, setClassFees] = useState({
+        academicYear: '',
         class_id: '',
         admission_fees: '',
         development_fee: '',
@@ -351,7 +383,7 @@ export default function Payments() {
     const handleSubmitClassFees = async () => {
         try {
             await axios.post('https://sss-server-eosin.vercel.app/class-fees', classFees);
-            alert('Fee Strucutre Updated');
+            alert('Fee Structure Updated');
             window.location.reload();
         } catch (error) {
             console.error("Error saving class fees", error);
@@ -363,12 +395,9 @@ export default function Payments() {
     const [latestMaster, setLatestMaster] = useState([]);
 
     useEffect(() => {
-        axios.get('https://sss-server-eosin.vercel.app/get-all-masters')
+        axios.get('https://sss-server-eosin.vercel.app/masters')
             .then(res => {
-                const sorted = res.data.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-                if (sorted.length > 0) {
-                    setLatestMaster(sorted[0]); // This is the latest one
-                }
+                setLatestMaster(res.data);
             })
             .catch(err => console.error('Error fetching all masters:', err.message));
     }, [latestId]);
@@ -409,7 +438,10 @@ export default function Payments() {
                 </div>
 
                 <input type="text" placeholder="Search Student..." value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} className="SearchStudent" />
-                <button className="btn btn-save" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFeeStructure" aria-expanded="false" aria-controls="collapseFeeStructure"><i className="fa-solid fa-money-check-dollar fa-lg me-2"></i>Fee Structure</button>
+                <button className="btn btn-save" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFeeStructure">
+                    <i className="fa-solid fa-money-check-dollar fa-lg me-2"></i>Fee Structure
+                </button>
+
             </div>
 
             <div className="collapse" id="collapseFeeStructure">
@@ -428,36 +460,48 @@ export default function Payments() {
                                 <th>Tuition Fee</th>
                                 <th>Total Fees</th>
                             </tr>
-
                         </thead>
                         <tbody>
-                            {classFeesData
-                                .filter((fee) => fee.class_id) // Ensure class_id exists
-                                .sort((a, b) => {
-                                    const classA = classes.find(cls => cls._id === a.class_id)?.class || "0";
-                                    const classB = classes.find(cls => cls._id === b.class_id)?.class || "0";
-                                    return Number(classA) - Number(classB);
-                                })
-                                .map((fee) => {
-                                    const className = classes.find(cls => cls._id === fee.class_id)?.class || "Deleted Class";
+                            {classFeesData.length > 0 &&
+                                classFeesData[0].classes
+                                    .filter((fee) => fee.class_id) // Ensure class_id exists
+                                    .sort((a, b) => {
+                                        const classA = classes.find(cls => cls._id === a.class_id)?.class || "0";
+                                        const classB = classes.find(cls => cls._id === b.class_id)?.class || "0";
+                                        return Number(classA) - Number(classB);
+                                    })
+                                    .map((fee, idx) => {
+                                        const className = classes.find(cls => cls._id === fee.class_id._id)?.class || "Deleted Class";
+                                        const total =
+                                            (fee.admission_fees || 0) +
+                                            (fee.development_fee || 0) +
+                                            (fee.exam_fee || 0) +
+                                            (fee.progress_card || 0) +
+                                            (fee.identity_card || 0) +
+                                            (fee.school_diary || 0) +
+                                            (fee.school_activity || 0) +
+                                            (fee.tuition_fee || 0) +
+                                            (fee.late_fee || 0) +
+                                            (fee.miscellaneous || 0);
 
-                                    return (
-                                        <tr key={fee._id}>
-                                            <td>{className}</td>
-                                            <td>{fee.admission_fees || 0}</td>
-                                            <td>{fee.development_fee || 0}</td>
-                                            <td>{fee.exam_fee || 0}</td>
-                                            <td>{fee.progress_card || 0}</td>
-                                            <td>{fee.identity_card || 0}</td>
-                                            <td>{fee.school_diary || 0}</td>
-                                            <td>{fee.school_activity || 0}</td>
-                                            <td>{fee.tuition_fee || 0}</td>
-                                            <td>{(fee.admission_fees || 0) + (fee.development_fee || 0) + (fee.exam_fee || 0) + (fee.progress_card || 0) + (fee.identity_card || 0) + (fee.school_diary || 0) + (fee.school_activity || 0) + (fee.tuition_fee || 0) + (fee.late_fee || 0) + (fee.miscellaneous || 0)}</td>
-                                        </tr>
-                                    );
-                                })}
+                                        return (
+                                            <tr key={idx}>
+                                                <td>{className}</td>
+                                                <td>{fee.admission_fees || 0}</td>
+                                                <td>{fee.development_fee || 0}</td>
+                                                <td>{fee.exam_fee || 0}</td>
+                                                <td>{fee.progress_card || 0}</td>
+                                                <td>{fee.identity_card || 0}</td>
+                                                <td>{fee.school_diary || 0}</td>
+                                                <td>{fee.school_activity || 0}</td>
+                                                <td>{fee.tuition_fee || 0}</td>
+                                                <td>{total}</td>
+                                            </tr>
+                                        );
+                                    })}
                         </tbody>
                     </table>
+
 
                     <button type="button" className="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#AddClassFees">
                         Add/Edit Fee Strucutre
@@ -473,6 +517,15 @@ export default function Payments() {
                                 </div>
 
                                 <div className="modal-body">
+                                    <div className="mb-3">
+                                        <label className="form-label">Academic Year</label>
+                                        <select className="form-control" value={classFees.academicYear} onChange={(e) => setClassFees({ ...classFees, academicYear: e.target.value })}>
+                                            <option value="">Select Year</option>
+                                            {academicYears.map((year) => (
+                                                <option key={year._id} value={year.year}>{year.year}</option>
+                                            ))}
+                                        </select>
+                                    </div>
                                     <div className="mb-3">
                                         <label className="form-label">Select Class</label>
                                         <select className="form-control" name="class_id" value={classFees.class_id} onChange={(e) => setClassFees({ ...classFees, class_id: e.target.value })} >
@@ -559,7 +612,10 @@ export default function Payments() {
                         // Find the class_id corresponding to studentClass
                         const classObj = classes.find(cls => cls.class === studentClass);
                         const classId = classObj ? classObj._id : null;
-                        const classFees = classFeesData.find(fee => fee.class_id === classId);
+                        const yearFees = classFeesData.find(fee => fee.academicYear === selectedYear);
+                        const classFees = yearFees?.classes.find(clsFee =>
+                            clsFee.class_id._id === classId
+                        );
 
                         if (classFees) {
                             let total = (classFees.development_fee || 0) + (classFees.exam_fee || 0) + (classFees.progress_card || 0) + (classFees.identity_card || 0) + (classFees.school_diary || 0) + (classFees.school_activity || 0) + (classFees.tuition_fee || 0) + (classFees.late_fee || 0) + (classFees.miscellaneous || 0);
