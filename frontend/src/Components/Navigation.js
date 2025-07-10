@@ -3,7 +3,20 @@ import { Link, NavLink } from 'react-router-dom';
 import axios from 'axios';
 
 export default function Navigation() {
-    const themes = ["light", "dark", "midnight-red", "Ocean", "Deep Ocean", "Earth", "Rose Blush"];
+    const themes = [
+        "light",
+        "dark",
+        "midnight-red",
+        "Ocean",
+        "Deep Ocean",
+        "Earth",
+        "Rose Blush",
+        "Sunset Peach",
+        "Mint Cream",
+        "Lavender Day",
+        "Charcoal Cyan",
+        "Dracula Midnight"
+    ];
     const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
     const [username, setUsername] = useState('');
