@@ -10,7 +10,7 @@ export default function Classes() {
         if (!token) {
             navigate('/login');
         }
-    }, [navigate]);    
+    }, [navigate]);
 
     const [classes, setClasses] = useState([]);
     const [subjects, setSubjects] = useState([]);
@@ -188,49 +188,56 @@ export default function Classes() {
 
     return (
         <div className="ClassesPage">
-            <div className="Classes">
+            {/* 🔹 Top Bar: Classes + Subjects */}
+            <div className="d-flex flex-wrap gap-2 mb-4 justify-content-start SearchFilter">
                 {classes.map((cls) => (
-                    <div key={cls._id} className={`Class ${selectedClass === cls.class ? "active" : ""}`} onClick={() => handleClassClick(cls.class)}>
-                        Class {cls.class}
-                    </div>
+                    <button
+                        key={cls._id}
+                        className={`btn ${selectedClass === cls.class ? "active" : ""}`}
+                        onClick={() => handleClassClick(cls.class)}
+                        style={{ backgroundColor: 'white', color: 'black' }}
+                    >
+                        {cls.class}
+                    </button>
                 ))}
-                <div className="SubjectsButton" onClick={handleSubjectsClick}>
+                <button className="btn btn-secondary btn-sm" onClick={handleSubjectsClick}>
                     <i className="fa-solid fa-book me-2"></i>Subjects
-                </div>
+                </button>
+                <button
+                    className="btn btn-outline-primary btn-sm"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#collapseSubjectLink"
+                    aria-expanded="false"
+                    aria-controls="collapseSubjectLink"
+                >
+                    <i className="fa-solid fa-link me-2"></i>Link Subjects
+                </button>
             </div>
 
-            {selectedClass && (
-                <div className="Class-Subjects">
-                    {filteredSubjects.length > 0 ? (
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>S.No</th>
-                                    <th>Subject Name</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredSubjects && filteredSubjects.length > 0 ? (
-                                    filteredSubjects.map((subject, index) => (
-                                        <tr key={index}>
-                                            <td>{index + 1}</td>
-                                            <td>{subject}</td>
-                                        </tr>
-                                    ))
-                                ) : (
-                                    <tr>
-                                        <td colSpan="2">No subjects available</td>
-                                    </tr>
-                                )}
+            <div className="collapse mb-4" id="collapseSubjectLink">
+                <div className="card card-body shadow-sm border">
+                    <h6 className="mb-3">Link Subjects to a Class</h6>
 
-                            </tbody>
-                        </table>
-                    ) : (
-                        <p>No subjects linked to this class.</p>
-                    )}
-                    <br /><br />
+                    {/* Class Dropdown */}
+                    <div className="mb-3">
+                        <label className="form-label">Select Class</label>
+                        <select
+                            className="form-select"
+                            value={selectedClass}
+                            onChange={(e) => handleClassClick(e.target.value)}
+                        >
+                            <option value="">-- Choose Class --</option>
+                            {classes.map((cls) => (
+                                <option key={cls._id} value={cls.class}>
+                                    {cls.class}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
+
+                    {/* Subject Checkboxes */}
                     <form onSubmit={handleAddSubjectToClass}>
-                        <table>
+                        <table className="table table-hover table-sm">
                             <thead>
                                 <tr>
                                     <th>#</th>
@@ -246,7 +253,7 @@ export default function Classes() {
                                         <td>
                                             <input
                                                 type="checkbox"
-                                                value={subject.name}
+                                                className="form-check-input"
                                                 checked={newSelectedSubjects.includes(subject.name)}
                                                 onChange={() => handleCheckboxChange(subject.name)}
                                             />
@@ -255,113 +262,205 @@ export default function Classes() {
                                 ))}
                             </tbody>
                         </table>
-                        <button type="submit" className="btn btn-save btn-sm mt-2">Add Selected Subjects</button>
-                    </form>
-                    {message && <p className="text-center">{message}</p>}
 
-                    {/* Show Exams for the Selected Class */}
-                    {examsData.length > 0 ? (
-                        <table className="mt-4">
+                        <button type="submit" className="btn btn-success btn-sm mt-2">
+                            Link Selected Subjects
+                        </button>
+                        {message && <p className="text-info text-center mt-2">{message}</p>}
+                    </form>
+                </div>
+            </div>
+
+            {/* 🔹 Main Content Area */}
+            <div>
+                {selectedClass && (
+                    <div className="mb-4 Class-Subjects">
+                        <div className="p-2 text-dark w-100">
+                            Linked Subjects - {selectedClass}
+                        </div>
+
+                        {/* Subjects Linked to Class */}
+                        <div className="card-body p-0">
+                            <table className="table table-bordered m-0">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th>S.No</th>
+                                        <th>Subject Name</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {filteredSubjects.length > 0 ? (
+                                        filteredSubjects.map((subject, index) => (
+                                            <tr key={index}>
+                                                <td>{index + 1}</td>
+                                                <td>{subject}</td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="2">No subjects available</td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Add Subjects to Class
+                <div className="card-body">
+                    <form onSubmit={handleAddSubjectToClass}>
+                        <h6 className="mb-3">Add Subjects to Class {selectedClass}</h6>
+                        <table className="table table-hover table-sm">
                             <thead>
                                 <tr>
-                                    <th>S.No</th>
-                                    <th>Exam Name</th>
+                                    <th>#</th>
+                                    <th>Subject Name</th>
+                                    <th>Select</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {examsData
-                                    .filter((exam) => exam.class === selectedClass)
-                                    .flatMap((exam, index) =>
-                                        exam.examNames.map((examName, idx) => (
-                                            <tr key={`${index}-${idx}`}>
-                                                <td>{idx + 1}</td>
-                                                <td>{examName}</td>
-                                            </tr>
-                                        ))
-                                    )}
+                                {subjects.map((subject, index) => (
+                                    <tr key={subject._id}>
+                                        <td>{index + 1}</td>
+                                        <td>{subject.name}</td>
+                                        <td>
+                                            <input
+                                                type="checkbox"
+                                                className="form-check-input"
+                                                checked={newSelectedSubjects.includes(subject.name)}
+                                                onChange={() => handleCheckboxChange(subject.name)}
+                                            />
+                                        </td>
+                                    </tr>
+                                ))}
                             </tbody>
                         </table>
-                    ) : (
-                        <p>No exams available for this class.</p>
-                    )}
+                        <button type="submit" className="btn btn-success btn-sm">Add Selected Subjects</button>
+                    </form>
+                    {message && <p className="text-center text-info mt-2">{message}</p>}
+                </div> */}
 
-                    {/* Form to Add Exams for Selected Class */}
-                    <h5 className="mt-3">Add Exams to Class {selectedClass}</h5>
-                    <form onSubmit={handleSubmitExam}>
-                        <div className="mb-3">
-                            <label htmlFor="numExams" className="form-label">Number of Exams</label>
-                            <input
-                                type="number"
-                                className="form-control"
-                                value={examData.numExams}
-                                onChange={handleNumExamsChange}
-                                min="1"
-                                required
-                            />
+                        {/* Show Exams */}
+                        <div className="card-body pt-0">
+                            <h6 className="mt-4">Exams Linked to Class {selectedClass}</h6>
+                            {examsData.length > 0 ? (
+                                <table className="table table-bordered table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Exam Name</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {examsData
+                                            .filter((exam) => exam.class === selectedClass)
+                                            .flatMap((exam, index) =>
+                                                exam.examNames.map((examName, idx) => (
+                                                    <tr key={`${index}-${idx}`}>
+                                                        <td>{idx + 1}</td>
+                                                        <td>{examName}</td>
+                                                    </tr>
+                                                ))
+                                            )}
+                                    </tbody>
+                                </table>
+                            ) : (
+                                <p>No exams available for this class.</p>
+                            )}
                         </div>
 
-                        {examData.numExams > 0 && (
-                            <>
-                                <h5>Enter Exam Names</h5>
-                                {examData.examNames.map((examName, index) => (
-                                    <div key={index} className="mb-3">
-                                        <label className="form-label">Exam {index + 1} Name</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            placeholder={`Enter name for Exam ${index + 1}`}
-                                            value={examName}
-                                            onChange={(e) => handleExamNameChange(index, e.target.value)}
-                                            required
-                                        />
-                                    </div>
-                                ))}
-                            </>
-                        )}
+                        {/* Add Exams Form */}
+                        <div className="card-body">
+                            <h6 className="mt-3">Add Exams to Class {selectedClass}</h6>
+                            <form onSubmit={handleSubmitExam}>
+                                <div className="mb-3">
+                                    <label className="form-label">Number of Exams</label>
+                                    <input
+                                        type="number"
+                                        className="form-control"
+                                        value={examData.numExams}
+                                        onChange={handleNumExamsChange}
+                                        min="1"
+                                        required
+                                    />
+                                </div>
 
-                        <button type="submit" className="btn btn-save btn-sm">Add Exams</button>
-                    </form>
+                                {examData.numExams > 0 && (
+                                    <>
+                                        {examData.examNames.map((examName, index) => (
+                                            <div key={index} className="mb-3">
+                                                <label className="form-label">Exam {index + 1} Name</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control"
+                                                    placeholder={`Enter name for Exam ${index + 1}`}
+                                                    value={examName}
+                                                    onChange={(e) => handleExamNameChange(index, e.target.value)}
+                                                    required
+                                                />
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
 
-                    {message && <p className="text-center mt-2">{message}</p>}
-                </div>
-            )}
+                                <button type="submit" className="btn btn-primary btn-sm">Add Exams</button>
+                            </form>
+                            {message && <p className="text-center text-info mt-2">{message}</p>}
+                        </div>
+                    </div>
+                )}
 
+                {/* 🔹 All Subjects Section */}
+                {showAllSubjects && (
+                    <div className="card Subjects">
+                        <div className="card-header bg-secondary text-white">
+                            Manage Subjects
+                        </div>
+                        <div className="card-body">
+                            <form onSubmit={handleAddNewSubject} className="mb-3 d-flex gap-2">
+                                <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Enter new subject"
+                                    value={subjectName}
+                                    onChange={(e) => setSubjectName(e.target.value)}
+                                    required
+                                />
+                                <button type="submit" className="btn btn-success btn-sm">Add Subject</button>
+                            </form>
 
-            {showAllSubjects && (
-                <div className="Subjects">
-                    <form onSubmit={handleAddNewSubject} style={{ marginBottom: "10px" }}>
-                        <input
-                            type="text"
-                            placeholder="Enter new subject"
-                            value={subjectName}
-                            onChange={(e) => setSubjectName(e.target.value)}
-                            required
-                        />
-                        <button type="submit" className="btn btn-sm">Add Subject</button>
-                    </form>
-                    {message && <p style={{ color: "green" }}>{message}</p>}
+                            {message && <p className="text-success">{message}</p>}
 
-                    <table>
-                        <thead>
-                            <tr style={{ backgroundColor: "#f4f4f4" }}>
-                                <th>#</th>
-                                <th>Subject Name</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {subjects.map((subject, index) => (
-                                <tr key={subject._id}>
-                                    <td>{index + 1}</td>
-                                    <td>{subject.name}</td>
-                                    <td><button className="btn btn-outline-danger btn-sm" onClick={() => handleDeleteSubject(subject._id)} >Delete </button></td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            )}
-
+                            <table className="table table-bordered table-hover">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Subject Name</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {subjects.map((subject, index) => (
+                                        <tr key={subject._id}>
+                                            <td>{index + 1}</td>
+                                            <td>{subject.name}</td>
+                                            <td>
+                                                <button
+                                                    className="btn btn-outline-danger btn-sm"
+                                                    onClick={() => handleDeleteSubject(subject._id)}
+                                                >
+                                                    Delete
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                )}
+            </div>
         </div>
+
+
     );
 }

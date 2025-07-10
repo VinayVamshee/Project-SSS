@@ -527,56 +527,51 @@
     width: 100%;
     padding: 20px;
     background-color: var(--background-color);
-
-    display: flex;
-    flex-direction: column;
-    gap: 20px;
-
     min-height: 100vh;
 }
 
+/* Sidebar: Class Buttons */
 .Classes {
     display: flex;
+    flex-direction: column;
     gap: 10px;
-    width: 100%;
-
 }
 
 .Classes .Class {
-    width: fit-content;
-    white-space: nowrap;
     background-color: white;
+    border: 1px solid var(--button-color);
     border-radius: 5px;
-    padding: 10px;
-    box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.204);
-
+    padding: 10px 15px;
+    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.1);
+    transition: all 0.2s ease-in-out;
     text-align: center;
-    transition: 0.3s ease-in-out;
 }
 
 .Classes .Class:hover {
     cursor: pointer;
-    box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.663);
+    background-color: var(--button-color);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
 }
 
-.ClassesPage .Class-Subjects ul {
-    list-style: none;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+.Classes .active {
+    background-color: var(--button-color);
+    color: white;
+    font-weight: bold;
+    box-shadow: 0px 5px 8px rgba(0, 0, 0, 0.5);
 }
 
+/* Subjects Button (Extra) */
 .SubjectsButton {
-    width: fit-content;
-    white-space: nowrap;
     background-color: var(--button-color);
     color: white;
     border-radius: 5px;
-    padding: 10px;
-    box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.204);
-
+    padding: 10px 15px;
     text-align: center;
     transition: 0.3s ease-in-out;
+    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
+    font-weight: bold;
 }
 
 .SubjectsButton:hover {
@@ -584,56 +579,81 @@
     cursor: pointer;
 }
 
+.Class-Subjects {
+    padding: 10px;
+}
+
+/* Tables - Class Subjects & Exams */
+.Class-Subjects table,
 .Subjects table {
     width: 100%;
+    border-collapse: collapse;
 }
 
-.Subjects table tr th {
-    background-color: var(--button-color);
-}
-
-.Subjects table tr th,
-td {
-    border: 1px solid var(--button-color);
-    padding: 5px;
-    color: var(--text-color);
-}
-
-.Subjects form {
-    width: 100%;
-    display: flex;
-    gap: 10px;
-    justify-content: space-between;
-    white-space: nowrap;
-}
-
-.Subjects form input {
-    width: 100%;
-}
-
-.Subjects form .btn {
+.Class-Subjects table th,
+.Subjects table th {
     background-color: var(--button-color);
     color: white;
+    padding: 8px;
+    text-align: left;
 }
 
-.Classes .active {
-    box-shadow: 0px 5px 5px rgba(0, 0, 0, 0.855);
-}
-
-.Class-Subjects table {
-    width: 100%;
-}
-
-.Class-Subjects table tr th,
-td {
-    border: 1px solid #ddd;
-}
-
-.Class-Subjects table tr th {
-    background-color: var(--button-color);
-    padding: 5px;
+.Class-Subjects table td,
+.Subjects table td {
+    border: 1px solid #ccc;
+    padding: 8px;
     color: var(--text-color);
 }
+
+.Class-Subjects table tr:nth-child(even),
+.Subjects table tr:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+/* Form Inputs */
+.Subjects form,
+.Class-Subjects form {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.Subjects form input,
+.Class-Subjects form input {
+    flex: 1;
+    padding: 5px 10px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+
+.Subjects form .btn,
+.Class-Subjects form .btn {
+    background-color: var(--button-color);
+    color: white;
+    border: none;
+    padding: 6px 12px;
+    border-radius: 4px;
+    transition: 0.2s;
+}
+
+.Subjects form .btn:hover,
+.Class-Subjects form .btn:hover {
+    background-color: var(--button-hover);
+}
+
+/* Table Responsiveness */
+.Class-Subjects table,
+.Subjects table {
+    font-size: 0.95rem;
+}
+
+/* Optional card tweaks if needed */
+.card-header {
+    font-weight: 600;
+}
+
 
 
 
@@ -879,7 +899,7 @@ td {
 
 
 .QuestionPaper {
-     width: 100%;
+    width: 100%;
     padding: 20px;
     background-color: var(--background-color);
 
@@ -887,9 +907,9 @@ td {
     flex-direction: column;
     gap: 20px;
 
-    font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
 
 .print-container {
-  padding: 1rem;
+    padding: 1rem;
 }
