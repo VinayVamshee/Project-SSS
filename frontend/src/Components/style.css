@@ -82,6 +82,7 @@
     --button-hover: #9B7EDA88;
     --active-color: #7E57C2;
 }
+
 [data-theme="Charcoal Cyan"] {
     --background-color: #1C1F26;
     --text-color: #C2F4FF;
@@ -523,7 +524,9 @@
 }
 
 .modal-body .student-details img {
-    width: 300px;
+    width: 200px;
+    border-radius: 20px;
+    object-fit: contain;
     filter: drop-shadow(0px 8px 10px rgba(0, 0, 0, 0.78));
 }
 
@@ -739,6 +742,8 @@
 
 .Payment:hover {
     cursor: pointer;
+    filter: brightness(1.2);
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.218);
 }
 
 .Payment .Name {
@@ -753,6 +758,8 @@
 .Payment .Name img {
     width: 50px;
     height: 50px;
+    border-radius: 10px;
+    filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.565));
     object-fit: cover;
     object-position: center;
 }
@@ -839,6 +846,8 @@
 
 .Result:hover {
     cursor: pointer;
+    filter: brightness(1.2);
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.218);
 }
 
 .Result .Name {
@@ -852,6 +861,10 @@
 
 .Result .Name img {
     width: 50px;
+    height: 50px;
+    border-radius: 10px;
+    filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.565));
+    object-fit: cover;
 }
 
 .Result .class {
@@ -910,6 +923,8 @@
 .student-list .student-list-view img {
     height: 50px;
     width: 50px;
+    border-radius: 10px;
+    filter: drop-shadow(0px 1px 2px rgba(0, 0, 0, 0.565));
     object-fit: cover;
     object-position: center;
 }
