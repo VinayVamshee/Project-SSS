@@ -964,8 +964,30 @@
     gap: 20px;
 
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    height: 100vh;
+}
+
+.questions-list {
+    height: 90vh;
+    overflow: scroll;
+
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.questions-list p {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 15px;
 }
 
 .print-container {
     padding: 1rem;
+}
+
+@media print {
+  body, .print-container {
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 16px;
+  }
 }

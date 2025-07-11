@@ -18,6 +18,7 @@ const ReceiptBook = require('./Models/ReceiptBook')
 const User = require('./Models/User')
 const Master = require('./Models/Master')
 const QuestionPaper = require('./Models/QuestionPaper');
+const InstructionTemplate = require('./Models/InstructionTemplate')
 const jwt = require('jsonwebtoken');
 
 const app = express();
@@ -101,7 +102,7 @@ app.get('/getClasses', async (req, res) => {
     }
 });
 
-// Router to Delete Classes
+// app to Delete Classes
 // Route to delete a class by ID
 app.delete('/deleteClass/:id', async (req, res) => {
     try {
@@ -119,7 +120,7 @@ app.delete('/deleteClass/:id', async (req, res) => {
 });
 
 
-// Router to Add New Subject
+// app to Add New Subject
 app.post('/AddNewSubject', async (req, res) => {
     const { subjectName } = req.body;
     if (!subjectName) {
@@ -140,7 +141,7 @@ app.post('/AddNewSubject', async (req, res) => {
     }
 });
 
-// Router to get Subjects
+// app to get Subjects
 app.get('/getSubjects', async (req, res) => {
     try {
         const subjects = await Subject.find(); // Get all subjects
@@ -150,7 +151,7 @@ app.get('/getSubjects', async (req, res) => {
     }
 });
 
-// Router to Delete Subjects
+// app to Delete Subjects
 app.delete('/deleteSubject/:id', async (req, res) => {
     try {
         const { id } = req.params;
@@ -166,7 +167,7 @@ app.delete('/deleteSubject/:id', async (req, res) => {
     }
 });
 
-// Router to Link the Subjects and Classes
+// app to Link the Subjects and Classes
 app.post('/ClassSubjectLink', async (req, res) => {
     try {
         const { className, subjectNames } = req.body;
@@ -993,6 +994,44 @@ app.delete('/questions', async (req, res) => {
         res.status(500).json({ message: err.message });
     }
 });
+
+// 🔹 GET all templates
+app.get('/get-all-templates', async (req, res) => {
+    try {
+        const templates = await InstructionTemplate.find();
+        res.status(200).json(templates);
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to fetch templates' });
+    }
+});
+
+// 🔹 POST: Save new template
+app.post('/save-template', async (req, res) => {
+    try {
+        const newTemplate = new InstructionTemplate(req.body);
+        const saved = await newTemplate.save();
+        res.status(201).json(saved);
+    } catch (err) {
+        res.status(400).json({ error: 'Failed to save template' });
+    }
+});
+
+// 🔹 DELETE a template by ID
+app.delete('/delete-template/:id', async (req, res) => {
+    try {
+        await InstructionTemplate.findByIdAndDelete(req.params.id);
+        res.status(200).json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: 'Failed to delete template' });
+    }
+});
+
+
+
+
+
+
+
 
 
 

@@ -9,7 +9,7 @@ export default function QuestionManager() {
 
     const handlePrint = useReactToPrint({
         contentRef: printRef,
-        documentTitle:  "QuestionPaper",
+        documentTitle: "QuestionPaper",
     });
 
     const navigate = useNavigate();
@@ -125,6 +125,68 @@ export default function QuestionManager() {
         return bSelected - aSelected; // selected ones first
     });
 
+    const [templates, setTemplates] = useState([]);
+    const [newTemplate, setNewTemplate] = useState({
+        name: '',
+        heading: {
+            schoolName: '',
+            address: '',
+            examTitle: '',
+            date: '',
+            time: '',
+            maxMarks: ''
+        },
+        instructions: ['']
+    });
+
+    // Fetch templates
+    useEffect(() => {
+        axios.get('http://localhost:3001/get-all-templates').then(res => setTemplates(res.data));
+    }, []);
+
+    const saveTemplate = async () => {
+        try {
+            await axios.post('http://localhost:3001/save-template', newTemplate);
+            const res = await axios.get('http://localhost:3001/get-all-templates');
+            setTemplates(res.data);
+            setNewTemplate({
+                schoolName: '',
+                address: '',
+                examTitle: '',
+                instructions: ['']
+            });
+            alert('Saved successfully ✅');
+        } catch (error) {
+            console.error('Error saving template:', error);
+            alert('Failed to save. Please try again.');
+        }
+    };
+
+    // Add/remove instruction line
+    const addInstruction = () => {
+        setNewTemplate(t => ({ ...t, instructions: [...t.instructions, ''] }));
+    };
+
+    const updateInstruction = (idx, value) => {
+        const newInstructions = [...newTemplate.instructions];
+        newInstructions[idx] = value;
+        setNewTemplate(t => ({ ...t, instructions: newInstructions }));
+    };
+
+    const [selectedSchoolName, setSelectedSchoolName] = useState('');
+    const [selectedAddress, setSelectedAddress] = useState('');
+    const [selectedExamTitle, setSelectedExamTitle] = useState('');
+    const [selectedInstructions, setSelectedInstructions] = useState([]);
+    const [examDate, setExamDate] = useState('');
+    const [examTime, setExamTime] = useState('');
+    const [maxMarks, setMaxMarks] = useState('');
+
+    const toggleInstruction = (text) => {
+        setSelectedInstructions(prev =>
+            prev.includes(text) ? prev.filter(i => i !== text) : [...prev, text]
+        );
+    };
+
 
     return (
         <div className="QuestionPaper py-2">
@@ -189,11 +251,30 @@ export default function QuestionManager() {
                     <i className="fas fa-plus-circle me-2"></i>Add Question
                 </button>
 
-                <div className="text-end my-3">
+                <button
+                    className="btn"
+                    type="button"
+                    data-bs-toggle="collapse"
+                    data-bs-target="#addInstructionCollapse"
+                    aria-expanded="false"
+                    aria-controls="addInstructionCollapse"
+                >
+                    <i className="fas fa-book me-2"></i>Add Instruction Template
+                </button>
+
+                <button
+                    className="btn"
+                    data-bs-toggle="modal"
+                    data-bs-target="#selectInstructionsModal"
+                >
+                    <i className="fas fa-sliders-h me-2"></i>Select Instructions & Download
+                </button>
+
+                {/* <div className="text-end my-3">
                     <button className="btn btn-success" onClick={handlePrint}>
                         <i className="fas fa-download me-2"></i>Download Question Paper
                     </button>
-                </div>
+                </div> */}
 
             </div>
 
@@ -300,128 +381,294 @@ export default function QuestionManager() {
 
             )}
 
+            <div className="collapse" id="addInstructionCollapse">
+                <div className="card p-3 mb-4 shadow-sm">
+                    <h5 className="mb-3">Instruction Template</h5>
+
+                    <input
+                        className="form-control mb-2"
+                        placeholder="School Name"
+                        value={newTemplate.schoolName}
+                        onChange={e => setNewTemplate(t => ({ ...t, schoolName: e.target.value }))}
+                    />
+
+                    <input
+                        className="form-control mb-2"
+                        placeholder="Address"
+                        value={newTemplate.address}
+                        onChange={e => setNewTemplate(t => ({ ...t, address: e.target.value }))}
+                    />
+
+                    <input
+                        className="form-control mb-2"
+                        placeholder="Exam Title"
+                        value={newTemplate.examTitle}
+                        onChange={e => setNewTemplate(t => ({ ...t, examTitle: e.target.value }))}
+                    />
+
+                    {newTemplate.instructions.map((inst, i) => (
+                        <input
+                            key={i}
+                            className="form-control mb-2"
+                            placeholder={`Instruction ${i + 1}`}
+                            value={inst}
+                            onChange={e => updateInstruction(i, e.target.value)}
+                        />
+                    ))}
+
+                    <div className="d-flex justify-content-between">
+                        <button className="btn btn-sm btn-outline-secondary" onClick={addInstruction}>
+                            <i className="fas fa-plus me-1"></i>Add Instruction
+                        </button>
+                        <button className="btn btn-sm btn-success" onClick={saveTemplate}>
+                            <i className="fas fa-save me-1"></i>Save Template
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div className="modal fade" id="selectInstructionsModal" tabIndex="-1">
+                <div className="modal-dialog modal-lg">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h5 className="modal-title"><i className="fas fa-sliders-h me-2"></i>Select Instructions</h5>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div className="modal-body row">
+                            {/* Dropdowns for Name, Address, Title */}
+                            <div className="col-md-4 mb-3">
+                                <label className="form-label">Select School Name</label>
+                                <select
+                                    className="form-select"
+                                    value={selectedSchoolName}
+                                    onChange={e => setSelectedSchoolName(e.target.value)}
+                                >
+                                    <option value="">-- Select --</option>
+                                    {[...new Set(templates.map(t => t.schoolName))].map((name, idx) => (
+                                        <option key={idx} value={name}>{name}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="col-md-4 mb-3">
+                                <label className="form-label">Select Address</label>
+                                <select
+                                    className="form-select"
+                                    value={selectedAddress}
+                                    onChange={e => setSelectedAddress(e.target.value)}
+                                >
+                                    <option value="">-- Select --</option>
+                                    {[...new Set(templates.map(t => t.address))].map((addr, idx) => (
+                                        <option key={idx} value={addr}>{addr}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            <div className="col-md-4 mb-3">
+                                <label className="form-label">Select Exam Title</label>
+                                <select
+                                    className="form-select"
+                                    value={selectedExamTitle}
+                                    onChange={e => setSelectedExamTitle(e.target.value)}
+                                >
+                                    <option value="">-- Select --</option>
+                                    {[...new Set(templates.map(t => t.examTitle))].map((title, idx) => (
+                                        <option key={idx} value={title}>{title}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Multi-select Instructions */}
+                            <div className="col-12 mb-3">
+                                <label className="form-label">Select Instructions</label>
+                                {Array.from(new Set(templates.flatMap(t => t.instructions))).map((instruction, i) => (
+                                    <div key={i} className="form-check mb-1">
+                                        <input
+                                            className="form-check-input"
+                                            type="checkbox"
+                                            checked={selectedInstructions.includes(instruction)}
+                                            onChange={() => toggleInstruction(instruction)}
+                                            id={`inst-${i}`}
+                                        />
+                                        <label className="form-check-label" htmlFor={`inst-${i}`}>
+                                            {instruction}
+                                        </label>
+                                    </div>
+                                ))}
+                            </div>
+
+                            {/* Manual Inputs */}
+                            <div className="col-md-4 mb-3">
+                                <input
+                                    className="form-control"
+                                    placeholder="Exam Date"
+                                    value={examDate}
+                                    onChange={e => setExamDate(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="col-md-4 mb-3">
+                                <input
+                                    className="form-control"
+                                    placeholder="Exam Time"
+                                    value={examTime}
+                                    onChange={e => setExamTime(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="col-md-4 mb-3">
+                                <input
+                                    className="form-control"
+                                    placeholder="Max Marks"
+                                    value={maxMarks}
+                                    onChange={e => setMaxMarks(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                            <button className="btn btn-primary" onClick={handlePrint}>
+                                <i className="fas fa-download me-1"></i>Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {questions.length > 0 && (
+                <>
+                    <h5 className="mb-1"><i className="fas fa-list me-2"></i>All Questions</h5>
+                    <div className='questions-list'>
+                        {orderedQuestions.map((q, i) => (
+                            <div key={i} className="card shadow-sm border-0 position-relative">
+
+                                {/* Select Checkbox */}
+                                <div className="form-check position-absolute top-0 start-0 m-2">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        checked={selectedQuestions.includes(q._id)}
+                                        onChange={(e) => {
+                                            if (e.target.checked) {
+                                                setSelectedQuestions(prev => [...prev, q._id]);
+                                            } else {
+                                                setSelectedQuestions(prev => prev.filter(id => id !== q._id));
+                                            }
+                                        }}
+                                    />
+                                </div>
+                                {/* Delete Button */}
+                                <button
+                                    className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
+                                    onClick={() => handleDelete(i)}
+                                >
+                                    <i className="fas fa-trash-alt"></i>
+                                </button>
+
+                                <div className="card-body">
+
+                                    {/* Question Text & Image */}
+                                    <div className="row mb-2 ms-2">
+                                        <div className="col-md-9">
+                                            <p className="mb-1"><strong>Question:</strong> {q.questionText}</p>
+                                            <p className="mb-1"><strong>Type:</strong> <span className="badge p-2 bg-info">{q.questionType}</span></p>
+                                        </div>
+                                        {q.questionImage && (
+                                            <div className="col-md-3 text-end">
+                                                <img
+                                                    src={q.questionImage}
+                                                    alt="Q"
+                                                    className="img-thumbnail rounded shadow-sm"
+                                                    style={{ maxHeight: 100, objectFit: 'cover' }}
+                                                />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* MCQ Options */}
+                                    {q.questionType === 'MCQ' && (
+                                        <div className="row g-3">
+                                            {q.options.map((opt, idx) => (
+                                                <div key={idx} className="col-12">
+                                                    <div className="card border rounded shadow-sm p-2 d-flex flex-row align-items-center">
+                                                        <i className="far fa-dot-circle text-primary me-3 fs-5"></i>
+                                                        <div className="flex-grow-1 d-flex align-items-center justify-content-between">
+                                                            <p className="mb-1">{opt.text}</p>
+                                                            {opt.imageUrl && (
+                                                                <img
+                                                                    src={opt.imageUrl}
+                                                                    alt="Option"
+                                                                    className="img-thumbnail mt-2"
+                                                                    style={{ height: 80, maxWidth: '100%', objectFit: 'cover' }}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* Match the Following */}
+                                    {q.questionType === 'Match' && (
+                                        <div className="row g-3">
+                                            {q.pairs.map((pair, idx) => (
+                                                <div key={idx} className="col-12">
+                                                    <div className="d-flex justify-content-between align-items-start border rounded shadow-sm p-3 bg-light">
+                                                        <div>
+                                                            <strong>{pair.leftText}</strong>
+                                                            {pair.leftImage && (
+                                                                <img
+                                                                    src={pair.leftImage}
+                                                                    alt="Left"
+                                                                    className="img-thumbnail ms-2"
+                                                                    style={{ height: 60, objectFit: 'cover' }}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                        <div>
+                                                            <strong>{pair.rightText}</strong>
+                                                            {pair.rightImage && (
+                                                                <img
+                                                                    src={pair.rightImage}
+                                                                    alt="Right"
+                                                                    className="img-thumbnail ms-2"
+                                                                    style={{ height: 60, objectFit: 'cover' }}
+                                                                />
+                                                            )}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
+            )}
+
             {/* Preview Collapse Area */}
             <div className="d-none">
                 <PrintQuestionPaper
                     ref={printRef}
                     questions={questions}
                     selectedQuestions={selectedQuestions}
+                    schoolName={selectedSchoolName}
+                    address={selectedAddress}
+                    examTitle={selectedExamTitle}
+                    examDate={examDate}
+                    examTime={examTime}
+                    maxMarks={maxMarks}
+                    instructions={selectedInstructions}
+                    selectedClass={classes.find(c => c._id === selectedClass)?.class || ''}
+                    selectedSubject={filteredSubjects.find(s => s._id === selectedSubject)?.name || ''}
                 />
             </div>
-
-            {questions.length > 0 && (
-                <>
-                    <h5 className="mb-1"><i className="fas fa-list me-2"></i>All Questions</h5>
-
-                    {orderedQuestions.map((q, i) => (
-                        <div key={i} className="card shadow-sm border-0 position-relative">
-
-                            {/* Select Checkbox */}
-                            <div className="form-check position-absolute top-0 start-0 m-2">
-                                <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={selectedQuestions.includes(q._id)}
-                                    onChange={(e) => {
-                                        if (e.target.checked) {
-                                            setSelectedQuestions(prev => [...prev, q._id]);
-                                        } else {
-                                            setSelectedQuestions(prev => prev.filter(id => id !== q._id));
-                                        }
-                                    }}
-                                />
-                            </div>
-                            {/* Delete Button */}
-                            <button
-                                className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
-                                onClick={() => handleDelete(i)}
-                            >
-                                <i className="fas fa-trash-alt"></i>
-                            </button>
-
-                            <div className="card-body">
-
-                                {/* Question Text & Image */}
-                                <div className="row mb-2 ms-2">
-                                    <div className="col-md-9">
-                                        <p className="mb-1"><strong>Question:</strong> {q.questionText}</p>
-                                        <p className="mb-1"><strong>Type:</strong> <span className="badge p-2 bg-info">{q.questionType}</span></p>
-                                    </div>
-                                    {q.questionImage && (
-                                        <div className="col-md-3 text-end">
-                                            <img
-                                                src={q.questionImage}
-                                                alt="Q"
-                                                className="img-thumbnail rounded shadow-sm"
-                                                style={{ maxHeight: 100, objectFit: 'cover' }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* MCQ Options */}
-                                {q.questionType === 'MCQ' && (
-                                    <div className="row g-3">
-                                        {q.options.map((opt, idx) => (
-                                            <div key={idx} className="col-12">
-                                                <div className="card border rounded shadow-sm p-2 d-flex flex-row align-items-center">
-                                                    <i className="far fa-dot-circle text-primary me-3 fs-5"></i>
-                                                    <div className="flex-grow-1 d-flex align-items-center justify-content-between">
-                                                        <p className="mb-1">{opt.text}</p>
-                                                        {opt.imageUrl && (
-                                                            <img
-                                                                src={opt.imageUrl}
-                                                                alt="Option"
-                                                                className="img-thumbnail mt-2"
-                                                                style={{ height: 80, maxWidth: '100%', objectFit: 'cover' }}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Match the Following */}
-                                {q.questionType === 'Match' && (
-                                    <div className="row g-3">
-                                        {q.pairs.map((pair, idx) => (
-                                            <div key={idx} className="col-12">
-                                                <div className="d-flex justify-content-between align-items-start border rounded shadow-sm p-3 bg-light">
-                                                    <div>
-                                                        <strong>{pair.leftText}</strong>
-                                                        {pair.leftImage && (
-                                                            <img
-                                                                src={pair.leftImage}
-                                                                alt="Left"
-                                                                className="img-thumbnail ms-2"
-                                                                style={{ height: 60, objectFit: 'cover' }}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                    <div>
-                                                        <strong>{pair.rightText}</strong>
-                                                        {pair.rightImage && (
-                                                            <img
-                                                                src={pair.rightImage}
-                                                                alt="Right"
-                                                                className="img-thumbnail ms-2"
-                                                                style={{ height: 60, objectFit: 'cover' }}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                            </div>
-                        </div>
-                    ))}
-                </>
-            )}
         </div>
     );
 }
