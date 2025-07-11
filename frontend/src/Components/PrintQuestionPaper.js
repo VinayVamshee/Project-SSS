@@ -82,9 +82,10 @@ const PrintQuestionPaper = forwardRef(
         {/* Questions */}
         {filtered.map((q, idx) => (
           <div key={q._id} className="mb-4">
-            <p style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-              Q{idx + 1}. {q.questionText}
-            </p>
+            <div className="d-flex justify-content-between" style={{ fontWeight: 'bold', marginBottom: '6px' }}>
+              <span>Q{idx + 1}. {q.questionText}</span>
+              {q.questionMarks && <span>({q.questionMarks} Marks)</span>}
+            </div>
 
             {q.questionImage && (
               <div style={{ marginBottom: '12px' }}>

@@ -19,9 +19,11 @@ const questionSchema = new mongoose.Schema({
   questionText: { type: String, required: true },
   questionImage: { type: String },
   questionType: { type: String, required: true },
-  options: [optionSchema],       // Only for MCQ
-  pairs: [pairItemSchema],       // Only for match
+  questionMarks: { type: String },
+  options: [optionSchema],
+  pairs: [pairItemSchema],
 });
+
 
 const questionPaperSchema = new mongoose.Schema({
   class: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: true },

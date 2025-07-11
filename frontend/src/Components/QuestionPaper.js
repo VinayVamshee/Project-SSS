@@ -28,6 +28,7 @@ export default function QuestionManager() {
         questionText: '',
         questionImage: '',
         questionType: '',
+        questionMarks: '',
         options: [],
         pairs: [],
     });
@@ -108,7 +109,14 @@ export default function QuestionManager() {
             question: newQuestion
         });
         setQuestions(res.data);
-        setNewQuestion({ questionText: '', questionImage: '', questionType: '', options: [], pairs: [] });
+        setNewQuestion({
+            questionText: '',
+            questionImage: '',
+            questionType: '',
+            questionMarks: '',
+            options: [],
+            pairs: [],
+        });
     };
 
     const handleDelete = async idx => {
@@ -127,27 +135,24 @@ export default function QuestionManager() {
 
     const [templates, setTemplates] = useState([]);
     const [newTemplate, setNewTemplate] = useState({
-        name: '',
-        heading: {
-            schoolName: '',
-            address: '',
-            examTitle: '',
-            date: '',
-            time: '',
-            maxMarks: ''
-        },
+        schoolName: '',
+        address: '',
+        examTitle: '',
+        date: '',
+        time: '',
+        maxMarks: '',
         instructions: ['']
     });
 
     // Fetch templates
     useEffect(() => {
-        axios.get('http://localhost:3001/get-all-templates').then(res => setTemplates(res.data));
+        axios.get('https://sss-server-eosin.vercel.app/get-all-templates').then(res => setTemplates(res.data));
     }, []);
 
     const saveTemplate = async () => {
         try {
-            await axios.post('http://localhost:3001/save-template', newTemplate);
-            const res = await axios.get('http://localhost:3001/get-all-templates');
+            await axios.post('https://sss-server-eosin.vercel.app/save-template', newTemplate);
+            const res = await axios.get('https://sss-server-eosin.vercel.app/get-all-templates');
             setTemplates(res.data);
             setNewTemplate({
                 schoolName: '',
@@ -293,6 +298,14 @@ export default function QuestionManager() {
                                     onChange={e => setNewQuestion(q => ({ ...q, questionText: e.target.value }))}
                                 />
                             </div>
+                            <div className="mb-3 col-md-2">
+                                <input
+                                    className="form-control shadow-sm"
+                                    placeholder="Marks"
+                                    value={newQuestion.questionMarks}
+                                    onChange={e => setNewQuestion(q => ({ ...q, questionMarks: e.target.value }))}
+                                />
+                            </div>
                             <div className="col-md-3">
                                 <input type="file" accept="image/*" className="form-control"
                                     onChange={async e => {
@@ -429,105 +442,145 @@ export default function QuestionManager() {
 
             <div className="modal fade" id="selectInstructionsModal" tabIndex="-1">
                 <div className="modal-dialog modal-lg">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h5 className="modal-title"><i className="fas fa-sliders-h me-2"></i>Select Instructions</h5>
+                    <div className="modal-content border border-2">
+                        <div className="modal-header bg-light border-bottom">
+                            <h5 className="modal-title">
+                                <i className="fas fa-sliders-h me-2"></i>Select Question Paper Details
+                            </h5>
                             <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
                         </div>
 
-                        <div className="modal-body row">
-                            {/* Dropdowns for Name, Address, Title */}
-                            <div className="col-md-4 mb-3">
-                                <label className="form-label">Select School Name</label>
-                                <select
-                                    className="form-select"
-                                    value={selectedSchoolName}
-                                    onChange={e => setSelectedSchoolName(e.target.value)}
-                                >
-                                    <option value="">-- Select --</option>
-                                    {[...new Set(templates.map(t => t.schoolName))].map((name, idx) => (
-                                        <option key={idx} value={name}>{name}</option>
-                                    ))}
-                                </select>
+                        <div className="modal-body">
+
+                            {/* Section 1: School Name, Address, Title */}
+                            <div className="border p-3 mb-3 rounded shadow-sm bg-white">
+                                <h6 className="mb-3 border-bottom pb-2">Heading Details</h6>
+                                <div className="row">
+                                    <div className="col-md-4 mb-3">
+                                        <label className="form-label">Select School Name</label>
+                                        <select
+                                            className="form-select"
+                                            value={selectedSchoolName}
+                                            onChange={e => setSelectedSchoolName(e.target.value)}
+                                        >
+                                            <option value="">-- Select --</option>
+                                            {[...new Set(templates.map(t => t.schoolName))].map((name, idx) => (
+                                                <option key={idx} value={name}>{name}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="col-md-4 mb-3">
+                                        <label className="form-label">Select Address</label>
+                                        <select
+                                            className="form-select"
+                                            value={selectedAddress}
+                                            onChange={e => setSelectedAddress(e.target.value)}
+                                        >
+                                            <option value="">-- Select --</option>
+                                            {[...new Set(templates.map(t => t.address))].map((addr, idx) => (
+                                                <option key={idx} value={addr}>{addr}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div className="col-md-4 mb-3">
+                                        <label className="form-label">Select Exam Title</label>
+                                        <select
+                                            className="form-select"
+                                            value={selectedExamTitle}
+                                            onChange={e => setSelectedExamTitle(e.target.value)}
+                                        >
+                                            <option value="">-- Select --</option>
+                                            {[...new Set(templates.map(t => t.examTitle))].map((title, idx) => (
+                                                <option key={idx} value={title}>{title}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
 
-                            <div className="col-md-4 mb-3">
-                                <label className="form-label">Select Address</label>
-                                <select
-                                    className="form-select"
-                                    value={selectedAddress}
-                                    onChange={e => setSelectedAddress(e.target.value)}
-                                >
-                                    <option value="">-- Select --</option>
-                                    {[...new Set(templates.map(t => t.address))].map((addr, idx) => (
-                                        <option key={idx} value={addr}>{addr}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="col-md-4 mb-3">
-                                <label className="form-label">Select Exam Title</label>
-                                <select
-                                    className="form-select"
-                                    value={selectedExamTitle}
-                                    onChange={e => setSelectedExamTitle(e.target.value)}
-                                >
-                                    <option value="">-- Select --</option>
-                                    {[...new Set(templates.map(t => t.examTitle))].map((title, idx) => (
-                                        <option key={idx} value={title}>{title}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {/* Multi-select Instructions */}
-                            <div className="col-12 mb-3">
-                                <label className="form-label">Select Instructions</label>
-                                {Array.from(new Set(templates.flatMap(t => t.instructions))).map((instruction, i) => (
-                                    <div key={i} className="form-check mb-1">
+                            {/* Section 2: Instructions */}
+                            <div className="border p-3 mb-3 rounded shadow-sm bg-white">
+                                <h6 className="mb-3 border-bottom pb-2 d-flex justify-content-between align-items-center">
+                                    Select Instructions
+                                    <div className="form-check">
                                         <input
-                                            className="form-check-input"
                                             type="checkbox"
-                                            checked={selectedInstructions.includes(instruction)}
-                                            onChange={() => toggleInstruction(instruction)}
-                                            id={`inst-${i}`}
+                                            className="form-check-input"
+                                            id="selectAllInstructions"
+                                            onChange={(e) => {
+                                                const all = Array.from(
+                                                    new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== ''))
+                                                );
+                                                setSelectedInstructions(e.target.checked ? all : []);
+                                            }}
+                                            checked={
+                                                selectedInstructions.length ===
+                                                Array.from(new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== ''))).length
+                                            }
                                         />
-                                        <label className="form-check-label" htmlFor={`inst-${i}`}>
-                                            {instruction}
+                                        <label className="form-check-label" htmlFor="selectAllInstructions">
+                                            Select All
                                         </label>
                                     </div>
-                                ))}
+                                </h6>
+
+                                <div className="row">
+                                    {Array.from(
+                                        new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== ''))
+                                    ).map((instruction, i) => (
+                                        <div key={i} className="col-md-6 mb-2">
+                                            <div className="form-check">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    checked={selectedInstructions.includes(instruction)}
+                                                    onChange={() => toggleInstruction(instruction)}
+                                                    id={`inst-${i}`}
+                                                />
+                                                <label className="form-check-label" htmlFor={`inst-${i}`}>
+                                                    {instruction}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
 
-                            {/* Manual Inputs */}
-                            <div className="col-md-4 mb-3">
-                                <input
-                                    className="form-control"
-                                    placeholder="Exam Date"
-                                    value={examDate}
-                                    onChange={e => setExamDate(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="col-md-4 mb-3">
-                                <input
-                                    className="form-control"
-                                    placeholder="Exam Time"
-                                    value={examTime}
-                                    onChange={e => setExamTime(e.target.value)}
-                                />
-                            </div>
-
-                            <div className="col-md-4 mb-3">
-                                <input
-                                    className="form-control"
-                                    placeholder="Max Marks"
-                                    value={maxMarks}
-                                    onChange={e => setMaxMarks(e.target.value)}
-                                />
+                            {/* Section 3: Manual Entry */}
+                            <div className="border p-3 mb-3 rounded shadow-sm bg-white">
+                                <h6 className="mb-3 border-bottom pb-2">Exam Details</h6>
+                                <div className="row">
+                                    <div className="col-md-4 mb-3">
+                                        <input
+                                            className="form-control"
+                                            placeholder="Exam Date"
+                                            value={examDate}
+                                            onChange={e => setExamDate(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="col-md-4 mb-3">
+                                        <input
+                                            className="form-control"
+                                            placeholder="Exam Time"
+                                            value={examTime}
+                                            onChange={e => setExamTime(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="col-md-4 mb-3">
+                                        <input
+                                            className="form-control"
+                                            placeholder="Max Marks"
+                                            value={maxMarks}
+                                            onChange={e => setMaxMarks(e.target.value)}
+                                        />
+                                    </div>
+                                </div>
                             </div>
                         </div>
 
-                        <div className="modal-footer">
+                        <div className="modal-footer bg-light border-top">
                             <button className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                             <button className="btn btn-primary" onClick={handlePrint}>
                                 <i className="fas fa-download me-1"></i>Download
