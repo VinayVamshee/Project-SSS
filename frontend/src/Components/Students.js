@@ -76,20 +76,48 @@ export default function Students() {
     }, []);
 
 
-    // Filter students based on selected year, class, and search
-    const filteredStudents = students
-        .filter((student) =>
-            (
-                (selectedYear === "" && selectedClass === "") ||
-                student.academicYears.some((year) =>
-                    (selectedYear === "" || year.academicYear === selectedYear) &&
-                    (selectedClass === "" || String(year.class) === String(selectedClass))
-                )
-            ) &&
-            (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
-        )
-        .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || ""));
+    const [searchType, setSearchType] = useState("name");
 
+    // Final Filtered Students
+    const filteredStudents = students
+        .filter((student) => {
+            // Match academic year and class
+            const yearMatch =
+                selectedYear === "" ||
+                student.academicYears?.some((year) => year.academicYear === selectedYear);
+
+            const classMatch =
+                selectedClass === "" ||
+                student.academicYears?.some((year) => String(year.class) === String(selectedClass));
+
+            if (!yearMatch || !classMatch) return false;
+
+            const query = searchStudent.toLowerCase().trim();
+            if (query === "") return true;
+
+            // Handle search type
+            if (searchType.startsWith("additional_")) {
+                const key = searchType.replace("additional_", "");
+                return student.additionalInfo?.some(
+                    (info) =>
+                        info.key.toLowerCase() === key.toLowerCase() &&
+                        info.value?.toLowerCase().includes(query)
+                );
+            } else if (searchType === "name") {
+                return student.name?.toLowerCase().includes(query);
+            } else if (searchType === "rollNo") {
+                return student.rollNo?.toLowerCase().includes(query);
+            } else if (searchType === "dob") {
+                return student.dob?.toLowerCase().includes(query);
+            } else if (searchType === "aadharNo") {
+                return student.aadharNo?.toLowerCase().includes(query);
+            } else if (searchType === "AdmissionNo") {
+                return student.AdmissionNo?.toLowerCase().includes(query);
+            }
+
+            return false;
+        })
+        .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || ""));
 
     // Handle individual student selection
     const handleSelectStudent = (id) => {
@@ -224,7 +252,7 @@ export default function Students() {
             throw new Error("Image upload failed");
         }
     };
-    
+
     // eslint-disable-next-line
     const [latestId, setLatestId] = useState(null);
     const [latestMaster, setLatestMaster] = useState([]);
@@ -285,16 +313,16 @@ export default function Students() {
 
     return (
         <div className="Students">
-            <div className="SearchFilter">
+            <div className="SearchFilter d-flex flex-wrap align-items-center gap-2">
+
+                {/* Year Filter */}
                 <div className="yearFilter">
-                    <select className="form-select form-select-sm" value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
+                    <select className="form-select form-select-sm" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
                         <option value="">Select Academic Year</option>
                         <option value="">All</option>
                         {academicYears.length > 0 ? (
                             academicYears.map((year, index) => (
-                                <option key={index} value={year.year}>
-                                    {year.year}
-                                </option>
+                                <option key={index} value={year.year}>{year.year}</option>
                             ))
                         ) : (
                             <option disabled>No Academic Years Available</option>
@@ -302,15 +330,14 @@ export default function Students() {
                     </select>
                 </div>
 
+                {/* Class Filter */}
                 <div className="classFilter">
-                    <select className="form-select form-select-sm" value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)}>
+                    <select className="form-select form-select-sm" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
                         <option value="">Select Class</option>
                         <option value="">All</option>
                         {classes.length > 0 ? (
                             classes.map((cls) => (
-                                <option key={cls._id} value={cls.class}>
-                                    {cls.class}
-                                </option>
+                                <option key={cls._id} value={cls.class}>{cls.class}</option>
                             ))
                         ) : (
                             <option disabled>No Classes Available</option>
@@ -318,22 +345,103 @@ export default function Students() {
                     </select>
                 </div>
 
-                <input type="text" placeholder="Search Student..." value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} className="SearchStudent" />
+                {/* Search Type Dropdown */}
+                <div className="searchType me-2">
+                    <select
+                        className="form-select form-select-sm"
+                        value={searchType}
+                        onChange={(e) => setSearchType(e.target.value)}
+                    >
+                        <option disabled value="">Search by Field</option>
 
-                {/* Select All Checkbox */}
-                <div className="selectAll">
-                    <input type="checkbox" checked={selectAllChecked} onChange={handleSelectAll} />
-                    <label>Select All</label>
+                        {/* Default Fields */}
+                        <optgroup label="Basic Student Fields">
+                            {[
+                                { key: "name", label: "Name" },
+                                { key: "rollNo", label: "Roll No" },
+                                { key: "dob", label: "Date of Birth" },
+                                { key: "aadharNo", label: "Aadhar No" },
+                                { key: "gender", label: "Gender" },
+                                { key: "AdmissionNo", label: "Admission No" },
+                            ].map((field, index) => (
+                                <option key={index} value={field.key}>
+                                    {field.label}
+                                </option>
+                            ))}
+                        </optgroup>
+
+                        {/* Additional Info Fields */}
+                        <optgroup label="Additional Info Fields">
+                            {Array.from(
+                                new Set(
+                                    students
+                                        .flatMap((s) => s.additionalInfo || [])
+                                        .map((info) => info.key)
+                                )
+                            ).map((key, index) => (
+                                <option key={`add-${index}`} value={`additional_${key}`}>
+                                    {key}
+                                </option>
+                            ))}
+                        </optgroup>
+                    </select>
                 </div>
 
-                <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#passtoModal"><i className="fa-solid fa-forward me-2 fa-lg"></i>Pass to</button>
-                <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#dropStudentModal"><i className="fa-solid fa-user-xmark me-2 fa-lg"></i>Drop Student</button>
-                <button type="button" className="btn" onClick={() => toggleButton('Grid')}><i className="fa-solid fa-table-columns fa-lg me-2"></i>Grid</button>
-                <button type="button" className="btn" onClick={() => toggleButton('list')}><i className="fa-solid fa-list fa-lg me-2"></i>List</button>
-                <button type="button" className="btn btn-sm border" data-bs-toggle="modal" data-bs-target="#downloadDataModal"><i className="fa-solid fa-download me-2 fa-lg"></i>Download Data</button>
+                {/* Search Input */}
+                <input
+                    type="text"
+                    placeholder="Search..."
+                    value={searchStudent}
+                    onChange={(e) => setSearchStudent(e.target.value)}
+                    className="SearchStudent"
+                />
 
+                {/* Select All Checkbox */}
+                <div className="selectAll d-flex align-items-center">
+                    <input type="checkbox" checked={selectAllChecked} onChange={handleSelectAll} />
+                    <label className="ms-1">Select All</label>
+                </div>
+
+                {/* Action Buttons */}
+                <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#passtoModal">
+                    <i className="fa-solid fa-forward me-2 fa-sm"></i>Pass to
+                </button>
+
+                <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#dropStudentModal">
+                    <i className="fa-solid fa-user-xmark me-2 fa-sm"></i>Drop Student
+                </button>
+
+                <div className="dropdown">
+                    <button
+                        className="btn"
+                        type="button"
+                        id="viewToggleDropdown"
+                        data-bs-toggle="dropdown"
+                        aria-expanded="false"
+                    >
+                        <i className="fa-solid fa-eye me-2"></i>View
+                    </button>
+                    <ul className="dropdown-menu" aria-labelledby="viewToggleDropdown">
+                        <li>
+                            <button className="dropdown-item" onClick={() => toggleButton('Grid')}>
+                                <i className="fa-solid fa-table-columns me-2 fa-sm"></i>Grid
+                            </button>
+                        </li>
+                        <li>
+                            <button className="dropdown-item" onClick={() => toggleButton('list')}>
+                                <i className="fa-solid fa-list me-2 fa-sm"></i>List
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+
+                <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#downloadDataModal">
+                    <i className="fa-solid fa-download me-2 fa-sm"></i>Download Data
+                </button>
 
             </div>
+
 
             {/* Student Cards */}
             {
@@ -888,8 +996,6 @@ export default function Students() {
                     </div>
                 </div>
             </div>
-
-
 
             <div style={{ display: "none" }}>
                 <StudentDataPage

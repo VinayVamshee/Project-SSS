@@ -467,10 +467,11 @@
     height: 41px;
     border-radius: 3px;
     box-shadow: 0 5px 8px rgba(0, 0, 0, 0.096);
+    width: fit-content;
 }
 
 .SearchFilter .SearchStudent {
-    width: 257px;
+    flex: 1;
     height: 41px;
     border-radius: 3px;
     box-shadow: 0 5px 8px rgba(0, 0, 0, 0.096);
@@ -483,6 +484,11 @@
     color: white;
     width: fit-content;
     border-radius: 5px;
+}
+
+.SearchFilter .btn:hover {
+    background-color: var(--button-hover);
+    cursor: pointer !important;
 }
 
 .selectAll {
