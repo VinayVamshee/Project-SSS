@@ -42,28 +42,30 @@ const PrintQuestionPaper = forwardRef(
           )}
         </div>
 
-        {/* Time & Max Marks */}
-        <div className="d-flex justify-content-between mb-2">
-          <span><strong>Time:</strong> {examTime}</span>
-          <span><strong>Max Marks:</strong> {maxMarks}</span>
-        </div>
+        {/* Name & Roll No */}
+<div className="d-flex justify-content-between mb-2">
+  <span><strong>Name:</strong> ____________________________________________</span>
+  <span><strong>Roll No:</strong> ______________________</span>
+</div>
 
-        {/* Class & Subject */}
-        <div className="d-flex justify-content-between mb-2">
-          <span><strong>Class:</strong> {selectedClass}</span>
-          <span><strong>Subject:</strong> {selectedSubject}</span>
-        </div>
+        {/* Date & Time */}
+<div className="d-flex justify-content-between mb-2">
+  <span><strong>Date:</strong> {examDate}</span>
+  <span><strong>Time:</strong> {examTime}</span>
+</div>
 
-        {/* Date */}
-        {examDate && (
-          <>
-            <div className="mb-2">
-              <strong>Date:</strong> {examDate}
-            </div>
-            <hr />
-          </>
-        )}
+{/* Class & Subject */}
+<div className="d-flex justify-content-between mb-1">
+  <span><strong>Class:</strong> {selectedClass}</span>
+  <span><strong>Subject:</strong> {selectedSubject}</span>
+</div>
 
+{/* Max Marks */}
+<div className="d-flex justify-content-end mb-2">
+  <span><strong>Max Marks:</strong> {maxMarks}</span>
+</div>
+
+<hr/>
         {/* Instructions */}
         {instructions.length > 0 && (
           <>

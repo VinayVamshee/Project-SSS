@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Link, NavLink } from 'react-router-dom';
 import axios from 'axios';
+import { jwtDecode } from "jwt-decode";
 
 export default function Navigation() {
     const themes = [
@@ -21,6 +22,7 @@ export default function Navigation() {
 
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
+    const [userType, setUserType] = useState('viewer');
     const [message, setMessage] = useState('');
     const [error, setError] = useState('');
     const [latestMaster, setLatestMaster] = useState({});
@@ -39,7 +41,16 @@ export default function Navigation() {
         e.preventDefault();
         try {
             const res = await axios.post('https://sss-server-eosin.vercel.app/login', { username, password });
-            localStorage.setItem('token', res.data.token);
+            const token = res.data.token;
+
+            // Save token
+            localStorage.setItem('token', token);
+
+            // Decode token to get user info
+            const decoded = jwtDecode(token);
+            localStorage.setItem('userType', decoded.type); // Save user type separately
+            localStorage.setItem('username', decoded.username); // Optional: save username too
+
             alert('Login Successful');
             window.location.href = '/';
         } catch (err) {
@@ -50,7 +61,11 @@ export default function Navigation() {
     const handleRegister = async (e) => {
         e.preventDefault();
         try {
-            const res = await axios.post('https://sss-server-eosin.vercel.app/register', { username, password });
+            const res = await axios.post('https://sss-server-eosin.vercel.app/register', {
+                username,
+                password,
+                type: userType
+            });
             setMessage(res.data.message);
             setError('');
         } catch (err) {
@@ -134,23 +149,45 @@ export default function Navigation() {
                     <div className="d-flex my-5">
                         {localStorage.getItem("token") ? (
                             <>
-                                <button type="button" className="btn btn-save mx-2" data-bs-toggle="modal" data-bs-target="#RegisterModal">
-                                    Register
-                                </button>
-                                <button className="btn btn-danger btn-sm mx-2" onClick={() => {
-                                    localStorage.removeItem("token");
-                                    window.location.href = "/login";
-                                }}>
+                                {/* Show Register only if admin */}
+                                {localStorage.getItem("userType") === "admin" && (
+                                    <button
+                                        type="button"
+                                        className="btn btn-save mx-2"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#RegisterModal"
+                                    >
+                                        Register
+                                    </button>
+                                )}
+
+                                {/* Always show logout if logged in */}
+                                <button
+                                    className="btn btn-danger btn-sm mx-2"
+                                    onClick={() => {
+                                        localStorage.removeItem("token");
+                                        localStorage.removeItem("userType");
+                                        localStorage.removeItem("username");
+                                        window.location.href = "/login";
+                                    }}
+                                >
                                     Logout
                                 </button>
                             </>
                         ) : (
-                            <button type="button" className="btn btn-save mx-2" data-bs-toggle="modal" data-bs-target="#LoginModal">
+                            // Show login if not logged in
+                            <button
+                                type="button"
+                                className="btn btn-save mx-2"
+                                data-bs-toggle="modal"
+                                data-bs-target="#LoginModal"
+                            >
                                 Login
                             </button>
                         )}
                     </div>
                 )}
+
             </div>
 
             {/* Register Modal */}
@@ -164,11 +201,35 @@ export default function Navigation() {
                             <div className="modal-body">
                                 {message && <div className="text-success mb-2">{message}</div>}
                                 {error && <div className="text-danger mb-2">{error}</div>}
-                                <input type="text" placeholder="Username" className="form-control mb-2"
-                                    value={username} onChange={e => setUsername(e.target.value)} required />
-                                <input type="password" placeholder="Password" className="form-control"
-                                    value={password} onChange={e => setPassword(e.target.value)} required />
+
+                                <input
+                                    type="text"
+                                    placeholder="Username"
+                                    className="form-control mb-2"
+                                    value={username}
+                                    onChange={e => setUsername(e.target.value)}
+                                    required
+                                />
+
+                                <input
+                                    type="password"
+                                    placeholder="Password"
+                                    className="form-control mb-2"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    required
+                                />
+
+                                <select
+                                    className="form-select"
+                                    value={userType}
+                                    onChange={e => setUserType(e.target.value)}
+                                >
+                                    <option value="viewer">Viewer</option>
+                                    <option value="qp-editor">QuestionPaper Editor</option>
+                                </select>
                             </div>
+
                             <div className="modal-footer">
                                 <button type="submit" className="btn btn-success">Register</button>
                             </div>

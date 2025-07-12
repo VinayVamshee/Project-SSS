@@ -9,11 +9,19 @@ import { useNavigate } from "react-router-dom";
 export default function Payments() {
 
     const navigate = useNavigate();
+    const [canEdit, setCanEdit] = useState(false);
+
     useEffect(() => {
         const token = localStorage.getItem('token');
+        const userType = localStorage.getItem('userType');
+
         if (!token) {
             navigate('/login');
+            return;
         }
+
+        const canEdit = userType === 'admin' || userType === 'payments';
+        setCanEdit(canEdit); // Optional: if you're managing with state
     }, [navigate]);
 
     const [students, setStudents] = useState([]);
@@ -503,7 +511,7 @@ export default function Payments() {
                     </table>
 
 
-                    <button type="button" className="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#AddClassFees">
+                    <button type="button" className="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#AddClassFees" disabled={!canEdit}>
                         Add/Edit Fee Strucutre
                     </button>
 
@@ -649,9 +657,9 @@ export default function Payments() {
                                         ₹{paidFees} / ₹{totalFees}
                                     </span>
                                 </div>
-                                <button type="button" className="btn btn-paymentHistory" onClick={() => handleDownloadExcel(element, feesData, selectedYear)} > <i className="fa-solid fa-file-arrow-down me-2"></i>Download History </button>
+                                <button type="button" className="btn btn-paymentHistory" onClick={() => handleDownloadExcel(element, feesData, selectedYear)} disabled={!canEdit}> <i className="fa-solid fa-file-arrow-down me-2"></i>Download History </button>
                                 <button className="btn btn-paymentHistory" type="button" data-bs-toggle="collapse" data-bs-target={`#HistoryCollapse-${element._id}`} aria-expanded="false" aria-controls={`HistoryCollapse-${element._id}`}><i className="fa-solid fa-clock-rotate-left me-1"></i> History<i className="fa-solid fa-caret-down ms-2"></i></button>
-                                <button type="button" className="btn btn-paymentHistory" data-bs-toggle="modal" data-bs-target="#addPaymentModal" onClick={() => handleOpenPaymentModal(element)}>
+                                <button type="button" className="btn btn-paymentHistory" data-bs-toggle="modal" data-bs-target="#addPaymentModal" onClick={() => handleOpenPaymentModal(element)} disabled={!canEdit}>
                                     <i className="fa-solid fa-credit-card me-1"></i> Add Payment
                                 </button>
 
@@ -687,6 +695,7 @@ export default function Payments() {
                                                         <td>
                                                             <button
                                                                 className="btn btn-sm btn-outline-success"
+                                                                disabled={!canEdit}
                                                                 onClick={() => handleGeneratePdf(studentFees, payment, element, selectedYear, paidFees, latestMaster)}
                                                             >
                                                                 <i className="fa-solid fa-download me-1"></i>Download Receipt

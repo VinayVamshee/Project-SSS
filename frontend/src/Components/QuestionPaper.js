@@ -33,20 +33,39 @@ export default function QuestionManager() {
         pairs: [],
     });
 
+    const [userType, setUserType] = useState('');
+
     useEffect(() => {
-        if (!localStorage.getItem('token')) navigate('/login');
+        const token = localStorage.getItem('token');
+        const userType = localStorage.getItem('userType');
+
+        if (!token || !userType) {
+            navigate('/login');
+            return;
+        } else {
+            setUserType(userType);
+        }
+
         const load = async () => {
-            const [cRes, sRes, csRes] = await Promise.all([
-                axios.get('https://sss-server-eosin.vercel.app/getClasses'),
-                axios.get('https://sss-server-eosin.vercel.app/getSubjects'),
-                axios.get('https://sss-server-eosin.vercel.app/class-subjects'),
-            ]);
-            setClasses(cRes.data.classes);
-            setSubjects(sRes.data.subjects);
-            setClassSubjects(csRes.data.data);
+            try {
+                const [cRes, sRes, csRes] = await Promise.all([
+                    axios.get('https://sss-server-eosin.vercel.app/getClasses'),
+                    axios.get('https://sss-server-eosin.vercel.app/getSubjects'),
+                    axios.get('https://sss-server-eosin.vercel.app/class-subjects'),
+                ]);
+                setClasses(cRes.data.classes);
+                setSubjects(sRes.data.subjects);
+                setClassSubjects(csRes.data.data);
+            } catch (err) {
+                console.error('Error loading data:', err.message);
+            }
         };
+
         load();
     }, [navigate]);
+
+    // Allow full access if QP Editor or Admin
+    const canEdit = userType === 'qp-editor' || userType === 'admin';
 
     const uploadToImgBB = async (file) => {
         const formData = new FormData();
@@ -127,12 +146,6 @@ export default function QuestionManager() {
     };
 
     const [selectedQuestions, setSelectedQuestions] = useState([]);
-    const orderedQuestions = [...questions].sort((a, b) => {
-        const aSelected = selectedQuestions.includes(a._id);
-        const bSelected = selectedQuestions.includes(b._id);
-        return bSelected - aSelected; // selected ones first
-    });
-
     const [templates, setTemplates] = useState([]);
     const [newTemplate, setNewTemplate] = useState({
         schoolName: '',
@@ -192,6 +205,30 @@ export default function QuestionManager() {
         );
     };
 
+    const [searchText, setSearchText] = useState('');
+    const [filterType, setFilterType] = useState('');
+    const [filterMarks, setFilterMarks] = useState('');
+    const [sortOrder, setSortOrder] = useState('desc');
+
+    const filteredAndSortedQuestions = [...questions]
+        // Sort selected questions first
+        .sort((a, b) => {
+            const aSelected = selectedQuestions.includes(a._id);
+            const bSelected = selectedQuestions.includes(b._id);
+            return bSelected - aSelected;
+        })
+        // Apply filters: search, type, marks
+        .filter(q =>
+            q.questionText.toLowerCase().includes(searchText.toLowerCase()) &&
+            (filterType === '' || q.questionType === filterType) &&
+            (filterMarks === '' || q.questionMarks === filterMarks)
+        )
+        // Sort by marks (asc/desc)
+        .sort((a, b) => {
+            const marksA = parseFloat(a.questionMarks || 0);
+            const marksB = parseFloat(b.questionMarks || 0);
+            return sortOrder === 'asc' ? marksA - marksB : marksB - marksA;
+        });
 
     return (
         <div className="QuestionPaper py-2">
@@ -252,6 +289,7 @@ export default function QuestionManager() {
                     data-bs-target="#addQuestionCollapse"
                     aria-expanded="false"
                     aria-controls="addQuestionCollapse"
+                    disabled={!canEdit}
                 >
                     <i className="fas fa-plus-circle me-2"></i>Add Question
                 </button>
@@ -263,6 +301,7 @@ export default function QuestionManager() {
                     data-bs-target="#addInstructionCollapse"
                     aria-expanded="false"
                     aria-controls="addInstructionCollapse"
+                    disabled={!canEdit}
                 >
                     <i className="fas fa-book me-2"></i>Add Instruction Template
                 </button>
@@ -582,7 +621,7 @@ export default function QuestionManager() {
 
                         <div className="modal-footer bg-light border-top">
                             <button className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button className="btn btn-primary" onClick={handlePrint}>
+                            <button className="btn btn-primary" onClick={handlePrint} disabled={!canEdit}>
                                 <i className="fas fa-download me-1"></i>Download
                             </button>
                         </div>
@@ -592,9 +631,49 @@ export default function QuestionManager() {
 
             {questions.length > 0 && (
                 <>
-                    <h5 className="mb-1"><i className="fas fa-list me-2"></i>All Questions</h5>
+                    <h5 className="mb-3 border-bottom pb-2 w-100">
+                        <i className="fas fa-list me-2 text-primary"></i>
+                        All Questions
+                        <span className="badge bg-secondary ms-2">{filteredAndSortedQuestions.length}</span>
+                    </h5>
+
+                    <div className="row">
+                        <div className="col-md-4">
+                            <input
+                                type="text"
+                                className="form-control"
+                                placeholder="Search question text..."
+                                value={searchText}
+                                onChange={e => setSearchText(e.target.value)}
+                            />
+                        </div>
+                        <div className="col-md-3">
+                            <select className="form-select" value={filterType} onChange={e => setFilterType(e.target.value)}>
+                                <option value="">All Types</option>
+                                <option value="MCQ">MCQ</option>
+                                <option value="Descriptive">Descriptive</option>
+                                <option value="Match">Match</option>
+                            </select>
+                        </div>
+                        <div className="col-md-2">
+                            <input
+                                type="number"
+                                className="form-control"
+                                placeholder="Filter by Marks"
+                                value={filterMarks}
+                                onChange={e => setFilterMarks(e.target.value)}
+                            />
+                        </div>
+                        <div className="col-md-3">
+                            <select className="form-select" value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
+                                <option value="desc">Sort: High to Low</option>
+                                <option value="asc">Sort: Low to High</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div className='questions-list'>
-                        {orderedQuestions.map((q, i) => (
+                        {filteredAndSortedQuestions.map((q, i) => (
                             <div key={i} className="card shadow-sm border-0 position-relative">
 
                                 {/* Select Checkbox */}
@@ -616,6 +695,7 @@ export default function QuestionManager() {
                                 <button
                                     className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
                                     onClick={() => handleDelete(i)}
+                                    disabled={!canEdit}
                                 >
                                     <i className="fas fa-trash-alt"></i>
                                 </button>

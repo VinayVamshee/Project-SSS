@@ -7,8 +7,10 @@ export default function AddNewStudent() {
     const navigate = useNavigate();
     useEffect(() => {
         const token = localStorage.getItem('token');
-        if (!token) {
-            navigate('/login');
+        const userType = localStorage.getItem('userType');
+
+        if (!token || (userType !== 'student-enrollment' && userType !== 'admin')) {
+            navigate('/');
         }
     }, [navigate]);
     const [student, setStudent] = useState({
