@@ -35,37 +35,35 @@ const PrintQuestionPaper = forwardRef(
           {schoolName && <h3 className="mb-1">{schoolName}</h3>}
           {address && <p className="mb-1">{address}</p>}
           {examTitle && (
-            <>
-              <p className="mb-2"><strong>{examTitle}</strong></p>
-              <hr />
-            </>
+            <p className="mb-2"><strong>{examTitle}</strong></p>
           )}
-        </div>
 
-        {/* Name & Roll No */}
-<div className="d-flex justify-content-between mb-2">
-  <span><strong>Name:</strong> ____________________________________________</span>
-  <span><strong>Roll No:</strong> ______________________</span>
-</div>
+          {/* Name & Roll No */}
+          <div className="d-flex justify-content-between mb-2">
+            <span><strong>Name:</strong> ______________________</span>
+            <span><strong>Roll No:</strong> ______________________</span>
+          </div>
+        </div>
+        <hr />
 
         {/* Date & Time */}
-<div className="d-flex justify-content-between mb-2">
-  <span><strong>Date:</strong> {examDate}</span>
-  <span><strong>Time:</strong> {examTime}</span>
-</div>
+        <div className="d-flex justify-content-between mb-2">
+          <span><strong>Date:</strong> {examDate}</span>
+          <span><strong>Time:</strong> {examTime}</span>
+        </div>
 
-{/* Class & Subject */}
-<div className="d-flex justify-content-between mb-1">
-  <span><strong>Class:</strong> {selectedClass}</span>
-  <span><strong>Subject:</strong> {selectedSubject}</span>
-</div>
+        {/* Class & Subject */}
+        <div className="d-flex justify-content-between mb-1">
+          <span><strong>Class:</strong> {selectedClass}</span>
+          <span><strong>Subject:</strong> {selectedSubject}</span>
+        </div>
 
-{/* Max Marks */}
-<div className="d-flex justify-content-end mb-2">
-  <span><strong>Max Marks:</strong> {maxMarks}</span>
-</div>
+        {/* Max Marks */}
+        <div className="d-flex justify-content-end mb-2">
+          <span><strong>Max Marks:</strong> {maxMarks}</span>
+        </div>
 
-<hr/>
+        <hr />
         {/* Instructions */}
         {instructions.length > 0 && (
           <>
