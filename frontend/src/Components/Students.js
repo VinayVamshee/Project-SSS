@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import axios from "axios";
 import boy from "./Images/bussiness-man.png";
 import { useNavigate } from "react-router-dom";
+import * as XLSX from "xlsx";
+import { useReactToPrint } from "react-to-print";
+import StudentDataPage from "./StudentDataPage";
 
 export default function Students() {
 
@@ -221,7 +224,64 @@ export default function Students() {
             throw new Error("Image upload failed");
         }
     };
+    
+    // eslint-disable-next-line
+    const [latestId, setLatestId] = useState(null);
+    const [latestMaster, setLatestMaster] = useState([]);
 
+    useEffect(() => {
+        axios.get('https://sss-server-eosin.vercel.app/masters')
+            .then(res => {
+                setLatestMaster(res.data);
+            })
+            .catch(err => console.error('Error fetching all masters:', err.message));
+    }, [latestId]);
+
+    const [selectedFields, setSelectedFields] = useState(["name", "dob", "academicYear", "class"]);
+    const printRef = useRef(null);
+
+    const handlePrint = useReactToPrint({
+        contentRef: printRef,
+        documentTitle: "Student_Data",
+    });
+
+    const toggleField = (field) => {
+        setSelectedFields((prev) =>
+            prev.includes(field) ? prev.filter((f) => f !== field) : [...prev, field]
+        );
+    };
+
+    const handleDownloadExcel = () => {
+        const selectedData = students
+            .filter((student) => selectedStudents.includes(student._id))
+            .map((student) => {
+                const row = {};
+                selectedFields.forEach((field) => {
+                    if (field === "academicYear" || field === "class") {
+                        const yearEntry = student.academicYears.find((y) => y.academicYear === selectedYear);
+                        if (field === "academicYear") row["Academic Year"] = yearEntry?.academicYear || "N/A";
+                        if (field === "class") row["Class"] = yearEntry?.class || "N/A";
+                    } else if (field === "additionalInfo") {
+                        student.additionalInfo?.forEach((info) => {
+                            row[info.key] = info.value;
+                        });
+                    } else {
+                        row[field] = student[field] || "";
+                    }
+                });
+                return row;
+            });
+
+        if (selectedData.length === 0) {
+            alert("Please select at least one student.");
+            return;
+        }
+
+        const worksheet = XLSX.utils.json_to_sheet(selectedData);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
+        XLSX.writeFile(workbook, "Student_Data.xlsx");
+    };
 
     return (
         <div className="Students">
@@ -266,10 +326,13 @@ export default function Students() {
                     <label>Select All</label>
                 </div>
 
-                <button type="button" className=" btn btn-sm border" data-bs-toggle="modal" data-bs-target="#passtoModal"><i className="fa-solid fa-forward me-2 fa-lg"></i>Pass to</button>
-                <button type="button" className="btn btn-sm border" data-bs-toggle="modal" data-bs-target="#dropStudentModal"><i className="fa-solid fa-user-xmark me-2 fa-lg"></i>Drop Student</button>
+                <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#passtoModal"><i className="fa-solid fa-forward me-2 fa-lg"></i>Pass to</button>
+                <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#dropStudentModal"><i className="fa-solid fa-user-xmark me-2 fa-lg"></i>Drop Student</button>
                 <button type="button" className="btn" onClick={() => toggleButton('Grid')}><i className="fa-solid fa-table-columns fa-lg me-2"></i>Grid</button>
                 <button type="button" className="btn" onClick={() => toggleButton('list')}><i className="fa-solid fa-list fa-lg me-2"></i>List</button>
+                <button type="button" className="btn btn-sm border" data-bs-toggle="modal" data-bs-target="#downloadDataModal"><i className="fa-solid fa-download me-2 fa-lg"></i>Download Data</button>
+
+
             </div>
 
             {/* Student Cards */}
@@ -698,6 +761,146 @@ export default function Students() {
                 </div>
             </div>
 
+            {/* Download Data */}
+            <div className="modal fade" id="downloadDataModal" tabIndex="-1" aria-hidden="true">
+                <div className="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div className="modal-content">
+                        <div className="modal-header bg-primary text-white">
+                            <h5 className="modal-title">Select Fields to Download</h5>
+                            <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+
+                        <div className="modal-body">
+                            <div className="d-flex justify-content-between align-items-center mb-3">
+                                <h6 className="m-0">Choose Fields</h6>
+                                <button
+                                    className="btn btn-sm btn-outline-primary"
+                                    onClick={() => {
+                                        const allKeys = [
+                                            "name", "nameHindi", "dob", "dobInWords", "gender", "aadharNo",
+                                            "bloodGroup", "category", "AdmissionNo", "Caste", "CasteHindi",
+                                            "FreeStud", "academicYear", "class",
+                                            ...Array.from(
+                                                new Set(
+                                                    students.flatMap((s) => s.additionalInfo || []).map((info) => `additional_${info.key}`)
+                                                )
+                                            ),
+                                        ];
+                                        const allSelected = allKeys.every((key) => selectedFields.includes(key));
+                                        if (allSelected) {
+                                            setSelectedFields([]);
+                                        } else {
+                                            setSelectedFields(allKeys);
+                                        }
+                                    }}
+                                >
+                                    {selectedFields.length ===
+                                        (14 +
+                                            Array.from(
+                                                new Set(
+                                                    students.flatMap((s) => s.additionalInfo || []).map((info) => info.key)
+                                                )
+                                            ).length)
+                                        ? "Deselect All"
+                                        : "Select All"}
+                                </button>
+                            </div>
+
+                            {/* Default Fields */}
+                            <div className="border rounded p-3 mb-3">
+                                <h6 className="text-primary">Basic Student Fields</h6>
+                                <div className="row">
+                                    {[
+                                        { key: "name", label: "Name" },
+                                        { key: "nameHindi", label: "Name (Hindi)" },
+                                        { key: "dob", label: "Date of Birth" },
+                                        { key: "dobInWords", label: "DOB in Words" },
+                                        { key: "gender", label: "Gender" },
+                                        { key: "aadharNo", label: "Aadhar No" },
+                                        { key: "bloodGroup", label: "Blood Group" },
+                                        { key: "category", label: "Category" },
+                                        { key: "AdmissionNo", label: "Admission No" },
+                                        { key: "Caste", label: "Caste" },
+                                        { key: "CasteHindi", label: "Caste (Hindi)" },
+                                        { key: "FreeStud", label: "Free Student" },
+                                        { key: "academicYear", label: "Academic Year" },
+                                        { key: "class", label: "Class" },
+                                    ].map((field, index) => (
+                                        <div className="col-md-4 col-sm-6 mb-2" key={index}>
+                                            <div className="form-check">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    id={`field-${field.key}`}
+                                                    checked={selectedFields.includes(field.key)}
+                                                    onChange={() => toggleField(field.key)}
+                                                />
+                                                <label className="form-check-label" htmlFor={`field-${field.key}`}>
+                                                    {field.label}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Additional Info Fields */}
+                            <div className="border rounded p-3">
+                                <h6 className="text-primary">Additional Info Fields</h6>
+                                <div className="row">
+                                    {Array.from(
+                                        new Set(
+                                            students
+                                                .flatMap((s) => s.additionalInfo || [])
+                                                .map((info) => info.key)
+                                        )
+                                    ).map((key, index) => (
+                                        <div className="col-md-4 col-sm-6 mb-2" key={`add-${index}`}>
+                                            <div className="form-check">
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
+                                                    id={`field-additional-${key}`}
+                                                    checked={selectedFields.includes(`additional_${key}`)}
+                                                    onChange={() => toggleField(`additional_${key}`)}
+                                                />
+                                                <label className="form-check-label" htmlFor={`field-additional-${key}`}>
+                                                    {key}
+                                                </label>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button className="btn btn-success" onClick={handleDownloadExcel} data-bs-dismiss="modal">
+                                Download Excel
+                            </button>
+                            <button className="btn btn-primary" onClick={handlePrint}>
+                                Download PDF
+                            </button>
+                            <button className="btn btn-secondary" data-bs-dismiss="modal">
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <div style={{ display: "none" }}>
+                <StudentDataPage
+                    ref={printRef}
+                    selectedStudents={selectedStudents}
+                    selectedFields={selectedFields}
+                    students={students}
+                    selectedYear={selectedYear}
+                    latestMaster={latestMaster}
+                />
+            </div>
 
         </div>
     );

@@ -22,8 +22,6 @@ export default function QuestionManager() {
     const [questions, setQuestions] = useState([]);
     const [uploading, setUploading] = useState(false);
 
-
-
     const [newQuestion, setNewQuestion] = useState({
         questionText: '',
         questionImage: '',
