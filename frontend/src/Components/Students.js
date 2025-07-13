@@ -323,7 +323,7 @@ export default function Students() {
 
     return (
         <div className="Students">
-            <div className="SearchFilter d-flex flex-wrap align-items-center gap-2">
+            <div className="SearchFilter">
 
                 {/* Year Filter */}
                 <div className="yearFilter">
@@ -356,7 +356,7 @@ export default function Students() {
                 </div>
 
                 {/* Search Type Dropdown */}
-                <div className="searchType me-2">
+                <div className="searchType">
                     <select
                         className="form-select form-select-sm"
                         value={searchType}

@@ -235,7 +235,7 @@ export default function QuestionManager() {
             </div>
 
             <div className="SearchFilter ">
-                <div className="col-md-2 ">
+                <div className="">
                     <select
                         onChange={onClassChange}
                         value={selectedClass}
@@ -248,7 +248,7 @@ export default function QuestionManager() {
                     </select>
                 </div>
 
-                <div className="col-md-3">
+                <div className="">
                     <select
                         onChange={onSubjectChange}
                         value={selectedSubject}
