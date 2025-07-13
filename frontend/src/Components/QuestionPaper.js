@@ -228,6 +228,8 @@ export default function QuestionManager() {
             return sortOrder === 'asc' ? marksA - marksB : marksB - marksA;
         });
 
+    const [previewImageUrl, setPreviewImageUrl] = useState('');
+
     return (
         <div className="QuestionPaper py-2">
             <div className="d-flex align-items-center">
@@ -236,11 +238,7 @@ export default function QuestionManager() {
 
             <div className="SearchFilter ">
                 <div className="">
-                    <select
-                        onChange={onClassChange}
-                        value={selectedClass}
-                        className="form-select shadow-sm"
-                    >
+                    <select onChange={onClassChange} value={selectedClass} className="form-select shadow-sm" >
                         <option value="">-- Select Class --</option>
                         {classes.map(c => (
                             <option key={c._id} value={c._id}>{c.class}</option>
@@ -249,12 +247,7 @@ export default function QuestionManager() {
                 </div>
 
                 <div className="">
-                    <select
-                        onChange={onSubjectChange}
-                        value={selectedSubject}
-                        className="form-select shadow-sm"
-                        disabled={!selectedClass}
-                    >
+                    <select onChange={onSubjectChange} value={selectedSubject} className="form-select shadow-sm" disabled={!selectedClass} >
                         <option value="">-- Select Subject --</option>
                         {filteredSubjects.map(s => (
                             <option key={s._id} value={s._id}>{s.name}</option>
@@ -263,10 +256,7 @@ export default function QuestionManager() {
 
                 </div>
                 <div className=" selectAll">
-                    <input
-                        type="checkbox"
-                        id="selectAllCheckbox"
-                        checked={selectedQuestions.length === questions.length}
+                    <input type="checkbox" id="selectAllCheckbox" checked={selectedQuestions.length === questions.length}
                         onChange={(e) => {
                             if (e.target.checked) {
                                 setSelectedQuestions(questions.map(q => q._id));
@@ -280,35 +270,15 @@ export default function QuestionManager() {
                     </label>
                 </div>
 
-                <button
-                    className="btn"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#addQuestionCollapse"
-                    aria-expanded="false"
-                    aria-controls="addQuestionCollapse"
-                    disabled={!canEdit}
-                >
-                    <i className="fas fa-plus-circle me-2"></i>Add Question
+                <button className="btn" data-bs-toggle="modal" data-bs-target="#addQuestionModal" >
+                    <i className="fas fa-plus me-2"></i>Add Question
                 </button>
 
-                <button
-                    className="btn"
-                    type="button"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#addInstructionCollapse"
-                    aria-expanded="false"
-                    aria-controls="addInstructionCollapse"
-                    disabled={!canEdit}
-                >
+                <button className="btn" type="button" data-bs-toggle="collapse" data-bs-target="#addInstructionCollapse" aria-expanded="false" aria-controls="addInstructionCollapse" disabled={!canEdit} >
                     <i className="fas fa-book me-2"></i>Add Instruction Template
                 </button>
 
-                <button
-                    className="btn"
-                    data-bs-toggle="modal"
-                    data-bs-target="#selectInstructionsModal"
-                >
+                <button className="btn" data-bs-toggle="modal" data-bs-target="#selectInstructionsModal" >
                     <i className="fas fa-sliders-h me-2"></i>Select Instructions & Download
                 </button>
 
@@ -320,116 +290,255 @@ export default function QuestionManager() {
 
             </div>
 
-            {selectedClass && selectedSubject && (
-                <div className="collapse" id="addQuestionCollapse">
-                    <div className="card p-3 mb-4 shadow">
-                        {/* rest of your question form stays unchanged */}
-                        <h5 className="mb-3"><i className="fas fa-edit me-2"></i>New Question</h5>
+            {/* Preivew  */}
+            {previewImageUrl && (
+                <div
+                    className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 d-flex justify-content-center align-items-center"
+                    style={{ zIndex: 2000 }}
+                    onClick={() => setPreviewImageUrl('')}
+                >
+                    <div
+                        className="bg-white rounded shadow p-3 position-relative"
+                        onClick={e => e.stopPropagation()}
+                    >
+                        <button
+                            className="btn-close position-absolute top-0 end-0 m-2"
+                            onClick={() => setPreviewImageUrl('')}
+                        />
+                        <img
+                            src={previewImageUrl}
+                            alt="Preview"
+                            className="img-fluid rounded"
+                            style={{ maxHeight: '80vh', maxWidth: '90vw', objectFit: 'contain' }}
+                        />
+                    </div>
+                </div>
+            )}
 
-                        <div className="row mb-3">
-                            <div className="col-md-9">
-                                <textarea
-                                    className="form-control shadow-sm"
-                                    placeholder="Enter question text"
-                                    value={newQuestion.questionText}
-                                    onChange={e => setNewQuestion(q => ({ ...q, questionText: e.target.value }))}
-                                />
-                            </div>
-                            <div className="mb-3 col-md-2">
-                                <input
-                                    className="form-control shadow-sm"
-                                    placeholder="Marks"
-                                    value={newQuestion.questionMarks}
-                                    onChange={e => setNewQuestion(q => ({ ...q, questionMarks: e.target.value }))}
-                                />
-                            </div>
-                            <div className="col-md-3">
-                                <input type="file" accept="image/*" className="form-control"
-                                    onChange={async e => {
-                                        const file = e.target.files[0];
-                                        if (file) {
-                                            const url = await uploadToImgBB(file);
-                                            setNewQuestion(q => ({ ...q, questionImage: url }));
-                                        }
-                                    }}
-                                />
-                                {newQuestion.questionImage && (
-                                    <img src={newQuestion.questionImage} alt="Preview" className="img-thumbnail mt-2" />
-                                )}
-                            </div>
+            <div className="modal fade" id="addQuestionModal" tabIndex="-1" aria-labelledby="addQuestionModalLabel" aria-hidden="true" >
+                <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                    <div className="modal-content rounded-4 shadow">
+
+                        <div className="modal-header">
+                            <h5 className="modal-title" id="addQuestionModalLabel">
+                                <i className="fas fa-edit me-2 text-primary"></i>New Question
+                            </h5>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close" />
                         </div>
 
-                        <select className="form-select shadow-sm mb-3"
-                            value={newQuestion.questionType}
-                            onChange={e => setNewQuestion(q => ({ ...q, questionType: e.target.value, options: [], pairs: [] }))}
-                        >
-                            <option value="">-- Select Question Type --</option>
-                            <option value="MCQ">MCQ</option>
-                            <option value="Descriptive">Descriptive</option>
-                            <option value="Match">Match the Following</option>
-                        </select>
-
-                        {/* MCQ Options */}
-                        {newQuestion.questionType === 'MCQ' && (
-                            <>
-                                <button className="btn btn-outline-primary btn-sm mb-3" onClick={addOption}>
-                                    <i className="fas fa-plus me-1"></i>Add Option
-                                </button>
-                                <div className="row">
-                                    {newQuestion.options.map((opt, i) => (
-                                        <div className="col-md-4 mb-3" key={i}>
-                                            <input className="form-control mb-2" placeholder="Option text"
-                                                value={opt.text} onChange={e => updateOption(i, 'text', e.target.value)} />
-                                            <input type="file" className="form-control"
-                                                onChange={async e => {
-                                                    const file = e.target.files[0];
-                                                    if (file) {
-                                                        const url = await uploadToImgBB(file);
-                                                        updateOption(i, 'imageUrl', url);
-                                                    }
-                                                }} />
-                                            {opt.imageUrl && <img alt="..." src={opt.imageUrl} className="img-thumbnail mt-2" />}
-                                        </div>
-                                    ))}
+                        <div className="modal-body">
+                            {/* Question Text + Marks + Image */}
+                            <div className="row align-items-center mb-3">
+                                {/* Question Text */}
+                                <div className="col-md-7">
+                                    <input
+                                        type="text"
+                                        className="form-control shadow-sm"
+                                        placeholder="Enter question text"
+                                        value={newQuestion.questionText}
+                                        onChange={e => setNewQuestion(q => ({ ...q, questionText: e.target.value }))}
+                                    />
                                 </div>
-                            </>
-                        )}
 
-                        {/* Match the Following */}
-                        {newQuestion.questionType === 'Match' && (
-                            <>
-                                <button className="btn btn-outline-primary btn-sm mb-3" onClick={addPair}>
-                                    <i className="fas fa-plus me-1"></i>Add Pair
-                                </button>
-                                {newQuestion.pairs.map((p, i) => (
-                                    <div className="row mb-3" key={i}>
-                                        {['left', 'right'].map(side => (
-                                            <div className="col-md-6" key={side}>
-                                                <input className="form-control mb-2" placeholder={`${side} text`}
-                                                    value={p[`${side}Text`]} onChange={e => updatePair(i, side, 'Text', e.target.value)} />
-                                                <input type="file" className="form-control"
+                                {/* Marks */}
+                                <div className="col-md-2">
+                                    <input
+                                        className="form-control shadow-sm"
+                                        placeholder="Marks"
+                                        value={newQuestion.questionMarks}
+                                        onChange={e => setNewQuestion(q => ({ ...q, questionMarks: e.target.value }))}
+                                    />
+                                </div>
+
+                                {/* Upload Image */}
+                                <div className="col-md-3">
+                                    <div className="input-group">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="form-control"
+                                            title="Upload Question Image"
+                                            onChange={async e => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const url = await uploadToImgBB(file);
+                                                    setNewQuestion(q => ({ ...q, questionImage: url }));
+                                                }
+                                            }}
+                                        />
+                                    </div>
+
+                                    {/* Image Actions */}
+                                    {newQuestion.questionImage && (
+                                        <div className="mt-2 d-flex gap-2 flex-wrap">
+                                            <button
+                                                className="btn btn-outline-secondary btn-sm"
+                                                onClick={() => setPreviewImageUrl(newQuestion.questionImage)}
+                                            >
+                                                <i className="fas fa-eye me-1"></i>View
+                                            </button>
+                                            <button
+                                                className="btn btn-outline-danger btn-sm"
+                                                onClick={() => setNewQuestion(q => ({ ...q, questionImage: '' }))}
+                                            >
+                                                <i className="fas fa-trash-alt me-1"></i>Remove
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+
+                            {/* Question Type Dropdown */}
+                            <div className="mb-3">
+                                <select
+                                    className="form-select w-auto shadow-sm"
+                                    value={newQuestion.questionType}
+                                    onChange={e =>
+                                        setNewQuestion(q => ({
+                                            ...q,
+                                            questionType: e.target.value,
+                                            options: [],
+                                            pairs: []
+                                        }))
+                                    }
+                                >
+                                    <option value="">-- Select Question Type --</option>
+                                    <option value="MCQ">MCQ</option>
+                                    <option value="Descriptive">Descriptive</option>
+                                    <option value="Match">Match the Following</option>
+                                </select>
+                            </div>
+
+                            {/* MCQ Options */}
+                            {newQuestion.questionType === 'MCQ' && (
+                                <>
+                                    <button
+                                        className="btn btn-outline-primary btn-sm mb-3"
+                                        style={{ width: 'fit-content' }}
+                                        onClick={addOption}
+                                    >
+                                        <i className="fas fa-plus me-1"></i>Add Option
+                                    </button>
+
+                                    <div className="row">
+                                        {newQuestion.options.map((opt, i) => (
+                                            <div className="col-md-3 mb-3" key={i}>
+                                                <input
+                                                    className="form-control mb-1"
+                                                    placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                                                    value={opt.text}
+                                                    onChange={e => updateOption(i, 'text', e.target.value)}
+                                                />
+                                                <input
+                                                    type="file"
+                                                    className="form-control form-control-sm"
                                                     onChange={async e => {
                                                         const file = e.target.files[0];
                                                         if (file) {
                                                             const url = await uploadToImgBB(file);
-                                                            updatePair(i, side, 'Image', url);
+                                                            updateOption(i, 'imageUrl', url);
                                                         }
-                                                    }} />
-                                                {p[`${side}Image`] && <img alt="..." src={p[`${side}Image`]} className="img-thumbnail mt-2" />}
+                                                    }}
+                                                />
+                                                {opt.imageUrl && (
+                                                    <div className="mt-2 d-flex gap-2">
+                                                        <button
+                                                            className="btn btn-outline-secondary btn-sm"
+                                                            onClick={() => setPreviewImageUrl(opt.imageUrl)}
+                                                        >
+                                                            <i className="fas fa-eye me-1"></i>View
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-outline-danger btn-sm"
+                                                            onClick={() => updateOption(i, 'imageUrl', '')}
+                                                        >
+                                                            <i className="fas fa-trash-alt me-1"></i>Remove
+                                                        </button>
+                                                    </div>
+                                                )}
+
                                             </div>
                                         ))}
                                     </div>
-                                ))}
-                            </>
-                        )}
+                                </>
+                            )}
 
-                        <button className="btn btn-success" onClick={handleAddQuestion}>
-                            <i className="fas fa-save me-2"></i>Save Question
-                        </button>
+                            {/* Match the Following */}
+                            {newQuestion.questionType === 'Match' && (
+                                <>
+                                    <button
+                                        className="btn btn-outline-primary btn-sm mb-3"
+                                        style={{ width: 'fit-content' }}
+                                        onClick={addPair}
+                                    >
+                                        <i className="fas fa-plus me-1"></i>Add Pair
+                                    </button>
+
+                                    {newQuestion.pairs.map((p, i) => (
+                                        <div className="row mb-3" key={i}>
+                                            {['left', 'right'].map(side => (
+                                                <div className="col-md-6 mb-2" key={side}>
+                                                    <input
+                                                        className="form-control mb-1"
+                                                        placeholder={`${side} text`}
+                                                        value={p[`${side}Text`]}
+                                                        onChange={e => updatePair(i, side, 'Text', e.target.value)}
+                                                    />
+                                                    <input
+                                                        type="file"
+                                                        className="form-control form-control-sm"
+                                                        onChange={async e => {
+                                                            const file = e.target.files[0];
+                                                            if (file) {
+                                                                const url = await uploadToImgBB(file);
+                                                                updatePair(i, side, 'Image', url);
+                                                            }
+                                                        }}
+                                                    />
+                                                    {p[`${side}Image`] && (
+                                                        <div className="mt-2 d-flex gap-2">
+                                                            <button
+                                                                className="btn btn-outline-secondary btn-sm"
+                                                                onClick={() => setPreviewImageUrl(p[`${side}Image`])}
+                                                            >
+                                                                <i className="fas fa-eye me-1"></i>View
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-outline-danger btn-sm"
+                                                                onClick={() => updatePair(i, side, 'Image', '')}
+                                                            >
+                                                                <i className="fas fa-trash-alt me-1"></i>Remove
+                                                            </button>
+                                                        </div>
+                                                    )}
+
+                                                </div>
+                                            ))}
+                                        </div>
+                                    ))}
+                                </>
+                            )}
+                        </div>
+
+                        <div className="modal-footer">
+                            <button
+                                className="btn btn-secondary"
+                                data-bs-dismiss="modal"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                className="btn btn-success"
+                                onClick={handleAddQuestion}
+                            >
+                                <i className="fas fa-save me-2"></i>Save
+                            </button>
+                        </div>
+
                     </div>
                 </div>
-
-            )}
+            </div>
 
             <div className="collapse" id="addInstructionCollapse">
                 <div className="card p-3 mb-4 shadow-sm">
@@ -629,14 +738,14 @@ export default function QuestionManager() {
 
             {questions.length > 0 && (
                 <>
-                    <h5 className="mb-3 border-bottom pb-2 w-100">
+                    <h5 className="mb-4 border-bottom pb-2 w-100 text-dark">
                         <i className="fas fa-list me-2 text-primary"></i>
                         All Questions
                         <span className="badge bg-secondary ms-2">{filteredAndSortedQuestions.length}</span>
                     </h5>
 
-                    <div className="row">
-                        <div className="col-md-4">
+                    <div className="row mb-4">
+                        <div className="col-md-4 mb-2">
                             <input
                                 type="text"
                                 className="form-control"
@@ -645,7 +754,7 @@ export default function QuestionManager() {
                                 onChange={e => setSearchText(e.target.value)}
                             />
                         </div>
-                        <div className="col-md-3">
+                        <div className="col-md-3 mb-2">
                             <select className="form-select" value={filterType} onChange={e => setFilterType(e.target.value)}>
                                 <option value="">All Types</option>
                                 <option value="MCQ">MCQ</option>
@@ -653,7 +762,7 @@ export default function QuestionManager() {
                                 <option value="Match">Match</option>
                             </select>
                         </div>
-                        <div className="col-md-2">
+                        <div className="col-md-2 mb-2">
                             <input
                                 type="number"
                                 className="form-control"
@@ -662,7 +771,7 @@ export default function QuestionManager() {
                                 onChange={e => setFilterMarks(e.target.value)}
                             />
                         </div>
-                        <div className="col-md-3">
+                        <div className="col-md-3 mb-2">
                             <select className="form-select" value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
                                 <option value="desc">Sort: High to Low</option>
                                 <option value="asc">Sort: Low to High</option>
@@ -670,15 +779,14 @@ export default function QuestionManager() {
                         </div>
                     </div>
 
-                    <div className='questions-list'>
+                    <div className="questions-list">
                         {filteredAndSortedQuestions.map((q, i) => (
-                            <div key={i} className="card shadow-sm border-0 position-relative">
-
-                                {/* Select Checkbox */}
-                                <div className="form-check position-absolute top-0 start-0 m-2">
+                            <div key={i} className="border rounded p-4 mb-4 bg-white position-relative shadow-sm">
+                                {/* Checkbox */}
+                                <div className="position-absolute top-0 start-0 m-2">
                                     <input
-                                        className="form-check-input"
                                         type="checkbox"
+                                        className="form-check-input"
                                         checked={selectedQuestions.includes(q._id)}
                                         onChange={(e) => {
                                             if (e.target.checked) {
@@ -689,94 +797,99 @@ export default function QuestionManager() {
                                         }}
                                     />
                                 </div>
+
                                 {/* Delete Button */}
-                                <button
-                                    className="btn btn-sm btn-danger position-absolute top-0 end-0 m-2"
-                                    onClick={() => handleDelete(i)}
-                                    disabled={!canEdit}
-                                >
-                                    <i className="fas fa-trash-alt"></i>
-                                </button>
-
-                                <div className="card-body">
-
-                                    {/* Question Text & Image */}
-                                    <div className="row mb-2 ms-2">
-                                        <div className="col-md-9">
-                                            <p className="mb-1"><strong>Question:</strong> {q.questionText}</p>
-                                            <p className="mb-1"><strong>Type:</strong> <span className="badge p-2 bg-info">{q.questionType}</span></p>
-                                        </div>
-                                        {q.questionImage && (
-                                            <div className="col-md-3 text-end">
-                                                <img
-                                                    src={q.questionImage}
-                                                    alt="Q"
-                                                    className="img-thumbnail rounded shadow-sm"
-                                                    style={{ maxHeight: 100, objectFit: 'cover' }}
-                                                />
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {/* MCQ Options */}
-                                    {q.questionType === 'MCQ' && (
-                                        <div className="row g-3">
-                                            {q.options.map((opt, idx) => (
-                                                <div key={idx} className="col-12">
-                                                    <div className="card border rounded shadow-sm p-2 d-flex flex-row align-items-center">
-                                                        <i className="far fa-dot-circle text-primary me-3 fs-5"></i>
-                                                        <div className="flex-grow-1 d-flex align-items-center justify-content-between">
-                                                            <p className="mb-1">{opt.text}</p>
-                                                            {opt.imageUrl && (
-                                                                <img
-                                                                    src={opt.imageUrl}
-                                                                    alt="Option"
-                                                                    className="img-thumbnail mt-2"
-                                                                    style={{ height: 80, maxWidth: '100%', objectFit: 'cover' }}
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* Match the Following */}
-                                    {q.questionType === 'Match' && (
-                                        <div className="row g-3">
-                                            {q.pairs.map((pair, idx) => (
-                                                <div key={idx} className="col-12">
-                                                    <div className="d-flex justify-content-between align-items-start border rounded shadow-sm p-3 bg-light">
-                                                        <div>
-                                                            <strong>{pair.leftText}</strong>
-                                                            {pair.leftImage && (
-                                                                <img
-                                                                    src={pair.leftImage}
-                                                                    alt="Left"
-                                                                    className="img-thumbnail ms-2"
-                                                                    style={{ height: 60, objectFit: 'cover' }}
-                                                                />
-                                                            )}
-                                                        </div>
-                                                        <div>
-                                                            <strong>{pair.rightText}</strong>
-                                                            {pair.rightImage && (
-                                                                <img
-                                                                    src={pair.rightImage}
-                                                                    alt="Right"
-                                                                    className="img-thumbnail ms-2"
-                                                                    style={{ height: 60, objectFit: 'cover' }}
-                                                                />
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
+                                <div className="position-absolute top-0 end-0 m-2">
+                                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(i)} disabled={!canEdit}>
+                                        <i className="fas fa-trash-alt"></i>
+                                    </button>
                                 </div>
+
+                                {/* Question Content */}
+                                <div className="mb-3">
+                                    <h6 className="mb-2"><strong>Q{i + 1}:</strong> {q.questionText}</h6>
+                                    <p className="mb-2"><strong>Type:</strong> <span className="badge bg-info">{q.questionType}</span></p>
+                                    {q.questionImage && (
+                                        <div className="text-end mb-2">
+                                            <img
+                                                src={q.questionImage}
+                                                alt="Question"
+                                                className="img-thumbnail"
+                                                style={{ width: 80, height: 80, objectFit: 'cover' }}
+                                            />
+                                        </div>
+                                    )}
+                                </div>
+
+                                {/* MCQ Options */}
+                                {q.questionType === 'MCQ' && (
+                                    <div className="row">
+                                        {q.options.map((opt, idx) => (
+                                            <div key={idx} className="col-md-6 mb-2">
+                                                <div className="border rounded p-2 d-flex align-items-center">
+                                                    <span className="me-2 fw-bold">({String.fromCharCode(65 + idx)})</span>
+                                                    <div className="d-flex align-items-center">
+                                                        <span>{opt.text}</span>
+                                                        {opt.imageUrl && (
+                                                            <img
+                                                                src={opt.imageUrl}
+                                                                alt={`Option ${idx + 1}`}
+                                                                className="img-thumbnail ms-2"
+                                                                style={{ width: 50, height: 50, objectFit: 'cover' }}
+                                                            />
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* Descriptive */}
+                                {q.questionType === 'Descriptive' && (
+                                    <div className="bg-light p-3 rounded border mt-2">
+                                        <em>This is a descriptive question. Students are expected to write a detailed answer.</em>
+                                    </div>
+                                )}
+
+                                {/* Match the Following */}
+                                {q.questionType === 'Match' && (
+                                    <div className="row mt-2">
+                                        <div className="col-md-6">
+                                            <div className="fw-bold mb-1">Column A</div>
+                                            {q.pairs.map((pair, idx) => (
+                                                <div key={idx} className="d-flex align-items-center mb-1">
+                                                    <span>{pair.leftText}</span>
+                                                    {pair.leftImage && (
+                                                        <img
+                                                            src={pair.leftImage}
+                                                            alt="Left"
+                                                            className="img-thumbnail ms-2"
+                                                            style={{ width: 40, height: 40, objectFit: 'cover' }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="col-md-6">
+                                            <div className="fw-bold mb-1">Column B</div>
+                                            {q.pairs.map((pair, idx) => (
+                                                <div key={idx} className="d-flex align-items-center mb-1">
+                                                    <span>{pair.rightText}</span>
+                                                    {pair.rightImage && (
+                                                        <img
+                                                            src={pair.rightImage}
+                                                            alt="Right"
+                                                            className="img-thumbnail ms-2"
+                                                            style={{ width: 40, height: 40, objectFit: 'cover' }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
                             </div>
                         ))}
                     </div>
