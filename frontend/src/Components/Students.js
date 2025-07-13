@@ -9,12 +9,22 @@ import StudentDataPage from "./StudentDataPage";
 export default function Students() {
 
     const navigate = useNavigate();
+    const [canEdit, setCanEdit] = useState(false);
+
     useEffect(() => {
         const token = localStorage.getItem('token');
-        if (!token) {
+        const userType = localStorage.getItem('userType');
+
+        if (!token || !userType) {
             navigate('/login');
+            return;
+        }
+
+        if (userType === 'admin') {
+            setCanEdit(true);
         }
     }, [navigate]);
+
 
     // useEffect(() => {
     //     const checkAuth = async () => {
@@ -507,8 +517,10 @@ export default function Students() {
                                     <div className="w-100 d-flex justify-content-end">
                                         <button className="btn btn-sm btn-warning mb-2" onClick={() => {
                                             setIsEditMode(!isEditMode);
-                                            setEditStudentData({ ...selectedStudent }); // clone original
-                                        }}>
+                                            setEditStudentData({ ...selectedStudent });
+                                        }}
+                                            disabled={!canEdit}
+                                        >
                                             {isEditMode ? "Cancel" : "Edit"}
                                         </button>
                                     </div>
@@ -810,7 +822,7 @@ export default function Students() {
 
                         <div className="modal-footer">
                             <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" className="btn btn-primary" onClick={handlePassStudents}>
+                            <button type="button" className="btn btn-primary" onClick={handlePassStudents} disabled={!canEdit}>
                                 Pass Students
                             </button>
                         </div>
@@ -861,7 +873,7 @@ export default function Students() {
 
                         <div className="modal-footer">
                             <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" className="btn btn-danger" onClick={handleDropStudents}>
+                            <button type="button" className="btn btn-danger" onClick={handleDropStudents} disabled={!canEdit}>
                                 Drop Selected Students
                             </button>
                         </div>
@@ -983,10 +995,10 @@ export default function Students() {
                         </div>
 
                         <div className="modal-footer">
-                            <button className="btn btn-success" onClick={handleDownloadExcel} data-bs-dismiss="modal">
+                            <button className="btn btn-success" onClick={handleDownloadExcel} data-bs-dismiss="modal" disabled={!canEdit}>
                                 Download Excel
                             </button>
-                            <button className="btn btn-primary" onClick={handlePrint}>
+                            <button className="btn btn-primary" onClick={handlePrint} disabled={!canEdit}>
                                 Download PDF
                             </button>
                             <button className="btn btn-secondary" data-bs-dismiss="modal">

@@ -227,6 +227,7 @@ export default function Navigation() {
                                 >
                                     <option value="viewer">Viewer</option>
                                     <option value="qp-editor">QuestionPaper Editor</option>
+                                    <option value="payment">Payments Handler</option>
                                 </select>
                             </div>
 
