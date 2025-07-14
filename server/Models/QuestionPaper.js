@@ -14,21 +14,28 @@ const pairItemSchema = new mongoose.Schema({
   rightImage: { type: String },
 });
 
-// Question schema handling all types
-const questionSchema = new mongoose.Schema({
+// Reusable question schema for main & sub-questions
+const baseQuestionSchema = new mongoose.Schema({
   questionText: { type: String, required: true },
   questionImage: { type: String },
-  questionType: { type: String, required: true },
+  questionType: { type: String, required: true }, // e.g., MCQ, Match, Fill, Sub
   questionMarks: { type: String },
   options: [optionSchema],
   pairs: [pairItemSchema],
+  subQuestions: [this], // 🔁 recursive nesting (will be overridden below)
+}, { _id: false }); // prevent auto _id for nested schemas
+
+// Override subQuestions manually to allow recursion
+baseQuestionSchema.add({
+  subQuestions: [baseQuestionSchema]
 });
 
-
+// Main schema
 const questionPaperSchema = new mongoose.Schema({
   class: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: true },
   subject: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject', required: true },
-  questions: [questionSchema],
+  chapter: { type: String },
+  questions: [baseQuestionSchema],
 }, { timestamps: true });
 
 module.exports = mongoose.model('QuestionPaper', questionPaperSchema);

@@ -19,6 +19,118 @@ const PrintQuestionPaper = forwardRef(
   ) => {
     const filtered = questions.filter(q => selectedQuestions.includes(q._id));
 
+    const getSubLabel = (index) => {
+      const roman = ['(i)', '(ii)', '(iii)', '(iv)', '(v)', '(vi)', '(vii)', '(viii)', '(ix)', '(x)'];
+      return roman[index] || `(${index + 1})`;
+    };
+
+    const renderQuestionWithSub = (q, idx, level = 0) => {
+      const isMain = level === 0;
+      const qNumber = isMain ? `Q${idx + 1}` : getSubLabel(idx);
+
+      return (
+        <div key={q._id || `${idx}-${level}`} className="mb-4" style={{ marginLeft: level * 32 }}>
+          <div
+            className="d-flex justify-content-between"
+            style={{ fontWeight: 'bold', marginBottom: '6px' }}
+          >
+            <span>{qNumber}. {q.questionText}</span>
+            {q.questionMarks && <span>({q.questionMarks} Marks)</span>}
+          </div>
+
+          {q.questionImage && (
+            <div style={{ marginBottom: '12px' }}>
+              <img
+                src={q.questionImage}
+                alt="Question"
+                style={{
+                  maxHeight: '100px',
+                  maxWidth: '100%',
+                  objectFit: 'contain',
+                  marginTop: '4px',
+                }}
+              />
+            </div>
+          )}
+
+          {/* MCQ */}
+          {q.questionType === 'MCQ' && (
+            <div className="d-flex flex-wrap mt-2" style={{ gap: '12px' }}>
+              {q.options.map((opt, i) => (
+                <div key={i} style={{ width: 'calc(25% - 12px)', display: 'flex' }}>
+                  <div style={{ fontWeight: 'bold', marginRight: '6px' }}>
+                    ({String.fromCharCode(65 + i)})
+                  </div>
+                  {opt.imageUrl && (
+                    <img
+                      src={opt.imageUrl}
+                      alt={`Option-${i}`}
+                      style={{
+                        height: '50px',
+                        width: '50px',
+                        objectFit: 'contain',
+                        marginRight: '8px',
+                      }}
+                    />
+                  )}
+                  <div>{opt.text}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Match */}
+          {q.questionType === 'Match' && (
+            <div className="mt-3 d-flex flex-column gap-2">
+              {q.pairs.map((pair, i) => (
+                <div key={i} className="d-flex justify-content-between align-items-center">
+                  <div className="d-flex align-items-center" style={{ width: '45%' }}>
+                    {pair.leftImage && (
+                      <img
+                        src={pair.leftImage}
+                        alt="Left"
+                        style={{
+                          height: '36px',
+                          width: '36px',
+                          objectFit: 'contain',
+                          marginRight: '8px',
+                        }}
+                      />
+                    )}
+                    <span>{pair.leftText}</span>
+                  </div>
+                  <div className="d-flex align-items-center justify-content-end" style={{ width: '45%' }}>
+                    <span>{pair.rightText}</span>
+                    {pair.rightImage && (
+                      <img
+                        src={pair.rightImage}
+                        alt="Right"
+                        style={{
+                          height: '36px',
+                          width: '36px',
+                          objectFit: 'contain',
+                          marginLeft: '8px',
+                        }}
+                      />
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 🔁 Sub-questions */}
+          {q.subQuestions?.length > 0 && (
+            <div className="mt-3">
+              {q.subQuestions.map((subQ, subIdx) =>
+                renderQuestionWithSub(subQ, subIdx, level + 1)
+              )}
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
       <div
         ref={ref}
@@ -40,8 +152,8 @@ const PrintQuestionPaper = forwardRef(
 
           {/* Name & Roll No */}
           <div className="d-flex justify-content-between mb-2">
-            <span><strong>Name:</strong> ______________________</span>
-            <span><strong>Roll No:</strong> ______________________</span>
+            <span><strong>Name:</strong></span>
+            <span style={{ marginRight: '150px' }}><strong>Roll No:</strong></span>
           </div>
         </div>
         <hr />
@@ -56,10 +168,6 @@ const PrintQuestionPaper = forwardRef(
         <div className="d-flex justify-content-between mb-1">
           <span><strong>Class:</strong> {selectedClass}</span>
           <span><strong>Subject:</strong> {selectedSubject}</span>
-        </div>
-
-        {/* Max Marks */}
-        <div className="d-flex justify-content-end mb-2">
           <span><strong>Max Marks:</strong> {maxMarks}</span>
         </div>
 
@@ -80,103 +188,8 @@ const PrintQuestionPaper = forwardRef(
         )}
 
         {/* Questions */}
-        {filtered.map((q, idx) => (
-          <div key={q._id} className="mb-4">
-            <div className="d-flex justify-content-between" style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-              <span>Q{idx + 1}. {q.questionText}</span>
-              {q.questionMarks && <span>({q.questionMarks} Marks)</span>}
-            </div>
+        {filtered.map((q, idx) => renderQuestionWithSub(q, idx))}
 
-            {q.questionImage && (
-              <div style={{ marginBottom: '12px' }}>
-                <img
-                  src={q.questionImage}
-                  alt="Question"
-                  style={{
-                    maxHeight: '100px',
-                    maxWidth: '100%',
-                    objectFit: 'contain',
-                    marginTop: '4px',
-                  }}
-                />
-              </div>
-            )}
-
-            {/* MCQ Options */}
-            {q.questionType === 'MCQ' && (
-              <div className="d-flex flex-wrap mt-2" style={{ gap: '12px' }}>
-                {q.options.map((opt, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: 'calc(25% - 12px)',
-                      display: 'flex',
-                      alignItems: 'flex-start',
-                    }}
-                  >
-                    <div style={{ fontWeight: 'bold', marginRight: '6px' }}>
-                      ({String.fromCharCode(65 + i)})
-                    </div>
-                    {opt.imageUrl && (
-                      <img
-                        src={opt.imageUrl}
-                        alt={`Option-${i}`}
-                        style={{
-                          height: '50px',
-                          width: '50px',
-                          objectFit: 'contain',
-                          marginRight: '8px',
-                        }}
-                      />
-                    )}
-                    <div>{opt.text}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Match the Following */}
-            {q.questionType === 'Match' && (
-              <div className="mt-3 d-flex flex-column gap-2">
-                {q.pairs.map((pair, i) => (
-                  <div key={i} className="d-flex justify-content-between align-items-center">
-                    <div className="d-flex align-items-center" style={{ width: '45%' }}>
-                      {pair.leftImage && (
-                        <img
-                          src={pair.leftImage}
-                          alt="Left"
-                          style={{
-                            height: '36px',
-                            width: '36px',
-                            objectFit: 'contain',
-                            marginRight: '8px',
-                          }}
-                        />
-                      )}
-                      <span>{pair.leftText}</span>
-                    </div>
-
-                    <div className="d-flex align-items-center justify-content-end" style={{ width: '45%' }}>
-                      <span>{pair.rightText}</span>
-                      {pair.rightImage && (
-                        <img
-                          src={pair.rightImage}
-                          alt="Right"
-                          style={{
-                            height: '36px',
-                            width: '36px',
-                            objectFit: 'contain',
-                            marginLeft: '8px',
-                          }}
-                        />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
       </div>
     );
   }

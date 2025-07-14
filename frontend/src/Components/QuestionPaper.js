@@ -25,13 +25,25 @@ export default function QuestionManager() {
     const [newQuestion, setNewQuestion] = useState({
         questionText: '',
         questionImage: '',
-        questionType: '',
         questionMarks: '',
-        options: [],
-        pairs: [],
+        questionType: 'Heading',
+        hasSubQuestions: true,
+        subQuestions: [
+            {
+                questionText: '',
+                questionImage: '',
+                questionMarks: '',
+                questionType: 'MCQ',
+                options: [],
+                pairs: [],
+            }
+        ]
     });
 
     const [userType, setUserType] = useState('');
+    const [chapterList, setChapterList] = useState([]);
+    const [selectedChapter, setSelectedChapter] = useState("");
+    const [allChapters, setAllChapters] = useState([]);
 
     useEffect(() => {
         const token = localStorage.getItem('token');
@@ -46,14 +58,18 @@ export default function QuestionManager() {
 
         const load = async () => {
             try {
-                const [cRes, sRes, csRes] = await Promise.all([
+                const [cRes, sRes, csRes, chRes] = await Promise.all([
                     axios.get('https://sss-server-eosin.vercel.app/getClasses'),
                     axios.get('https://sss-server-eosin.vercel.app/getSubjects'),
                     axios.get('https://sss-server-eosin.vercel.app/class-subjects'),
+                    axios.get('https://sss-server-eosin.vercel.app/chapters'), // 🔹 Add this route in your backend if not present
                 ]);
+
                 setClasses(cRes.data.classes);
                 setSubjects(sRes.data.subjects);
                 setClassSubjects(csRes.data.data);
+                setAllChapters(chRes.data.data || []); // 🔹 Store all chapters
+
             } catch (err) {
                 console.error('Error loading data:', err.message);
             }
@@ -85,19 +101,47 @@ export default function QuestionManager() {
         const cls = e.target.value;
         setSelectedClass(cls);
         setSelectedSubject('');
+        setSelectedChapter(''); // ✅ Reset chapter
         const c = classes.find((x) => x._id === cls);
         const link = classSubjects.find((x) => x.className === c?.class);
         const linkedSubs = subjects.filter((s) => link?.subjectNames.includes(s.name));
         setFilteredSubjects(linkedSubs);
-        setQuestions([]);
+        setQuestions([]); // ✅ Clear existing questions
     };
-
-    const onSubjectChange = async (e) => {
+    const onSubjectChange = (e) => {
         const subj = e.target.value;
         setSelectedSubject(subj);
-        const r = await axios.get(`https://sss-server-eosin.vercel.app/questions?class=${selectedClass}&subject=${subj}`);
-        setQuestions(r.data.questions);
+        setSelectedChapter(''); // ✅ Reset chapter
+        setQuestions([]);
     };
+    const onChapterChange = async (e) => {
+        const chap = e.target.value;
+        setSelectedChapter(chap);
+
+        if (selectedClass && selectedSubject && chap) {
+            const r = await axios.get(
+                `https://sss-server-eosin.vercel.app/questions?class=${selectedClass}&subject=${selectedSubject}&chapter=${chap}`
+            );
+            setQuestions(r.data.questions);
+        } else {
+            setQuestions([]);
+        }
+    };
+
+    useEffect(() => {
+        if (selectedClass && selectedSubject && allChapters.length > 0) {
+            const selectedClassName = classes.find(c => c._id === selectedClass)?.class;
+            const selectedSubjectName = subjects.find(s => s._id === selectedSubject)?.name;
+
+            const match = allChapters.find(
+                (item) => item.className === selectedClassName && item.subjectName === selectedSubjectName
+            );
+
+            setChapterList(match ? match.chapters : []);
+        } else {
+            setChapterList([]);
+        }
+    }, [selectedClass, selectedSubject, allChapters, classes, subjects]);
 
     const addOption = () => setNewQuestion(q => ({
         ...q, options: [...q.options, { text: '', imageUrl: '' }]
@@ -120,12 +164,34 @@ export default function QuestionManager() {
     };
 
     const handleAddQuestion = async () => {
+        // Recursive cleaner for subQuestions
+        const cleanSubQuestions = (subQs) => {
+            return subQs
+                .filter(sq => sq.questionText?.trim() && sq.questionType?.trim()) // remove blank ones
+                .map(sq => ({
+                    ...sq,
+                    subQuestions: cleanSubQuestions(sq.subQuestions || [])
+                }));
+        };
+
+        // Final cleaned question with chapter
+        const cleanedQuestion = {
+            ...newQuestion,
+            chapter: selectedChapter || null,
+            subQuestions: cleanSubQuestions(newQuestion.subQuestions || [])
+        };
+
+        // Send to backend
         const res = await axios.post('https://sss-server-eosin.vercel.app/questions', {
             class: selectedClass,
             subject: selectedSubject,
-            question: newQuestion
+            chapter: selectedChapter || null,
+            question: cleanedQuestion
         });
+
         setQuestions(res.data);
+
+        // Reset new question state
         setNewQuestion({
             questionText: '',
             questionImage: '',
@@ -133,7 +199,35 @@ export default function QuestionManager() {
             questionMarks: '',
             options: [],
             pairs: [],
+            subQuestions: [],
         });
+    };
+
+
+    const addSubQuestion = () => {
+        setNewQuestion((prev) => ({
+            ...prev,
+            subQuestions: [
+                ...prev.subQuestions,
+                {
+                    questionText: '',
+                    questionImage: '',
+                    questionType: '',
+                    questionMarks: '',
+                    options: [],
+                    pairs: []
+                },
+            ],
+        }));
+    };
+
+    const updateSubQuestion = (index, key, value) => {
+        const updated = [...newQuestion.subQuestions];
+        updated[index][key] = value;
+        setNewQuestion((prev) => ({
+            ...prev,
+            subQuestions: updated
+        }));
     };
 
     const handleDelete = async idx => {
@@ -230,15 +324,528 @@ export default function QuestionManager() {
 
     const [previewImageUrl, setPreviewImageUrl] = useState('');
 
+    const [editQuestionData, setEditQuestionData] = useState(null);
+
+    const openEditModal = (q, index) => {
+        console.log("Opening modal with question:", q)
+        setEditQuestionData(q);
+        setEditQuestionIndex(index);
+    };
+
+    const [editQuestionIndex, setEditQuestionIndex] = useState(null);
+
+    const handleEditSubmit = async () => {
+        if (editQuestionIndex === null || editQuestionIndex === undefined) {
+            alert("Edit index not set.");
+            return;
+        }
+
+        try {
+            const res = await axios.put(`https://sss-server-eosin.vercel.app/questions`, {
+                class: selectedClass,
+                subject: selectedSubject,
+                chapter: selectedChapter || null,
+                index: editQuestionIndex,
+                updatedQuestion: editQuestionData,
+            });
+
+            setQuestions(res.data.questions);
+            alert('Question Updated Successfully')
+        } catch (err) {
+            console.error(err);
+            alert("Failed to update question.");
+        }
+    };
+
+    const renderEditQuestionTypeFields = (editQuestionData, setEditQuestionData) => {
+        const updateOption = (i, key, value) => {
+            const updated = [...editQuestionData.options];
+            updated[i][key] = value;
+            setEditQuestionData(q => ({ ...q, options: updated }));
+        };
+
+        const updatePair = (i, side, key, value) => {
+            const updated = [...editQuestionData.pairs];
+            updated[i][`${side}${key}`] = value;
+            setEditQuestionData(q => ({ ...q, pairs: updated }));
+        };
+
+        return (
+            <>
+                {/* MCQ Section */}
+                {editQuestionData.questionType === 'MCQ' && (
+                    <>
+                        <button
+                            className="btn btn-outline-primary btn-sm mb-3"
+                            onClick={() =>
+                                setEditQuestionData(q => ({
+                                    ...q,
+                                    options: [...(q.options || []), { text: '', imageUrl: '' }],
+                                }))
+                            }
+                        >
+                            <i className="fas fa-plus me-1"></i>Add Option
+                        </button>
+
+                        <div className="row">
+                            {editQuestionData.options?.map((opt, i) => (
+                                <div className="col-md-3 mb-3" key={i}>
+                                    <input
+                                        className="form-control mb-1"
+                                        placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                                        value={opt.text}
+                                        onChange={e => updateOption(i, 'text', e.target.value)}
+                                    />
+                                    <input
+                                        type="file"
+                                        className="form-control form-control-sm"
+                                        onChange={async e => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                const url = await uploadToImgBB(file);
+                                                updateOption(i, 'imageUrl', url);
+                                            }
+                                        }}
+                                    />
+                                </div>
+                            ))}
+                        </div>
+                    </>
+                )}
+
+                {/* Match Section */}
+                {editQuestionData.questionType === 'Match' && (
+                    <>
+                        <button
+                            className="btn btn-outline-primary btn-sm mb-3"
+                            onClick={() =>
+                                setEditQuestionData(q => ({
+                                    ...q,
+                                    pairs: [...(q.pairs || []), { leftText: '', leftImage: '', rightText: '', rightImage: '' }],
+                                }))
+                            }
+                        >
+                            <i className="fas fa-plus me-1"></i>Add Pair
+                        </button>
+
+                        {editQuestionData.pairs?.map((p, i) => (
+                            <div className="row mb-3" key={i}>
+                                {['left', 'right'].map(side => (
+                                    <div className="col-md-6 mb-2" key={side}>
+                                        <input
+                                            className="form-control mb-1"
+                                            placeholder={`${side} text`}
+                                            value={p[`${side}Text`]}
+                                            onChange={e => updatePair(i, side, 'Text', e.target.value)}
+                                        />
+                                        <input
+                                            type="file"
+                                            className="form-control form-control-sm"
+                                            onChange={async e => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const url = await uploadToImgBB(file);
+                                                    updatePair(i, side, 'Image', url);
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        ))}
+                    </>
+                )}
+
+                {/* Sub-Questions Section */}
+                {editQuestionData.questionType === 'sub-question' && (
+                    <>
+                        <h6 className="mt-4 mb-3">Sub-Questions</h6>
+                        {editQuestionData.subQuestions?.map((subQ, index) => (
+                            <div key={index} className="mb-4 p-3 border rounded-3">
+                                <div className="row align-items-center mb-3">
+                                    <div className="col-md-7">
+                                        <input
+                                            type="text"
+                                            className="form-control shadow-sm"
+                                            placeholder={`Sub-question ${index + 1} text`}
+                                            value={subQ.questionText}
+                                            onChange={e => {
+                                                const updated = [...editQuestionData.subQuestions];
+                                                updated[index].questionText = e.target.value;
+                                                setEditQuestionData(q => ({ ...q, subQuestions: updated }));
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="col-md-2">
+                                        <input
+                                            className="form-control shadow-sm"
+                                            placeholder="Marks"
+                                            value={subQ.questionMarks}
+                                            onChange={e => {
+                                                const updated = [...editQuestionData.subQuestions];
+                                                updated[index].questionMarks = e.target.value;
+                                                setEditQuestionData(q => ({ ...q, subQuestions: updated }));
+                                            }}
+                                        />
+                                    </div>
+                                    <div className="col-md-3">
+                                        <input
+                                            type="file"
+                                            accept="image/*"
+                                            className="form-control"
+                                            onChange={async (e) => {
+                                                const file = e.target.files[0];
+                                                if (file) {
+                                                    const url = await uploadToImgBB(file);
+                                                    const updated = [...editQuestionData.subQuestions];
+
+                                                    updated[index] = {
+                                                        ...updated[index],
+                                                        questionImage: url,
+                                                        _id: updated[index]._id,
+                                                    };
+
+                                                    setEditQuestionData((q) => ({
+                                                        ...q,
+                                                        subQuestions: updated,
+                                                        _id: q._id,
+                                                    }));
+                                                }
+                                            }}
+                                        />
+                                    </div>
+                                </div>
+
+                                <select
+                                    className="form-select w-auto shadow-sm mb-3"
+                                    value={subQ.questionType}
+                                    onChange={e => {
+                                        const updated = [...editQuestionData.subQuestions];
+                                        updated[index].questionType = e.target.value;
+                                        setEditQuestionData(q => ({ ...q, subQuestions: updated }));
+                                    }}
+                                >
+                                    <option value="">-- Select Question Type --</option>
+                                    <option value="MCQ">MCQ</option>
+                                    <option value="Descriptive">Descriptive</option>
+                                    <option value="Match">Match the Following</option>
+                                </select>
+                            </div>
+                        ))}
+
+                        <button
+                            className="btn btn-outline-success btn-sm"
+                            onClick={() =>
+                                setEditQuestionData(q => ({
+                                    ...q,
+                                    subQuestions: [...(q.subQuestions || []), {
+                                        questionText: '',
+                                        questionMarks: '',
+                                        questionImage: '',
+                                        questionType: '',
+                                        options: [],
+                                        pairs: []
+                                    }]
+                                }))
+                            }
+                        >
+                            <i className="fas fa-plus me-1"></i>Add Sub-Question
+                        </button>
+                    </>
+                )}
+            </>
+        );
+    };
+
+    const renderQuestionBlock = (q, i, level = 0) => (
+
+        <div
+            key={q._id || i}
+            className={`border rounded p-4 mb-4 bg-white position-relative shadow-sm ${level > 0 ? 'ms-4' : ''}`}
+        >
+            {/* Checkbox for Main Questions only */}
+            {level === 0 && (
+                <div className="position-absolute top-0 start-0 m-2">
+                    <input
+                        type="checkbox"
+                        className="form-check-input"
+                        checked={selectedQuestions.includes(q._id)}
+                        onChange={(e) => {
+                            if (e.target.checked) {
+                                setSelectedQuestions(prev => [...prev, q._id]);
+                            } else {
+                                setSelectedQuestions(prev => prev.filter(id => id !== q._id));
+                            }
+                        }}
+                    />
+                </div>
+            )}
+
+            {/* Delete Button */}
+            {level === 0 && (
+                <div className="position-absolute top-0 end-0 m-2 d-flex gap-2">
+                    <button
+                        className="btn btn-sm btn-outline-primary"
+                        data-bs-toggle="modal"
+                        data-bs-target="#editQuestionModal"
+                        onClick={() => openEditModal(q, i)}
+                        disabled={!canEdit}
+                    >
+                        <i className="fas fa-edit"></i>
+                    </button>
+                    <button
+                        className="btn btn-sm btn-outline-danger"
+                        onClick={() => handleDelete(i)}
+                        disabled={!canEdit}
+                    >
+                        <i className="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            )}
+
+            <div
+                className="modal fade"
+                id="editQuestionModal"
+                tabIndex="-1"
+                aria-labelledby="editQuestionModalLabel"
+                aria-hidden="true"
+                data-bs-backdrop="false"
+            >
+                <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                    <div className="modal-content rounded-4 shadow">
+                        <div className="modal-header">
+                            <h5 className="modal-title" id="editQuestionModalLabel">
+                                <i className="fas fa-edit me-2 text-primary"></i>Edit Question
+                            </h5>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" />
+                        </div>
+
+                        <div className="modal-body">
+                            {editQuestionData && (
+                                <>
+                                    {/* Question Text + Marks + Image */}
+                                    <div className="row align-items-center mb-3">
+                                        <div className="col-md-7">
+                                            <input
+                                                type="text"
+                                                className="form-control shadow-sm"
+                                                placeholder="Enter question text"
+                                                value={editQuestionData.questionText}
+                                                onChange={(e) =>
+                                                    setEditQuestionData((q) => ({
+                                                        ...q,
+                                                        questionText: e.target.value,
+                                                    }))
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-md-2">
+                                            <input
+                                                className="form-control shadow-sm"
+                                                placeholder="Marks"
+                                                value={editQuestionData.questionMarks}
+                                                onChange={(e) =>
+                                                    setEditQuestionData((q) => ({
+                                                        ...q,
+                                                        questionMarks: e.target.value,
+                                                    }))
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-md-3">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="form-control"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        const url = await uploadToImgBB(file);
+
+                                                        // Fallback handling if questionImage field doesn't yet exist
+                                                        setEditQuestionData((q) => ({
+                                                            ...q,
+                                                            questionImage: url || '',
+                                                            _id: q._id, // <- preserve this so edit works
+                                                        }));
+                                                    }
+                                                }}
+                                            />
+                                            {editQuestionData.questionImage && (
+                                                <div className="mt-2 d-flex gap-2 flex-wrap">
+                                                    <button
+                                                        className="btn btn-outline-secondary btn-sm"
+                                                        onClick={() => setPreviewImageUrl(editQuestionData.questionImage)}
+                                                    >
+                                                        <i className="fas fa-eye me-1"></i>View
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-outline-danger btn-sm"
+                                                        onClick={() =>
+                                                            setEditQuestionData((q) => ({
+                                                                ...q,
+                                                                questionImage: '',
+                                                            }))
+                                                        }
+                                                    >
+                                                        <i className="fas fa-trash-alt me-1"></i>Remove
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Question Type Dropdown */}
+                                    <div className="mb-3">
+                                        <select
+                                            className="form-select w-auto shadow-sm"
+                                            value={editQuestionData.questionType}
+                                            onChange={(e) =>
+                                                setEditQuestionData((q) => ({
+                                                    ...q,
+                                                    questionType: e.target.value,
+                                                    options: [],
+                                                    pairs: [],
+                                                    subQuestions: [],
+                                                }))
+                                            }
+                                        >
+                                            <option value="">-- Select Question Type --</option>
+                                            <option value="MCQ">MCQ</option>
+                                            <option value="Descriptive">Descriptive</option>
+                                            <option value="Match">Match the Following</option>
+                                            <option value="sub-question">Sub-Questions</option>
+                                        </select>
+                                    </div>
+
+                                    {renderEditQuestionTypeFields(editQuestionData, setEditQuestionData)}
+
+                                </>
+                            )}
+                        </div>
+
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" data-bs-dismiss="modal">
+                                Cancel
+                            </button>
+                            <button className="btn btn-success" onClick={handleEditSubmit}>
+                                <i className="fas fa-save me-2"></i>Save Changes
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
+            {/* Question Content */}
+            <div className="mb-3">
+                <h6 className="mb-2">
+                    <strong>{level === 0 ? `Q${i + 1}` : `↳ Sub-Q`}</strong>: {q.questionText}
+                </h6>
+                <p className="mb-2"><strong>Type:</strong> <span className="badge bg-info">{q.questionType}</span></p>
+                {q.questionImage && (
+                    <div className="text-end mb-2">
+                        <img
+                            src={q.questionImage}
+                            alt="Question"
+                            className="img-thumbnail"
+                            style={{ width: 80, height: 80, objectFit: 'cover' }}
+                        />
+                    </div>
+                )}
+            </div>
+
+            {/* MCQ Options */}
+            {q.questionType === 'MCQ' && (
+                <div className="row">
+                    {q.options.map((opt, idx) => (
+                        <div key={idx} className="col-md-6 mb-2">
+                            <div className="border rounded p-2 d-flex align-items-center">
+                                <span className="me-2 fw-bold">({String.fromCharCode(65 + idx)})</span>
+                                <div className="d-flex align-items-center">
+                                    <span>{opt.text}</span>
+                                    {opt.imageUrl && (
+                                        <img
+                                            src={opt.imageUrl}
+                                            alt={`Option ${idx + 1}`}
+                                            className="img-thumbnail ms-2"
+                                            style={{ width: 50, height: 50, objectFit: 'cover' }}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Descriptive */}
+            {q.questionType === 'Descriptive' && (
+                <div className="bg-light p-3 rounded border mt-2">
+                    <em>This is a descriptive question. Students are expected to write a detailed answer.</em>
+                </div>
+            )}
+
+            {/* Match the Following */}
+            {q.questionType === 'Match' && (
+                <div className="row mt-2">
+                    <div className="col-md-6">
+                        <div className="fw-bold mb-1">Column A</div>
+                        {q.pairs.map((pair, idx) => (
+                            <div key={idx} className="d-flex align-items-center mb-1">
+                                <span>{pair.leftText}</span>
+                                {pair.leftImage && (
+                                    <img
+                                        src={pair.leftImage}
+                                        alt="Left"
+                                        className="img-thumbnail ms-2"
+                                        style={{ width: 40, height: 40, objectFit: 'cover' }}
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="col-md-6">
+                        <div className="fw-bold mb-1">Column B</div>
+                        {q.pairs.map((pair, idx) => (
+                            <div key={idx} className="d-flex align-items-center mb-1">
+                                <span>{pair.rightText}</span>
+                                {pair.rightImage && (
+                                    <img
+                                        src={pair.rightImage}
+                                        alt="Right"
+                                        className="img-thumbnail ms-2"
+                                        style={{ width: 40, height: 40, objectFit: 'cover' }}
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* 🔁 Sub-Questions Recursively */}
+            {q.subQuestions?.length > 0 && (
+                <div className="mt-3 border-top pt-3">
+                    <h6 className="fw-bold text-muted mb-3">Sub-Questions</h6>
+                    {q.subQuestions.map((subQ, subIndex) =>
+                        renderQuestionBlock(subQ, subIndex, level + 1)
+                    )}
+                </div>
+            )}
+        </div>
+    );
+
     return (
         <div className="QuestionPaper py-2">
             <div className="d-flex align-items-center">
                 {uploading && <span className="badge bg-warning text-dark">Uploading...</span>}
             </div>
 
-            <div className="SearchFilter ">
-                <div className="">
-                    <select onChange={onClassChange} value={selectedClass} className="form-select shadow-sm" >
+            <div className="SearchFilter d-flex gap-2 flex-wrap">
+                {/* Class Dropdown */}
+                <div>
+                    <select onChange={onClassChange} value={selectedClass} className="form-select shadow-sm">
                         <option value="">-- Select Class --</option>
                         {classes.map(c => (
                             <option key={c._id} value={c._id}>{c.class}</option>
@@ -246,17 +853,38 @@ export default function QuestionManager() {
                     </select>
                 </div>
 
-                <div className="">
-                    <select onChange={onSubjectChange} value={selectedSubject} className="form-select shadow-sm" disabled={!selectedClass} >
+                {/* Subject Dropdown */}
+                <div>
+                    <select onChange={onSubjectChange} value={selectedSubject} className="form-select shadow-sm" disabled={!selectedClass}>
                         <option value="">-- Select Subject --</option>
                         {filteredSubjects.map(s => (
                             <option key={s._id} value={s._id}>{s.name}</option>
                         ))}
                     </select>
-
                 </div>
+
+                {/* Chapter Dropdown */}
+                <div>
+                    <select
+                        onChange={onChapterChange}
+                        value={selectedChapter}
+                        className="form-select shadow-sm"
+                        disabled={!selectedSubject}
+                    >
+                        <option value="">-- Select Chapter --</option>
+                        {chapterList.map((ch, idx) => (
+                            <option key={idx} value={ch}>{ch}</option>
+                        ))}
+                    </select>
+                </div>
+
+                {/* Select All */}
                 <div className=" selectAll">
-                    <input type="checkbox" id="selectAllCheckbox" checked={selectedQuestions.length === questions.length}
+                    <input
+                        type="checkbox"
+                        id="selectAllCheckbox"
+                        className=""
+                        checked={selectedQuestions.length === questions.length}
                         onChange={(e) => {
                             if (e.target.checked) {
                                 setSelectedQuestions(questions.map(q => q._id));
@@ -265,29 +893,21 @@ export default function QuestionManager() {
                             }
                         }}
                     />
-                    <label className="form-check-label" htmlFor="selectAllCheckbox">
+                    <label className="" htmlFor="selectAllCheckbox">
                         Select All
                     </label>
                 </div>
 
-                <button className="btn" data-bs-toggle="modal" data-bs-target="#addQuestionModal" >
+                {/* Buttons */}
+                <button className="btn" data-bs-toggle="modal" data-bs-target="#addQuestionModal">
                     <i className="fas fa-plus me-2"></i>Add Question
                 </button>
-
-                <button className="btn" type="button" data-bs-toggle="collapse" data-bs-target="#addInstructionCollapse" aria-expanded="false" aria-controls="addInstructionCollapse" disabled={!canEdit} >
+                <button className="btn" type="button" data-bs-toggle="collapse" data-bs-target="#addInstructionCollapse" aria-expanded="false" aria-controls="addInstructionCollapse" disabled={!canEdit}>
                     <i className="fas fa-book me-2"></i>Add Instruction Template
                 </button>
-
-                <button className="btn" data-bs-toggle="modal" data-bs-target="#selectInstructionsModal" >
+                <button className="btn" data-bs-toggle="modal" data-bs-target="#selectInstructionsModal">
                     <i className="fas fa-sliders-h me-2"></i>Select Instructions & Download
                 </button>
-
-                {/* <div className="text-end my-3">
-                    <button className="btn btn-success" onClick={handlePrint}>
-                        <i className="fas fa-download me-2"></i>Download Question Paper
-                    </button>
-                </div> */}
-
             </div>
 
             {/* Preivew  */}
@@ -407,6 +1027,7 @@ export default function QuestionManager() {
                                     <option value="MCQ">MCQ</option>
                                     <option value="Descriptive">Descriptive</option>
                                     <option value="Match">Match the Following</option>
+                                    <option value="sub-question">Sub-Questions</option>
                                 </select>
                             </div>
 
@@ -519,6 +1140,188 @@ export default function QuestionManager() {
                                     ))}
                                 </>
                             )}
+
+                            {/* Sub-Questions Section for Heading Type */}
+                            {newQuestion.questionType === 'sub-question' && (
+                                <div className="mt-4 border-top pt-3">
+                                    <h6 className="mb-3">Sub-Questions</h6>
+                                    {newQuestion.subQuestions.map((subQ, index) => (
+                                        <div className="mb-4 p-3 border rounded-3" key={index}>
+                                            {/* Sub-Question Text + Marks + Image */}
+                                            <div className="row align-items-center mb-3">
+                                                <div className="col-md-7">
+                                                    <input
+                                                        type="text"
+                                                        className="form-control shadow-sm"
+                                                        placeholder={`Sub-question ${index + 1} text`}
+                                                        value={subQ.questionText}
+                                                        onChange={e => updateSubQuestion(index, 'questionText', e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="col-md-2">
+                                                    <input
+                                                        className="form-control shadow-sm"
+                                                        placeholder="Marks"
+                                                        value={subQ.questionMarks}
+                                                        onChange={e => updateSubQuestion(index, 'questionMarks', e.target.value)}
+                                                    />
+                                                </div>
+
+                                                <div className="col-md-3">
+                                                    <input
+                                                        type="file"
+                                                        accept="image/*"
+                                                        className="form-control"
+                                                        onChange={async e => {
+                                                            const file = e.target.files[0];
+                                                            if (file) {
+                                                                const url = await uploadToImgBB(file);
+                                                                updateSubQuestion(index, 'questionImage', url);
+                                                            }
+                                                        }}
+                                                    />
+                                                    {subQ.questionImage && (
+                                                        <div className="mt-2 d-flex gap-2 flex-wrap">
+                                                            <button
+                                                                className="btn btn-outline-secondary btn-sm"
+                                                                onClick={() => setPreviewImageUrl(subQ.questionImage)}
+                                                            >
+                                                                <i className="fas fa-eye me-1"></i>View
+                                                            </button>
+                                                            <button
+                                                                className="btn btn-outline-danger btn-sm"
+                                                                onClick={() => updateSubQuestion(index, 'questionImage', '')}
+                                                            >
+                                                                <i className="fas fa-trash-alt me-1"></i>Remove
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* Sub-question Type Dropdown */}
+                                            <div className="mb-3">
+                                                <select
+                                                    className="form-select w-auto shadow-sm"
+                                                    value={subQ.questionType}
+                                                    onChange={e => updateSubQuestion(index, 'questionType', e.target.value)}
+                                                >
+                                                    <option value="">-- Select Question Type --</option>
+                                                    <option value="MCQ">MCQ</option>
+                                                    <option value="Descriptive">Descriptive</option>
+                                                    <option value="Match">Match the Following</option>
+                                                </select>
+                                            </div>
+
+                                            {/* Sub-question MCQ */}
+                                            {subQ.questionType === 'MCQ' && (
+                                                <>
+                                                    <button
+                                                        className="btn btn-outline-primary btn-sm mb-3"
+                                                        onClick={() => {
+                                                            const updatedOptions = [...subQ.options, { text: '', imageUrl: '' }];
+                                                            updateSubQuestion(index, 'options', updatedOptions);
+                                                        }}
+                                                    >
+                                                        <i className="fas fa-plus me-1"></i>Add Option
+                                                    </button>
+
+                                                    <div className="row">
+                                                        {subQ.options.map((opt, i) => (
+                                                            <div className="col-md-3 mb-3" key={i}>
+                                                                <input
+                                                                    className="form-control mb-1"
+                                                                    placeholder={`Option ${String.fromCharCode(65 + i)}`}
+                                                                    value={opt.text}
+                                                                    onChange={e => {
+                                                                        const updatedOptions = [...subQ.options];
+                                                                        updatedOptions[i].text = e.target.value;
+                                                                        updateSubQuestion(index, 'options', updatedOptions);
+                                                                    }}
+                                                                />
+                                                                <input
+                                                                    type="file"
+                                                                    className="form-control form-control-sm"
+                                                                    onChange={async e => {
+                                                                        const file = e.target.files[0];
+                                                                        if (file) {
+                                                                            const url = await uploadToImgBB(file);
+                                                                            const updatedOptions = [...subQ.options];
+                                                                            updatedOptions[i].imageUrl = url;
+                                                                            updateSubQuestion(index, 'options', updatedOptions);
+                                                                        }
+                                                                    }}
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </>
+                                            )}
+
+                                            {/* Sub-question Match */}
+                                            {subQ.questionType === 'Match' && (
+                                                <>
+                                                    <button
+                                                        className="btn btn-outline-primary btn-sm mb-3"
+                                                        onClick={() => {
+                                                            const updatedPairs = [...subQ.pairs, {
+                                                                leftText: '',
+                                                                leftImage: '',
+                                                                rightText: '',
+                                                                rightImage: ''
+                                                            }];
+                                                            updateSubQuestion(index, 'pairs', updatedPairs);
+                                                        }}
+                                                    >
+                                                        <i className="fas fa-plus me-1"></i>Add Pair
+                                                    </button>
+
+                                                    {subQ.pairs.map((pair, i) => (
+                                                        <div className="row mb-3" key={i}>
+                                                            {['left', 'right'].map(side => (
+                                                                <div className="col-md-6 mb-2" key={side}>
+                                                                    <input
+                                                                        className="form-control mb-1"
+                                                                        placeholder={`${side} text`}
+                                                                        value={pair[`${side}Text`]}
+                                                                        onChange={e => {
+                                                                            const updatedPairs = [...subQ.pairs];
+                                                                            updatedPairs[i][`${side}Text`] = e.target.value;
+                                                                            updateSubQuestion(index, 'pairs', updatedPairs);
+                                                                        }}
+                                                                    />
+                                                                    <input
+                                                                        type="file"
+                                                                        className="form-control form-control-sm"
+                                                                        onChange={async e => {
+                                                                            const file = e.target.files[0];
+                                                                            if (file) {
+                                                                                const url = await uploadToImgBB(file);
+                                                                                const updatedPairs = [...subQ.pairs];
+                                                                                updatedPairs[i][`${side}Image`] = url;
+                                                                                updateSubQuestion(index, 'pairs', updatedPairs);
+                                                                            }
+                                                                        }}
+                                                                    />
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    ))}
+                                                </>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    <button
+                                        className="btn btn-outline-success btn-sm"
+                                        onClick={addSubQuestion}
+                                    >
+                                        <i className="fas fa-plus me-1"></i>Add Sub-Question
+                                    </button>
+                                </div>
+                            )}
+
                         </div>
 
                         <div className="modal-footer">
@@ -738,13 +1541,13 @@ export default function QuestionManager() {
 
             {questions.length > 0 && (
                 <>
-                    <h5 className="mb-4 border-bottom pb-2 w-100 text-dark">
+                    <h5 className="border-bottom pb-2 w-100 text-dark">
                         <i className="fas fa-list me-2 text-primary"></i>
                         All Questions
                         <span className="badge bg-secondary ms-2">{filteredAndSortedQuestions.length}</span>
                     </h5>
 
-                    <div className="row mb-4">
+                    <div className="row">
                         <div className="col-md-4 mb-2">
                             <input
                                 type="text"
@@ -760,6 +1563,7 @@ export default function QuestionManager() {
                                 <option value="MCQ">MCQ</option>
                                 <option value="Descriptive">Descriptive</option>
                                 <option value="Match">Match</option>
+                                <option value="sub-question">Sub-Questions</option>
                             </select>
                         </div>
                         <div className="col-md-2 mb-2">
@@ -780,119 +1584,11 @@ export default function QuestionManager() {
                     </div>
 
                     <div className="questions-list">
-                        {filteredAndSortedQuestions.map((q, i) => (
-                            <div key={i} className="border rounded p-4 mb-4 bg-white position-relative shadow-sm">
-                                {/* Checkbox */}
-                                <div className="position-absolute top-0 start-0 m-2">
-                                    <input
-                                        type="checkbox"
-                                        className="form-check-input"
-                                        checked={selectedQuestions.includes(q._id)}
-                                        onChange={(e) => {
-                                            if (e.target.checked) {
-                                                setSelectedQuestions(prev => [...prev, q._id]);
-                                            } else {
-                                                setSelectedQuestions(prev => prev.filter(id => id !== q._id));
-                                            }
-                                        }}
-                                    />
-                                </div>
-
-                                {/* Delete Button */}
-                                <div className="position-absolute top-0 end-0 m-2">
-                                    <button className="btn btn-sm btn-outline-danger" onClick={() => handleDelete(i)} disabled={!canEdit}>
-                                        <i className="fas fa-trash-alt"></i>
-                                    </button>
-                                </div>
-
-                                {/* Question Content */}
-                                <div className="mb-3">
-                                    <h6 className="mb-2"><strong>Q{i + 1}:</strong> {q.questionText}</h6>
-                                    <p className="mb-2"><strong>Type:</strong> <span className="badge bg-info">{q.questionType}</span></p>
-                                    {q.questionImage && (
-                                        <div className="text-end mb-2">
-                                            <img
-                                                src={q.questionImage}
-                                                alt="Question"
-                                                className="img-thumbnail"
-                                                style={{ width: 80, height: 80, objectFit: 'cover' }}
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* MCQ Options */}
-                                {q.questionType === 'MCQ' && (
-                                    <div className="row">
-                                        {q.options.map((opt, idx) => (
-                                            <div key={idx} className="col-md-6 mb-2">
-                                                <div className="border rounded p-2 d-flex align-items-center">
-                                                    <span className="me-2 fw-bold">({String.fromCharCode(65 + idx)})</span>
-                                                    <div className="d-flex align-items-center">
-                                                        <span>{opt.text}</span>
-                                                        {opt.imageUrl && (
-                                                            <img
-                                                                src={opt.imageUrl}
-                                                                alt={`Option ${idx + 1}`}
-                                                                className="img-thumbnail ms-2"
-                                                                style={{ width: 50, height: 50, objectFit: 'cover' }}
-                                                            />
-                                                        )}
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Descriptive */}
-                                {q.questionType === 'Descriptive' && (
-                                    <div className="bg-light p-3 rounded border mt-2">
-                                        <em>This is a descriptive question. Students are expected to write a detailed answer.</em>
-                                    </div>
-                                )}
-
-                                {/* Match the Following */}
-                                {q.questionType === 'Match' && (
-                                    <div className="row mt-2">
-                                        <div className="col-md-6">
-                                            <div className="fw-bold mb-1">Column A</div>
-                                            {q.pairs.map((pair, idx) => (
-                                                <div key={idx} className="d-flex align-items-center mb-1">
-                                                    <span>{pair.leftText}</span>
-                                                    {pair.leftImage && (
-                                                        <img
-                                                            src={pair.leftImage}
-                                                            alt="Left"
-                                                            className="img-thumbnail ms-2"
-                                                            style={{ width: 40, height: 40, objectFit: 'cover' }}
-                                                        />
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                        <div className="col-md-6">
-                                            <div className="fw-bold mb-1">Column B</div>
-                                            {q.pairs.map((pair, idx) => (
-                                                <div key={idx} className="d-flex align-items-center mb-1">
-                                                    <span>{pair.rightText}</span>
-                                                    {pair.rightImage && (
-                                                        <img
-                                                            src={pair.rightImage}
-                                                            alt="Right"
-                                                            className="img-thumbnail ms-2"
-                                                            style={{ width: 40, height: 40, objectFit: 'cover' }}
-                                                        />
-                                                    )}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-
-                            </div>
-                        ))}
+                        {filteredAndSortedQuestions.map((q, i) => {
+                            return renderQuestionBlock(q, i);
+                        })}
                     </div>
+
                 </>
             )}
 

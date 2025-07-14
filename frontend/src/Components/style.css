@@ -974,7 +974,7 @@ background-color: rgba(69, 69, 69, 0.408);
     flex-direction: column;
     gap: 20px;
 
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+font-family: "Times New Roman", Times, serif !important;
     height: 100vh;
 }
 
