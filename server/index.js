@@ -19,6 +19,7 @@ const ReceiptBook = require('./Models/ReceiptBook')
 const User = require('./Models/User')
 const Master = require('./Models/Master')
 const QuestionPaper = require('./Models/QuestionPaper');
+const Counter = require('./Models/Counter')
 const InstructionTemplate = require('./Models/InstructionTemplate')
 const jwt = require('jsonwebtoken');
 
@@ -1022,6 +1023,27 @@ app.get('/questions', async (req, res) => {
     }
 });
 
+// Helper to get next question ID
+async function getNextQuestionId() {
+    const counter = await Counter.findOneAndUpdate(
+        { name: 'questionId' },
+        { $inc: { seq: 1 } },
+        { new: true, upsert: true }
+    );
+    return `Q_${String(counter.seq).padStart(5, '0')}`;
+}
+
+// Recursively assign unique questionIds to main and sub-questions
+async function assignQuestionIds(question) {
+    question.questionId = await getNextQuestionId();
+
+    if (question.subQuestions && question.subQuestions.length > 0) {
+        for (const subQ of question.subQuestions) {
+            await assignQuestionIds(subQ);
+        }
+    }
+}
+
 // POST a new question to a question paper (with chapter support)
 app.post('/questions', async (req, res) => {
     const { class: classId, subject: subjectId, chapter: chapterId, question } = req.body;
@@ -1030,22 +1052,30 @@ app.post('/questions', async (req, res) => {
         return res.status(400).json({ error: 'Missing fields' });
     }
 
-    const filter = { class: classId, subject: subjectId, chapter: chapterId || null };
+    try {
+        // Assign questionId to main question and its sub-questions
+        await assignQuestionIds(question);
 
-    let paper = await QuestionPaper.findOne(filter);
-    if (!paper) {
-        paper = new QuestionPaper({
-            class: classId,
-            subject: subjectId,
-            chapter: chapterId || null,
-            questions: [question],
-        });
-    } else {
-        paper.questions.push(question);
+        const filter = { class: classId, subject: subjectId, chapter: chapterId || null };
+
+        let paper = await QuestionPaper.findOne(filter);
+        if (!paper) {
+            paper = new QuestionPaper({
+                class: classId,
+                subject: subjectId,
+                chapter: chapterId || null,
+                questions: [question],
+            });
+        } else {
+            paper.questions.push(question);
+        }
+
+        await paper.save();
+        res.status(201).json(paper.questions);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Failed to save question.' });
     }
-
-    await paper.save();
-    res.status(201).json(paper.questions);
 });
 
 // DELETE a question by index (from a specific chapter if provided)
@@ -1071,28 +1101,28 @@ app.delete('/questions', async (req, res) => {
 
 // PUT to update a specific question by index
 app.put('/questions', async (req, res) => {
-  const { class: classId, subject: subjectId, chapter: chapterId, index, updatedQuestion } = req.body;
+    const { class: classId, subject: subjectId, chapter: chapterId, index, updatedQuestion } = req.body;
 
-  if (index === undefined || updatedQuestion === undefined) {
-    return res.status(400).json({ error: 'Missing fields' });
-  }
-
-  try {
-    const filter = { class: classId, subject: subjectId };
-    if (chapterId) filter.chapter = chapterId;
-
-    const paper = await QuestionPaper.findOne(filter);
-    if (!paper || index < 0 || index >= paper.questions.length) {
-      return res.status(404).json({ error: 'Question not found' });
+    if (index === undefined || updatedQuestion === undefined) {
+        return res.status(400).json({ error: 'Missing fields' });
     }
 
-    paper.questions[index] = updatedQuestion;
-    await paper.save();
+    try {
+        const filter = { class: classId, subject: subjectId };
+        if (chapterId) filter.chapter = chapterId;
 
-    res.json({ questions: paper.questions });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
-  }
+        const paper = await QuestionPaper.findOne(filter);
+        if (!paper || index < 0 || index >= paper.questions.length) {
+            return res.status(404).json({ error: 'Question not found' });
+        }
+
+        paper.questions[index] = updatedQuestion;
+        await paper.save();
+
+        res.json({ questions: paper.questions });
+    } catch (err) {
+        res.status(500).json({ message: err.message });
+    }
 });
 
 // 🔹 GET all templates
@@ -1125,6 +1155,15 @@ app.delete('/delete-template/:id', async (req, res) => {
         res.status(500).json({ error: 'Failed to delete template' });
     }
 });
+
+
+
+
+
+
+
+
+
 
 
 

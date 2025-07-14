@@ -310,11 +310,16 @@ export default function QuestionManager() {
             return bSelected - aSelected;
         })
         // Apply filters: search, type, marks
-        .filter(q =>
-            q.questionText.toLowerCase().includes(searchText.toLowerCase()) &&
-            (filterType === '' || q.questionType === filterType) &&
-            (filterMarks === '' || q.questionMarks === filterMarks)
-        )
+        .filter(q => {
+            const textMatch = q.questionText.toLowerCase().includes(searchText.toLowerCase());
+            const marksMatch = filterMarks === '' || q.questionMarks === filterMarks;
+
+            const typeMatch =
+                filterType === '' || q.questionType === filterType ||
+                (q.subQuestions && q.subQuestions.some(sub => sub.questionType === filterType));
+
+            return textMatch && marksMatch && typeMatch;
+        })
         // Sort by marks (asc/desc)
         .sort((a, b) => {
             const marksA = parseFloat(a.questionMarks || 0);
@@ -557,6 +562,24 @@ export default function QuestionManager() {
         );
     };
 
+    const getAllQuestionIds = (questions) => {
+        const ids = [];
+
+        const collectIds = (list) => {
+            list.forEach(q => {
+                if (q.questionId) ids.push(q.questionId);
+                if (q.subQuestions?.length > 0) {
+                    collectIds(q.subQuestions);
+                }
+            });
+        };
+
+        collectIds(questions);
+        console.log('All Question IDs:', ids);
+        return ids;
+    };
+
+
     // Place this function at the top of your component file
     const toRoman = (num) => {
         const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
@@ -565,22 +588,29 @@ export default function QuestionManager() {
 
     const renderQuestionBlock = (q, i, level = 0) => (
 
-        <div key={q._id || i} className={`border rounded p-4 mb-2 bg-white position-relative shadow-sm ${level > 0 ? 'ms-4' : ''}`}>
+        <div key={q.questionId || i} className={`border rounded p-4 mb-2 bg-white position-relative shadow-sm ${level > 0 ? 'ms-4' : ''}`}>
 
             {/* Checkbox for Main Questions only */}
-            {level === 0 && (
+            {q.questionId && (
                 <div className="position-absolute top-0 start-0 m-2">
                     <input
                         type="checkbox"
                         className="form-check-input"
-                        checked={selectedQuestions.includes(q._id)}
+                        checked={selectedQuestions.includes(q.questionId)}
                         onChange={(e) => {
-                            if (e.target.checked) {
-                                setSelectedQuestions(prev => [...prev, q._id]);
+                            const isChecked = e.target.checked;
+                            const allSubIds = q.subQuestions?.map(sub => sub.questionId) || [];
+
+                            if (isChecked) {
+                                // If parent is selected, include it and all sub-question IDs
+                                const toAdd = [q.questionId, ...allSubIds];
+                                setSelectedQuestions(prev => [...new Set([...prev, ...toAdd])]);
                             } else {
-                                setSelectedQuestions(prev => prev.filter(id => id !== q._id));
+                                // If parent is unselected, remove it and all sub-question IDs
+                                setSelectedQuestions(prev => prev.filter(id => ![q.questionId, ...allSubIds].includes(id)));
                             }
                         }}
+
                     />
                 </div>
             )}
@@ -609,6 +639,7 @@ export default function QuestionManager() {
                 </div>
             )}
 
+            {/* Edit Question Modal */}
             <div
                 className="modal fade"
                 id="editQuestionModal"
@@ -748,7 +779,9 @@ export default function QuestionManager() {
                     <strong className="me-2">
                         {level === 0 ? `Q${i + 1}.` : `${toRoman(i)}.`}
                     </strong>
-                    <span>{q.questionText}</span>
+                    <span>
+                        <span className="text-muted">[ {q.questionId} ]</span> {q.questionText}
+                    </span>
                 </h6>
 
                 {q.questionImage && (
@@ -882,17 +915,21 @@ export default function QuestionManager() {
                 <div className=" selectAll">
                     <input
                         type="checkbox"
-                        id="selectAllCheckbox"
-                        className=""
-                        checked={selectedQuestions.length === questions.length}
+                        checked={
+                            selectedQuestions.length > 0 &&
+                            selectedQuestions.length === getAllQuestionIds(questions).length
+                        }
                         onChange={(e) => {
+                            const allIds = getAllQuestionIds(questions);
+                            console.log('Select All Clicked:', e.target.checked);
                             if (e.target.checked) {
-                                setSelectedQuestions(questions.map(q => q._id));
+                                setSelectedQuestions(allIds);
                             } else {
                                 setSelectedQuestions([]);
                             }
                         }}
                     />
+
                     <label className="" htmlFor="selectAllCheckbox">
                         Select All
                     </label>

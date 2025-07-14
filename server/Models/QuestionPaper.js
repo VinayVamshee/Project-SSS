@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const optionSchema = new mongoose.Schema({
   text: { type: String },
   imageUrl: { type: String },
-});
+}, { _id: false });
 
 // Pair schema for 'Match the Following'
 const pairItemSchema = new mongoose.Schema({
@@ -12,10 +12,11 @@ const pairItemSchema = new mongoose.Schema({
   leftImage: { type: String },
   rightText: { type: String },
   rightImage: { type: String },
-});
+}, { _id: false });
 
 // Reusable question schema for main & sub-questions
 const baseQuestionSchema = new mongoose.Schema({
+  questionId: { type: String, unique: true },
   questionText: { type: String, required: true },
   questionImage: { type: String },
   questionType: { type: String, required: true }, // e.g., MCQ, Match, Fill, Sub

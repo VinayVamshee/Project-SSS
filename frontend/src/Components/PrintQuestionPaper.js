@@ -17,7 +17,31 @@ const PrintQuestionPaper = forwardRef(
     },
     ref
   ) => {
-    const filtered = questions.filter(q => selectedQuestions.includes(q._id));
+    const filterSelectedQuestions = (questions) => {
+      return questions
+        .map((q) => {
+          // Check if current question or any sub-question is selected
+          const includeThis = selectedQuestions.includes(q.questionId);
+
+          // Recursively check sub-questions
+          const filteredSubs = q.subQuestions?.length
+            ? filterSelectedQuestions(q.subQuestions)
+            : [];
+
+          // If this or any sub-question is selected, return the question
+          if (includeThis || filteredSubs.length > 0) {
+            return {
+              ...q,
+              subQuestions: filteredSubs
+            };
+          }
+
+          return null;
+        })
+        .filter(Boolean);
+    };
+
+    const filtered = filterSelectedQuestions(questions);
 
     const getSubLabel = (index) => {
       const roman = ['(i)', '(ii)', '(iii)', '(iv)', '(v)', '(vi)', '(vii)', '(viii)', '(ix)', '(x)'];
