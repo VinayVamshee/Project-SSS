@@ -942,7 +942,7 @@ export default function QuestionManager() {
                 </div> */}
 
                 {/* Select All */}
-                <div className=" selectAll">
+                {/* <div className=" selectAll">
                     <input
                         type="checkbox"
                         checked={
@@ -963,7 +963,7 @@ export default function QuestionManager() {
                     <label className="" htmlFor="selectAllCheckbox">
                         Select All
                     </label>
-                </div>
+                </div> */}
 
                 {/* Buttons */}
                 <button className="btn" data-bs-toggle="modal" data-bs-target="#addQuestionModal">
@@ -992,7 +992,7 @@ export default function QuestionManager() {
                 aria-labelledby="createQuestionPaperModalLabel"
                 aria-hidden="true"
             >
-                <div className="modal-dialog modal-fullscreen modal-dialog-scrollable">
+                <div className="modal-dialog modal-fullscreen">
                     <div className="modal-content bg-light">
                         <div className="modal-header bg-white border-bottom shadow-sm">
                             <h5 className="modal-title" id="createQuestionPaperModalLabel">
@@ -1004,11 +1004,7 @@ export default function QuestionManager() {
                         <div className="modal-body p-4">
 
                             {/* STEP 1 & 2: Chapter + Section + Toggle */}
-                            <div className="mb-4 border rounded shadow-sm bg-white p-3">
-                                <h6 className="mb-3 border-bottom pb-2">Step 1 & 2: Select Chapter and Manage Sections</h6>
-
-                                <div className="row g-3 align-items-end">
-
+                                <div className="row g-3 align-items-end mb-1">
                                     {/* Chapter Dropdown */}
                                     <div className="col-md-6">
                                         <label className="form-label">Select Chapter</label>
@@ -1059,11 +1055,7 @@ export default function QuestionManager() {
                                             ➕ Add Section
                                         </button>
                                     </div>
-
-
                                 </div>
-                            </div>
-
 
                             {/* STEP 3: Filter + Question List */}
                             {questions.length > 0 && (
@@ -1110,7 +1102,7 @@ export default function QuestionManager() {
                                         </div>
                                     </div>
 
-                                    <div className="questions-list">
+                                    <div className="questions-list" style={{height:'60vh'}}>
                                         {filteredAndSortedQuestions.map((q, i) => renderQuestionBlock(q, i))}
                                     </div>
                                 </div>
