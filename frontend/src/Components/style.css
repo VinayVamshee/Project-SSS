@@ -506,6 +506,10 @@
     box-shadow: 0 5px 8px rgba(0, 0, 0, 0.096);
 }
 
+.modal {
+background-color: rgba(69, 69, 69, 0.408);
+}
+
 .modal-body .student-details {
     display: flex;
     justify-content: space-between;

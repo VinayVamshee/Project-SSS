@@ -185,6 +185,27 @@ export default function Classes() {
     //     }
     // };
 
+    const [chapterList, setChapterList] = useState([]);
+    const [newChapter, setNewChapter] = useState("");
+    const [chapterMessage, setChapterMessage] = useState("");
+    const [selectedChapterSubject, setSelectedChapterSubject] = useState("");
+
+    const handleChapterOpen = async (subjectName) => {
+        setSelectedChapterSubject(subjectName);
+        setChapterMessage("");
+        setNewChapter("");
+
+        try {
+            const res = await axios.get("https://sss-server-eosin.vercel.app/chapters");
+            const found = res.data.data.find(
+                (item) => item.className === selectedClass && item.subjectName === subjectName
+            );
+            setChapterList(found ? found.chapters : []);
+        } catch (err) {
+            console.error("Error fetching chapters:", err);
+            setChapterList([]);
+        }
+    };
 
     return (
         <div className="ClassesPage">
@@ -203,73 +224,114 @@ export default function Classes() {
                 <button className="btn btn-secondary btn-sm" onClick={handleSubjectsClick}>
                     <i className="fa-solid fa-book me-2"></i>Subjects
                 </button>
-                <button
-                    className="btn btn-outline-primary btn-sm"
-                    data-bs-toggle="collapse"
-                    data-bs-target="#collapseSubjectLink"
-                    aria-expanded="false"
-                    aria-controls="collapseSubjectLink"
-                >
+                <button className="btn btn-sm" data-bs-toggle="modal" data-bs-target="#linkSubjectsModal" >
                     <i className="fa-solid fa-link me-2"></i>Link Subjects
                 </button>
             </div>
 
-            <div className="collapse mb-4" id="collapseSubjectLink">
-                <div className="card card-body shadow-sm border">
-                    <h6 className="mb-3">Link Subjects to a Class</h6>
+            {/* Link Subjects Modal */}
+            <div
+                className="modal fade"
+                id="linkSubjectsModal"
+                tabIndex="-1"
+                aria-labelledby="linkSubjectsModalLabel"
+                aria-hidden="true"
+                data-bs-backdrop="false"
+            >
+                <div className="modal-dialog modal-lg modal-dialog-centered">
+                    <div className="modal-content border-0 shadow-lg rounded-3">
+                        <div className="modal-header bg-light border-bottom">
+                            <h5 className="modal-title" id="linkSubjectsModalLabel">
+                                <i className="fa-solid fa-link me-2 text-primary"></i>
+                                Link Subjects to a Class
+                            </h5>
+                            <button
+                                type="button"
+                                className="btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="Close"
+                            ></button>
+                        </div>
 
-                    {/* Class Dropdown */}
-                    <div className="mb-3">
-                        <label className="form-label">Select Class</label>
-                        <select
-                            className="form-select"
-                            value={selectedClass}
-                            onChange={(e) => handleClassClick(e.target.value)}
-                        >
-                            <option value="">-- Choose Class --</option>
-                            {classes.map((cls) => (
-                                <option key={cls._id} value={cls.class}>
-                                    {cls.class}
-                                </option>
-                            ))}
-                        </select>
+                        <div className="modal-body px-4 py-3">
+                            {/* Class Selector */}
+                            <div className="mb-4">
+                                <label className="form-label fw-semibold">Select Class</label>
+                                <select
+                                    className="form-select"
+                                    value={selectedClass}
+                                    onChange={(e) => handleClassClick(e.target.value)}
+                                >
+                                    <option value="">-- Choose Class --</option>
+                                    {classes.map((cls) => (
+                                        <option key={cls._id} value={cls.class}>
+                                            {cls.class}
+                                        </option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* Subjects Table */}
+                            <form onSubmit={handleAddSubjectToClass}>
+                                <div className="card border shadow-sm">
+                                    <div className="card-body p-0">
+                                        <div className="table-responsive">
+                                            <table className="table table-sm table-hover table-bordered m-0 align-middle">
+                                                <thead className="table-light">
+                                                    <tr>
+                                                        <th style={{ width: "10%" }}>#</th>
+                                                        <th>Subject Name</th>
+                                                        <th style={{ width: "15%" }} className="text-center">
+                                                            Select
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {subjects.map((subject, index) => (
+                                                        <tr key={subject._id}>
+                                                            <td>{index + 1}</td>
+                                                            <td>{subject.name}</td>
+                                                            <td className="text-center">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    className="form-check-input"
+                                                                    checked={newSelectedSubjects.includes(subject.name)}
+                                                                    onChange={() => handleCheckboxChange(subject.name)}
+                                                                />
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Button + Message */}
+                                <div className="d-flex justify-content-between align-items-center mt-3">
+                                    <button type="submit" className="btn btn-success btn-sm">
+                                        <i className="fa-solid fa-plus me-1"></i>
+                                        Link Selected Subjects
+                                    </button>
+                                    {message && <span className="text-info small">{message}</span>}
+                                </div>
+                            </form>
+                        </div>
+
+                        <div className="modal-footer bg-light">
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                data-bs-dismiss="modal"
+                            >
+                                <i className="fa-solid fa-xmark me-1"></i>Close
+                            </button>
+                        </div>
                     </div>
-
-                    {/* Subject Checkboxes */}
-                    <form onSubmit={handleAddSubjectToClass}>
-                        <table className="table table-hover table-sm">
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Subject Name</th>
-                                    <th>Select</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {subjects.map((subject, index) => (
-                                    <tr key={subject._id}>
-                                        <td>{index + 1}</td>
-                                        <td>{subject.name}</td>
-                                        <td>
-                                            <input
-                                                type="checkbox"
-                                                className="form-check-input"
-                                                checked={newSelectedSubjects.includes(subject.name)}
-                                                onChange={() => handleCheckboxChange(subject.name)}
-                                            />
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-
-                        <button type="submit" className="btn btn-success btn-sm mt-2">
-                            Link Selected Subjects
-                        </button>
-                        {message && <p className="text-info text-center mt-2">{message}</p>}
-                    </form>
                 </div>
             </div>
+
+
 
             {/* 🔹 Main Content Area */}
             <div>
@@ -280,64 +342,41 @@ export default function Classes() {
                         </div>
 
                         {/* Subjects Linked to Class */}
-                        <div className="card-body p-0">
-                            <table className="table table-bordered m-0">
-                                <thead className="table-light">
-                                    <tr>
-                                        <th>S.No</th>
-                                        <th>Subject Name</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredSubjects.length > 0 ? (
-                                        filteredSubjects.map((subject, index) => (
-                                            <tr key={index}>
-                                                <td>{index + 1}</td>
-                                                <td>{subject}</td>
-                                            </tr>
-                                        ))
-                                    ) : (
-                                        <tr>
-                                            <td colSpan="2">No subjects available</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-
-                        {/* Add Subjects to Class
-                <div className="card-body">
-                    <form onSubmit={handleAddSubjectToClass}>
-                        <h6 className="mb-3">Add Subjects to Class {selectedClass}</h6>
-                        <table className="table table-hover table-sm">
-                            <thead>
+                        <table className="table table-bordered m-0">
+                            <thead className="table-light">
                                 <tr>
-                                    <th>#</th>
+                                    <th>S.No</th>
                                     <th>Subject Name</th>
-                                    <th>Select</th>
+                                    <th>Chapters</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {subjects.map((subject, index) => (
-                                    <tr key={subject._id}>
-                                        <td>{index + 1}</td>
-                                        <td>{subject.name}</td>
-                                        <td>
-                                            <input
-                                                type="checkbox"
-                                                className="form-check-input"
-                                                checked={newSelectedSubjects.includes(subject.name)}
-                                                onChange={() => handleCheckboxChange(subject.name)}
-                                            />
-                                        </td>
+                                {filteredSubjects.length > 0 ? (
+                                    filteredSubjects.map((subject, index) => (
+                                        <tr key={index}>
+                                            <td>{index + 1}</td>
+                                            <td>{subject}</td>
+                                            <td>
+                                                <button
+                                                    className="btn btn-outline-secondary btn-sm"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#chapterModal"
+                                                    onClick={() => handleChapterOpen(subject)}
+                                                >
+                                                    Chapters
+                                                </button>
+
+
+                                            </td>
+                                        </tr>
+                                    ))
+                                ) : (
+                                    <tr>
+                                        <td colSpan="3">No subjects available</td>
                                     </tr>
-                                ))}
+                                )}
                             </tbody>
                         </table>
-                        <button type="submit" className="btn btn-success btn-sm">Add Selected Subjects</button>
-                    </form>
-                    {message && <p className="text-center text-info mt-2">{message}</p>}
-                </div> */}
 
                         {/* Show Exams */}
                         <div className="card-body pt-0">
@@ -459,8 +498,130 @@ export default function Classes() {
                     </div>
                 )}
             </div>
+
+            <div
+                className="modal fade"
+                id="chapterModal"
+                tabIndex="-1"
+                data-bs-backdrop="false"
+                aria-labelledby="chapterModalLabel"
+                aria-hidden="true"
+            >
+                <div className="modal-dialog modal-lg">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h5 className="modal-title" id="chapterModalLabel">
+                                Chapters for {selectedChapterSubject} (Class {selectedClass})
+                            </h5>
+                            <button
+                                type="button"
+                                className="btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="Close"
+                            ></button>
+                        </div>
+
+                        <div className="modal-body">
+                            <form
+                                className="mb-3"
+                                onSubmit={async (e) => {
+                                    e.preventDefault();
+                                    if (!newChapter.trim()) return;
+
+                                    const updatedChapters = [...chapterList, newChapter];
+                                    try {
+                                        await axios.post("https://sss-server-eosin.vercel.app/chapters", {
+                                            className: selectedClass,
+                                            subjectName: selectedChapterSubject,
+                                            chapters: updatedChapters,
+                                        });
+                                        setChapterList(updatedChapters);
+                                        setNewChapter("");
+                                        setChapterMessage("Chapter added successfully!");
+                                    } catch (err) {
+                                        console.error(err);
+                                        setChapterMessage("Failed to add chapter.");
+                                    }
+                                }}
+                            >
+                                <div className="input-group">
+                                    <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Enter chapter name"
+                                        value={newChapter}
+                                        onChange={(e) => setNewChapter(e.target.value)}
+                                        required
+                                    />
+                                    <button type="submit" className="btn btn-success">Add</button>
+                                </div>
+                            </form>
+
+                            {chapterMessage && (
+                                <div className="alert alert-info py-1">{chapterMessage}</div>
+                            )}
+
+                            <table className="table table-bordered table-sm">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th style={{ width: "10%" }}>#</th>
+                                        <th>Chapter Name</th>
+                                        <th style={{ width: "15%" }}>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {chapterList.length > 0 ? (
+                                        chapterList.map((ch, idx) => (
+                                            <tr key={idx}>
+                                                <td>{idx + 1}</td>
+                                                <td>{ch}</td>
+                                                <td>
+                                                    <button
+                                                        className="btn btn-outline-danger btn-sm"
+                                                        onClick={async () => {
+                                                            const updated = chapterList.filter((c) => c !== ch);
+                                                            try {
+                                                                await axios.post("https://sss-server-eosin.vercel.app/chapters", {
+                                                                    className: selectedClass,
+                                                                    subjectName: selectedChapterSubject,
+                                                                    chapters: updated,
+                                                                });
+                                                                setChapterList(updated);
+                                                            } catch (err) {
+                                                                console.error(err);
+                                                            }
+                                                        }}
+                                                    >
+                                                        Delete
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))
+                                    ) : (
+                                        <tr>
+                                            <td colSpan="3" className="text-center">
+                                                No chapters available
+                                            </td>
+                                        </tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button
+                                type="button"
+                                className="btn btn-secondary"
+                                data-bs-dismiss="modal"
+                            >
+                                Close
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
         </div>
-
-
     );
 }

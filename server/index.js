@@ -7,6 +7,7 @@ const moment = require('moment');
 const Class = require('./Models/Classes');
 const Subject = require('./Models/Subject');
 const ClassSubjectLink = require('./Models/ClassSubjectLink');
+const Chapter = require('./Models/Chapter')
 const PersonalInformationList = require('./Models/PersonalInformationList')
 const Student = require('./Models/Student')
 const Exam = require('./Models/Exam')
@@ -74,9 +75,6 @@ app.get('/verifyToken', (req, res) => {
     }
 });
 
-
-
-
 app.post('/AddNewClass', async (req, res) => {
     try {
         const { className } = req.body;
@@ -126,7 +124,6 @@ app.delete('/deleteClass/:id', async (req, res) => {
         res.status(500).json({ message: 'Error deleting class', error: error.message });
     }
 });
-
 
 // app to Add New Subject
 app.post('/AddNewSubject', async (req, res) => {
@@ -227,6 +224,63 @@ app.get('/class-subjects', async (req, res) => {
     }
 });
 
+app.post('/chapters', async (req, res) => {
+    try {
+        const { className, subjectName, chapters } = req.body;
+
+        if (!className || !subjectName || !Array.isArray(chapters) || chapters.length === 0) {
+            return res.status(400).json({ message: 'className, subjectName and chapters are required' });
+        }
+
+        let existing = await Chapter.findOne({ className, subjectName });
+
+        if (existing) {
+            existing.chapters = chapters; // overwrite existing chapters
+            await existing.save();
+            return res.status(200).json({ message: 'Chapters updated successfully', data: existing });
+        }
+
+        const newChapter = new Chapter({ className, subjectName, chapters });
+        await newChapter.save();
+        res.status(201).json({ message: 'Chapters added successfully', data: newChapter });
+
+    } catch (error) {
+        console.error('Error adding chapters:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+});
+
+app.get('/chapters', async (req, res) => {
+    try {
+        const allChapters = await Chapter.find();
+        res.status(200).json({ success: true, data: allChapters });
+    } catch (error) {
+        console.error('Error fetching chapters:', error);
+        res.status(500).json({ success: false, message: 'Server error' });
+    }
+});
+
+app.delete('/chapters', async (req, res) => {
+    try {
+        const { className, subjectName } = req.body;
+
+        if (!className || !subjectName) {
+            return res.status(400).json({ message: 'className and subjectName are required' });
+        }
+
+        const deleted = await Chapter.findOneAndDelete({ className, subjectName });
+
+        if (!deleted) {
+            return res.status(404).json({ message: 'Chapters not found for given class and subject' });
+        }
+
+        res.status(200).json({ message: 'Chapters deleted successfully', data: deleted });
+
+    } catch (error) {
+        console.error('Error deleting chapters:', error);
+        res.status(500).json({ message: 'Internal server error', error: error.message });
+    }
+});
 
 // Route to add additional personal information
 app.post('/AddAdditionalPersonalInformation', async (req, res) => {
