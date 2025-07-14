@@ -97,6 +97,8 @@ export default function QuestionManager() {
         }
     };
 
+    const [globalQuestionMap, setGlobalQuestionMap] = useState({});
+
     const onClassChange = (e) => {
         const cls = e.target.value;
         setSelectedClass(cls);
@@ -123,6 +125,15 @@ export default function QuestionManager() {
                 `https://sss-server-eosin.vercel.app/questions?class=${selectedClass}&subject=${selectedSubject}&chapter=${chap}`
             );
             setQuestions(r.data.questions);
+
+            // ✅ Merge questions into global map
+            setGlobalQuestionMap(prev => {
+                const newMap = { ...prev };
+                r.data.questions.forEach(q => {
+                    newMap[q.questionId] = q;
+                });
+                return newMap;
+            });
         } else {
             setQuestions([]);
         }
@@ -579,7 +590,6 @@ export default function QuestionManager() {
         return ids;
     };
 
-
     // Place this function at the top of your component file
     const toRoman = (num) => {
         const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
@@ -600,17 +610,34 @@ export default function QuestionManager() {
                         onChange={(e) => {
                             const isChecked = e.target.checked;
                             const allSubIds = q.subQuestions?.map(sub => sub.questionId) || [];
+                            const toAdd = [q.questionId, ...allSubIds];
 
                             if (isChecked) {
-                                // If parent is selected, include it and all sub-question IDs
-                                const toAdd = [q.questionId, ...allSubIds];
+                                // ✅ Add to global selection
                                 setSelectedQuestions(prev => [...new Set([...prev, ...toAdd])]);
+
+                                // ✅ Also push to active section's questionIds
+                                if (activeSectionIndex !== null) {
+                                    setQuestionPaperSections(prev => {
+                                        const updated = [...prev];
+                                        updated[activeSectionIndex].questionIds = [
+                                            ...new Set([...(updated[activeSectionIndex].questionIds || []), ...toAdd])
+                                        ];
+                                        return updated;
+                                    });
+                                }
                             } else {
-                                // If parent is unselected, remove it and all sub-question IDs
-                                setSelectedQuestions(prev => prev.filter(id => ![q.questionId, ...allSubIds].includes(id)));
+                                // ❌ Remove from selection
+                                setSelectedQuestions(prev => prev.filter(id => !toAdd.includes(id)));
+
+                                // ❌ Also remove from section
+                                setQuestionPaperSections(prev => {
+                                    const updated = [...prev];
+                                    updated[activeSectionIndex].questionIds = (updated[activeSectionIndex].questionIds || []).filter(id => !toAdd.includes(id));
+                                    return updated;
+                                });
                             }
                         }}
-
                     />
                 </div>
             )}
@@ -869,6 +896,9 @@ export default function QuestionManager() {
         </div>
     );
 
+    const [questionPaperSections, setQuestionPaperSections] = useState([]);
+    const [activeSectionIndex, setActiveSectionIndex] = useState(null);
+
     return (
         <div className="QuestionPaper py-2">
             <div className="d-flex align-items-center">
@@ -897,7 +927,7 @@ export default function QuestionManager() {
                 </div>
 
                 {/* Chapter Dropdown */}
-                <div>
+                {/* <div>
                     <select
                         onChange={onChapterChange}
                         value={selectedChapter}
@@ -909,7 +939,7 @@ export default function QuestionManager() {
                             <option key={idx} value={ch}>{ch}</option>
                         ))}
                     </select>
-                </div>
+                </div> */}
 
                 {/* Select All */}
                 <div className=" selectAll">
@@ -942,10 +972,169 @@ export default function QuestionManager() {
                 <button className="btn" type="button" data-bs-toggle="collapse" data-bs-target="#addInstructionCollapse" aria-expanded="false" aria-controls="addInstructionCollapse" disabled={!canEdit}>
                     <i className="fas fa-book me-2"></i>Add Instruction Template
                 </button>
-                <button className="btn" data-bs-toggle="modal" data-bs-target="#selectInstructionsModal">
-                    <i className="fas fa-sliders-h me-2"></i>Select Instructions & Download
+                <button
+                    className="btn"
+                    data-bs-toggle="modal"
+                    data-bs-target="#createQuestionPaperModal"
+                >
+                    ➕ Create Question Paper
                 </button>
+                {/* <button className="btn" data-bs-toggle="modal" data-bs-target="#selectInstructionsModal">
+                    <i className="fas fa-sliders-h me-2"></i>Select Instructions & Download
+                </button> */}
             </div>
+
+            {/* Create Question Ppaer */}
+            <div
+                className="modal fade"
+                id="createQuestionPaperModal"
+                tabIndex="-1"
+                aria-labelledby="createQuestionPaperModalLabel"
+                aria-hidden="true"
+            >
+                <div className="modal-dialog modal-fullscreen modal-dialog-scrollable">
+                    <div className="modal-content bg-light">
+                        <div className="modal-header bg-white border-bottom shadow-sm">
+                            <h5 className="modal-title" id="createQuestionPaperModalLabel">
+                                📝 Create Question Paper
+                            </h5>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+
+                        <div className="modal-body p-4">
+
+                            {/* STEP 1 & 2: Chapter + Section + Toggle */}
+                            <div className="mb-4 border rounded shadow-sm bg-white p-3">
+                                <h6 className="mb-3 border-bottom pb-2">Step 1 & 2: Select Chapter and Manage Sections</h6>
+
+                                <div className="row g-3 align-items-end">
+
+                                    {/* Chapter Dropdown */}
+                                    <div className="col-md-6">
+                                        <label className="form-label">Select Chapter</label>
+                                        <select
+                                            onChange={onChapterChange}
+                                            value={selectedChapter}
+                                            className="form-select shadow-sm"
+                                            disabled={!selectedSubject}
+                                        >
+                                            <option value="">-- Select Chapter --</option>
+                                            {chapterList.map((ch, idx) => (
+                                                <option key={idx} value={ch}>{ch}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Section Info */}
+                                    <div className="col-md-4">
+                                        <label className="form-label">Select Section to Assign</label>
+                                        <select
+                                            className="form-select shadow-sm"
+                                            value={activeSectionIndex !== null ? activeSectionIndex : ''}
+                                            onChange={(e) => setActiveSectionIndex(parseInt(e.target.value))}
+                                        >
+                                            <option value="">-- No Section Selected --</option>
+                                            {questionPaperSections.map((sec, idx) => (
+                                                <option key={idx} value={idx}>
+                                                    {sec.title}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Add Section Button */}
+                                    <div className="col-md-2">
+                                        <label className="form-label d-block invisible">Add Section</label>
+                                        <button
+                                            className="btn btn-outline-primary w-100"
+                                            onClick={() => {
+                                                const newSec = {
+                                                    title: `Section ${String.fromCharCode(65 + questionPaperSections.length)}`,
+                                                    questionIds: [],
+                                                };
+                                                setQuestionPaperSections([...questionPaperSections, newSec]);
+                                                setActiveSectionIndex(questionPaperSections.length);
+                                            }}
+                                        >
+                                            ➕ Add Section
+                                        </button>
+                                    </div>
+
+
+                                </div>
+                            </div>
+
+
+                            {/* STEP 3: Filter + Question List */}
+                            {questions.length > 0 && (
+                                <div className="border rounded shadow-sm bg-white p-3">
+                                    <h6 className="mb-3 border-bottom pb-2 d-flex align-items-center">
+                                        <i className="fas fa-list me-2 text-primary"></i>
+                                        All Questions
+                                        <span className="badge bg-secondary ms-2">{filteredAndSortedQuestions.length}</span>
+                                    </h6>
+
+                                    <div className="row mb-3">
+                                        <div className="col-md-4 mb-2">
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder="Search question text..."
+                                                value={searchText}
+                                                onChange={(e) => setSearchText(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="col-md-3 mb-2">
+                                            <select className="form-select" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                                                <option value="">All Types</option>
+                                                <option value="MCQ">MCQ</option>
+                                                <option value="Descriptive">Descriptive</option>
+                                                <option value="Match">Match</option>
+                                                <option value="sub-question">Sub-Questions</option>
+                                            </select>
+                                        </div>
+                                        <div className="col-md-2 mb-2">
+                                            <input
+                                                type="number"
+                                                className="form-control"
+                                                placeholder="Filter by Marks"
+                                                value={filterMarks}
+                                                onChange={(e) => setFilterMarks(e.target.value)}
+                                            />
+                                        </div>
+                                        <div className="col-md-3 mb-2">
+                                            <select className="form-select" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+                                                <option value="desc">Sort: High to Low</option>
+                                                <option value="asc">Sort: Low to High</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    <div className="questions-list">
+                                        {filteredAndSortedQuestions.map((q, i) => renderQuestionBlock(q, i))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Footer */}
+                        <div className="modal-footer bg-white border-top shadow-sm d-flex justify-content-between">
+                            <button className="btn btn-secondary" data-bs-dismiss="modal">
+                                Cancel
+                            </button>
+                            <button
+                                className="btn btn-primary"
+                                data-bs-toggle="modal"
+                                data-bs-target="#selectInstructionsModal"
+                            >
+                                <i className="fas fa-sliders-h me-2"></i>Select Instructions & Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+
 
             {/* Preivew  */}
             {previewImageUrl && (
@@ -1576,7 +1765,7 @@ export default function QuestionManager() {
                 </div>
             </div>
 
-            {questions.length > 0 && (
+            {/* {questions.length > 0 && (
                 <>
                     <h5 className="border-bottom pb-2 w-100 text-dark">
                         <i className="fas fa-list me-2 text-primary"></i>
@@ -1627,13 +1816,14 @@ export default function QuestionManager() {
                     </div>
 
                 </>
-            )}
+            )} */}
 
             {/* Preview Collapse Area */}
             <div className="d-none">
                 <PrintQuestionPaper
                     ref={printRef}
-                    questions={questions}
+                    sections={questionPaperSections} // Section A, B, etc.
+                    questionMap={globalQuestionMap} // All loaded questions
                     selectedQuestions={selectedQuestions}
                     schoolName={selectedSchoolName}
                     address={selectedAddress}
@@ -1646,6 +1836,7 @@ export default function QuestionManager() {
                     selectedSubject={filteredSubjects.find(s => s._id === selectedSubject)?.name || ''}
                 />
             </div>
+
         </div>
     );
 }

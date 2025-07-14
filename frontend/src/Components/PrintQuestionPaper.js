@@ -3,7 +3,8 @@ import React, { forwardRef } from 'react';
 const PrintQuestionPaper = forwardRef(
   (
     {
-      questions = [],
+      sections = [],                    // Section A, B, C...
+      questionMap = {},                // {questionId: fullQuestionObj}
       selectedQuestions = [],
       schoolName = '',
       address = '',
@@ -17,31 +18,6 @@ const PrintQuestionPaper = forwardRef(
     },
     ref
   ) => {
-    const filterSelectedQuestions = (questions) => {
-      return questions
-        .map((q) => {
-          // Check if current question or any sub-question is selected
-          const includeThis = selectedQuestions.includes(q.questionId);
-
-          // Recursively check sub-questions
-          const filteredSubs = q.subQuestions?.length
-            ? filterSelectedQuestions(q.subQuestions)
-            : [];
-
-          // If this or any sub-question is selected, return the question
-          if (includeThis || filteredSubs.length > 0) {
-            return {
-              ...q,
-              subQuestions: filteredSubs
-            };
-          }
-
-          return null;
-        })
-        .filter(Boolean);
-    };
-
-    const filtered = filterSelectedQuestions(questions);
 
     const getSubLabel = (index) => {
       const roman = ['(i)', '(ii)', '(iii)', '(iv)', '(v)', '(vi)', '(vii)', '(viii)', '(ix)', '(x)'];
@@ -54,10 +30,7 @@ const PrintQuestionPaper = forwardRef(
 
       return (
         <div key={q._id || `${idx}-${level}`} className="mb-4" style={{ marginLeft: level * 32 }}>
-          <div
-            className="d-flex justify-content-between"
-            style={{ fontWeight: 'bold', marginBottom: '6px' }}
-          >
+          <div className="d-flex justify-content-between" style={{ fontWeight: 'bold', marginBottom: '6px' }}>
             <span>{qNumber}. {q.questionText}</span>
             {q.questionMarks && <span>({q.questionMarks} Marks)</span>}
           </div>
@@ -67,17 +40,11 @@ const PrintQuestionPaper = forwardRef(
               <img
                 src={q.questionImage}
                 alt="Question"
-                style={{
-                  maxHeight: '100px',
-                  maxWidth: '100%',
-                  objectFit: 'contain',
-                  marginTop: '4px',
-                }}
+                style={{ maxHeight: '100px', maxWidth: '100%', objectFit: 'contain', marginTop: '4px' }}
               />
             </div>
           )}
 
-          {/* MCQ */}
           {q.questionType === 'MCQ' && (
             <div className="d-flex flex-wrap mt-2" style={{ gap: '12px' }}>
               {q.options.map((opt, i) => (
@@ -89,12 +56,7 @@ const PrintQuestionPaper = forwardRef(
                     <img
                       src={opt.imageUrl}
                       alt={`Option-${i}`}
-                      style={{
-                        height: '50px',
-                        width: '50px',
-                        objectFit: 'contain',
-                        marginRight: '8px',
-                      }}
+                      style={{ height: '50px', width: '50px', objectFit: 'contain', marginRight: '8px' }}
                     />
                   )}
                   <div>{opt.text}</div>
@@ -103,7 +65,6 @@ const PrintQuestionPaper = forwardRef(
             </div>
           )}
 
-          {/* Match */}
           {q.questionType === 'Match' && (
             <div className="mt-3 d-flex flex-column gap-2">
               {q.pairs.map((pair, i) => (
@@ -113,12 +74,7 @@ const PrintQuestionPaper = forwardRef(
                       <img
                         src={pair.leftImage}
                         alt="Left"
-                        style={{
-                          height: '36px',
-                          width: '36px',
-                          objectFit: 'contain',
-                          marginRight: '8px',
-                        }}
+                        style={{ height: '36px', width: '36px', objectFit: 'contain', marginRight: '8px' }}
                       />
                     )}
                     <span>{pair.leftText}</span>
@@ -129,12 +85,7 @@ const PrintQuestionPaper = forwardRef(
                       <img
                         src={pair.rightImage}
                         alt="Right"
-                        style={{
-                          height: '36px',
-                          width: '36px',
-                          objectFit: 'contain',
-                          marginLeft: '8px',
-                        }}
+                        style={{ height: '36px', width: '36px', objectFit: 'contain', marginLeft: '8px' }}
                       />
                     )}
                   </div>
@@ -143,12 +94,9 @@ const PrintQuestionPaper = forwardRef(
             </div>
           )}
 
-          {/* 🔁 Sub-questions */}
           {q.subQuestions?.length > 0 && (
             <div className="mt-3">
-              {q.subQuestions.map((subQ, subIdx) =>
-                renderQuestionWithSub(subQ, subIdx, level + 1)
-              )}
+              {q.subQuestions.map((subQ, subIdx) => renderQuestionWithSub(subQ, subIdx, level + 1))}
             </div>
           )}
         </div>
@@ -166,15 +114,11 @@ const PrintQuestionPaper = forwardRef(
           lineHeight: '1.6'
         }}
       >
-        {/* School Heading */}
+        {/* Heading */}
         <div className="text-center mb-3">
           {schoolName && <h3 className="mb-1">{schoolName}</h3>}
           {address && <p className="mb-1">{address}</p>}
-          {examTitle && (
-            <p className="mb-2"><strong>{examTitle}</strong></p>
-          )}
-
-          {/* Name & Roll No */}
+          {examTitle && <p className="mb-2"><strong>{examTitle}</strong></p>}
           <div className="d-flex justify-content-between mb-2">
             <span><strong>Name:</strong></span>
             <span style={{ marginRight: '150px' }}><strong>Roll No:</strong></span>
@@ -182,20 +126,18 @@ const PrintQuestionPaper = forwardRef(
         </div>
         <hr />
 
-        {/* Date & Time */}
+        {/* Date & Subject */}
         <div className="d-flex justify-content-between mb-2">
           <span><strong>Date:</strong> {examDate}</span>
           <span><strong>Time:</strong> {examTime}</span>
         </div>
-
-        {/* Class & Subject */}
         <div className="d-flex justify-content-between mb-1">
           <span><strong>Class:</strong> {selectedClass}</span>
           <span><strong>Subject:</strong> {selectedSubject}</span>
           <span><strong>Max Marks:</strong> {maxMarks}</span>
         </div>
-
         <hr />
+
         {/* Instructions */}
         {instructions.length > 0 && (
           <>
@@ -210,10 +152,21 @@ const PrintQuestionPaper = forwardRef(
             <hr />
           </>
         )}
+        {/* Section-wise Questions */}
+        {sections.map((section, secIdx) => {
+          const questionsInSection = section.questionIds
+            ?.map(id => questionMap[id])
+            ?.filter(q => q && selectedQuestions.includes(q.questionId));
 
-        {/* Questions */}
-        {filtered.map((q, idx) => renderQuestionWithSub(q, idx))}
+          if (!questionsInSection || questionsInSection.length === 0) return null;
 
+          return (
+            <div key={secIdx} className="mb-5">
+              <h5 className="text-decoration-underline mb-3 text-center">{section.title}</h5>
+              {questionsInSection.map((q, i) => renderQuestionWithSub(q, i))}
+            </div>
+          );
+        })}
       </div>
     );
   }
