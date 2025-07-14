@@ -557,12 +557,16 @@ export default function QuestionManager() {
         );
     };
 
+    // Place this function at the top of your component file
+    const toRoman = (num) => {
+        const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
+        return roman[num] || num + 1;
+    };
+
     const renderQuestionBlock = (q, i, level = 0) => (
 
-        <div
-            key={q._id || i}
-            className={`border rounded p-4 mb-4 bg-white position-relative shadow-sm ${level > 0 ? 'ms-4' : ''}`}
-        >
+        <div key={q._id || i} className={`border rounded p-4 mb-2 bg-white position-relative shadow-sm ${level > 0 ? 'ms-4' : ''}`}>
+
             {/* Checkbox for Main Questions only */}
             {level === 0 && (
                 <div className="position-absolute top-0 start-0 m-2">
@@ -584,8 +588,10 @@ export default function QuestionManager() {
             {/* Delete Button */}
             {level === 0 && (
                 <div className="position-absolute top-0 end-0 m-2 d-flex gap-2">
+                    <span className="ms-auto badge bg-light text-dark" style={{ height: 'fit-content', fontSize: '10px' }}>{q.questionMarks} marks</span>
+                    <p className=""><span className="badge bg-info" style={{ fontFamily: 'Times New Roman', fontSize: '14px' }}>{q.questionType}</span></p>
                     <button
-                        className="btn btn-sm btn-outline-primary"
+                        className="btn btn-sm btn-outline-primary mb-2"
                         data-bs-toggle="modal"
                         data-bs-target="#editQuestionModal"
                         onClick={() => openEditModal(q, i)}
@@ -594,7 +600,7 @@ export default function QuestionManager() {
                         <i className="fas fa-edit"></i>
                     </button>
                     <button
-                        className="btn btn-sm btn-outline-danger"
+                        className="btn btn-sm btn-outline-danger mb-2"
                         onClick={() => handleDelete(i)}
                         disabled={!canEdit}
                     >
@@ -736,20 +742,22 @@ export default function QuestionManager() {
                 </div>
             </div>
 
-
             {/* Question Content */}
-            <div className="mb-3">
-                <h6 className="mb-2">
-                    <strong>{level === 0 ? `Q${i + 1}` : `↳ Sub-Q`}</strong>: {q.questionText}
+            <div className="">
+                <h6 className=" d-flex align-items-center flex-wrap">
+                    <strong className="me-2">
+                        {level === 0 ? `Q${i + 1}.` : `${toRoman(i)}.`}
+                    </strong>
+                    <span>{q.questionText}</span>
                 </h6>
-                <p className="mb-2"><strong>Type:</strong> <span className="badge bg-info">{q.questionType}</span></p>
+
                 {q.questionImage && (
-                    <div className="text-end mb-2">
+                    <div className="mt-2">
                         <img
                             src={q.questionImage}
                             alt="Question"
                             className="img-thumbnail"
-                            style={{ width: 80, height: 80, objectFit: 'cover' }}
+                            style={{ width: 100, height: 100, objectFit: 'cover' }}
                         />
                     </div>
                 )}
@@ -776,13 +784,6 @@ export default function QuestionManager() {
                             </div>
                         </div>
                     ))}
-                </div>
-            )}
-
-            {/* Descriptive */}
-            {q.questionType === 'Descriptive' && (
-                <div className="bg-light p-3 rounded border mt-2">
-                    <em>This is a descriptive question. Students are expected to write a detailed answer.</em>
                 </div>
             )}
 
@@ -827,7 +828,6 @@ export default function QuestionManager() {
             {/* 🔁 Sub-Questions Recursively */}
             {q.subQuestions?.length > 0 && (
                 <div className="mt-3 border-top pt-3">
-                    <h6 className="fw-bold text-muted mb-3">Sub-Questions</h6>
                     {q.subQuestions.map((subQ, subIndex) =>
                         renderQuestionBlock(subQ, subIndex, level + 1)
                     )}
