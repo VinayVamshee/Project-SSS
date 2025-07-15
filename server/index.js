@@ -818,18 +818,36 @@ app.post("/pass-students-to", async (req, res) => {
     try {
         const { studentIds, newAcademicYear, newClass } = req.body;
 
-        // Validation: Ensure required data is provided
         if (!studentIds || studentIds.length === 0 || !newAcademicYear || !newClass) {
             return res.status(400).json({ message: "Missing required data." });
         }
 
-        // Update each selected student
-        await Student.updateMany(
-            { _id: { $in: studentIds } }, // Find all students with matching IDs
-            {
-                $push: { academicYears: { academicYear: newAcademicYear, class: newClass } } // Add new year & class
+        const students = await Student.find({ _id: { $in: studentIds } });
+
+        const bulkOperations = students.map(student => {
+            const academicYears = student.academicYears;
+
+            // Mark latest year as Passed (if it exists)
+            if (academicYears.length > 0) {
+                academicYears[academicYears.length - 1].status = "Passed";
             }
-        );
+
+            // Add new year with Active status
+            academicYears.push({
+                academicYear: newAcademicYear,
+                class: newClass,
+                status: "Active"
+            });
+
+            return {
+                updateOne: {
+                    filter: { _id: student._id },
+                    update: { academicYears: academicYears }
+                }
+            };
+        });
+
+        await Student.bulkWrite(bulkOperations);
 
         res.status(200).json({ message: "Students updated successfully!" });
     } catch (error) {
@@ -841,37 +859,36 @@ app.post("/pass-students-to", async (req, res) => {
 //Drop students 
 app.post("/drop-academic-year", async (req, res) => {
     try {
-        const { studentId, academicYear } = req.body;
+        const { studentIds, academicYear, status } = req.body;
 
-        console.log("📩 Received request to drop academic year");
-        console.log("➡️ studentId:", studentId);
-        console.log("➡️ academicYear:", academicYear);
-
-        if (!studentId || !academicYear) {
-            console.warn("⚠️ Missing studentId or academicYear in request body");
-            return res.status(400).json({ message: "Missing studentId or academicYear" });
+        if (!studentIds || studentIds.length === 0 || !academicYear || !status) {
+            return res.status(400).json({ message: "Missing data." });
         }
 
-        const student = await Student.findById(studentId);
-        if (!student) {
-            console.warn(`⚠️ Student not found for ID: ${studentId}`);
-            return res.status(404).json({ message: "Student not found" });
-        }
+        const students = await Student.find({ _id: { $in: studentIds } });
 
-        console.log("🧾 Current academicYears:", student.academicYears);
+        const bulkUpdates = students.map(student => {
+            const updatedAcademicYears = student.academicYears.map(entry => {
+                if (entry.academicYear === academicYear) {
+                    return {
+                        ...entry.toObject(),
+                        status: status
+                    };
+                }
+                return entry;
+            });
 
-        // Filter out the year to be dropped
-        student.academicYears = student.academicYears.filter(
-            (entry) => entry.academicYear !== academicYear
-        );
+            return {
+                updateOne: {
+                    filter: { _id: student._id },
+                    update: { academicYears: updatedAcademicYears }
+                }
+            };
+        });
 
-        console.log("✅ Updated academicYears:", student.academicYears);
+        await Student.bulkWrite(bulkUpdates);
 
-        await student.save();
-        console.log("💾 Student record saved successfully");
-
-        res.status(200).json({ message: "Academic year removed successfully" });
-
+        res.status(200).json({ message: `Students marked as ${status}` });
     } catch (err) {
         console.error("❌ Error in /drop-academic-year:", err);
         res.status(500).json({ message: "Server error" });

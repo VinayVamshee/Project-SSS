@@ -87,11 +87,14 @@ export default function Students() {
 
 
     const [searchType, setSearchType] = useState("name");
+    const [statusFilter, setStatusFilter] = useState("Active");
 
     // Final Filtered Students
     const filteredStudents = students
         .filter((student) => {
-            // Match academic year and class
+            const query = searchStudent.toLowerCase().trim();
+
+            // ✅ Match by year and class
             const yearMatch =
                 selectedYear === "" ||
                 student.academicYears?.some((year) => year.academicYear === selectedYear);
@@ -100,12 +103,19 @@ export default function Students() {
                 selectedClass === "" ||
                 student.academicYears?.some((year) => String(year.class) === String(selectedClass));
 
-            if (!yearMatch || !classMatch) return false;
+            // ✅ Match status ONLY for selected year
+            const statusMatch =
+                statusFilter === "" ||
+                student.academicYears?.some(
+                    (year) =>
+                        year.academicYear === selectedYear && year.status === statusFilter
+                );
 
-            const query = searchStudent.toLowerCase().trim();
+            if (!yearMatch || !classMatch || !statusMatch) return false;
+
+            // ✅ Handle search field
             if (query === "") return true;
 
-            // Handle search type
             if (searchType.startsWith("additional_")) {
                 const key = searchType.replace("additional_", "");
                 return student.additionalInfo?.some(
@@ -193,26 +203,31 @@ export default function Students() {
         }
     };
 
+    const [dropStatus, setDropStatus] = useState("");
+
     const handleDropStudents = async () => {
-        if (selectedStudents.length === 0 || !selectedYear) {
-            alert("Select students and an academic year to drop.");
+        if (selectedStudents.length === 0 || !selectedYear || !dropStatus) {
+            alert("Please select students, academic year, and drop status.");
             return;
         }
 
         try {
             const response = await axios.post("https://sss-server-eosin.vercel.app/drop-academic-year", {
-                studentId: selectedStudent._id,
-                academicYear: selectedYear
+                studentIds: selectedStudents,
+                academicYear: selectedYear,
+                status: dropStatus
             });
 
             if (response.status === 200) {
-                alert("Selected academic year dropped successfully for selected students.");
+                alert(`Students marked as ${dropStatus} successfully.`);
+                setDropStatus(""); // reset
             }
         } catch (error) {
-            console.error("❌ Error dropping academic year:", error);
-            alert("Failed to drop academic year.");
+            console.error("❌ Error updating student status:", error);
+            alert("Failed to update students.");
         }
     };
+
 
     const calculateAge = (dob) => {
         const birthDate = new Date(dob);
@@ -294,19 +309,23 @@ export default function Students() {
             .filter((student) => selectedStudents.includes(student._id))
             .map((student) => {
                 const row = {};
+
+                const yearEntry = student.academicYears.find((y) => y.academicYear === selectedYear);
+
                 selectedFields.forEach((field) => {
-                    if (field === "academicYear" || field === "class") {
-                        const yearEntry = student.academicYears.find((y) => y.academicYear === selectedYear);
+                    if (["academicYear", "class", "status"].includes(field)) {
                         if (field === "academicYear") row["Academic Year"] = yearEntry?.academicYear || "N/A";
                         if (field === "class") row["Class"] = yearEntry?.class || "N/A";
-                    } else if (field === "additionalInfo") {
-                        student.additionalInfo?.forEach((info) => {
-                            row[info.key] = info.value;
-                        });
+                        if (field === "status") row["Status"] = yearEntry?.status || "Active"; // fallback to Active
+                    } else if (field.startsWith("additional_")) {
+                        const key = field.replace("additional_", "");
+                        const info = student.additionalInfo?.find((i) => i.key === key);
+                        row[key] = info?.value || "";
                     } else {
                         row[field] = student[field] || "";
                     }
                 });
+
                 return row;
             });
 
@@ -355,12 +374,30 @@ export default function Students() {
                     </select>
                 </div>
 
+                {/* Status Filter */}
+                <div className="statusFilter">
+                    <select
+                        className="form-select form-select-sm"
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        style={{ width: '100px' }}
+                    >
+                        <option value="">All Statuses</option>
+                        <option value="Active">Active</option>
+                        <option value="Passed">Passed</option>
+                        <option value="Dropped">Dropped</option>
+                        <option value="TC-Issued">TC-Issued</option>
+                        <option value="Failed">Failed</option>
+                    </select>
+                </div>
+
                 {/* Search Type Dropdown */}
                 <div className="searchType">
                     <select
-                        className="form-select form-select-sm"
+                        className="form-select "
                         value={searchType}
                         onChange={(e) => setSearchType(e.target.value)}
+                        style={{ width: '100px' }}
                     >
                         <option disabled value="">Search by Field</option>
 
@@ -451,7 +488,6 @@ export default function Students() {
                 </button>
 
             </div>
-
 
             {/* Student Cards */}
             {
@@ -708,15 +744,42 @@ export default function Students() {
                                             <tr>
                                                 <th>Academic Year</th>
                                                 <th>Class</th>
+                                                <th>Status</th>
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {selectedStudent.academicYears.map((entry, index) => (
-                                                <tr key={index}>
-                                                    <td>{entry.academicYear}</td>
-                                                    <td>{entry.class}</td>
-                                                </tr>
-                                            ))}
+                                            {selectedStudent.academicYears.map((entry, index) => {
+                                                let badgeColor = "secondary"; // default gray
+
+                                                switch (entry.status) {
+                                                    case "Active":
+                                                        badgeColor = "success"; // green
+                                                        break;
+                                                    case "Dropped":
+                                                        badgeColor = "danger"; // red
+                                                        break;
+                                                    case "TC-Issued":
+                                                        badgeColor = "warning"; // yellow
+                                                        break;
+                                                    case "Failed":
+                                                        badgeColor = "danger"; // red
+                                                        break;
+                                                    default:
+                                                        badgeColor = "secondary"; // fallback
+                                                }
+
+                                                return (
+                                                    <tr key={index}>
+                                                        <td>{entry.academicYear}</td>
+                                                        <td>{entry.class}</td>
+                                                        <td className={` text-${badgeColor} fw-bold`}>
+                                                            <span >
+                                                                {entry.status || "N/A"}
+                                                            </span>
+                                                        </td>
+                                                    </tr>
+                                                );
+                                            })}
                                         </tbody>
                                     </table>
 
@@ -840,6 +903,21 @@ export default function Students() {
                         </div>
                         <div className="modal-body">
                             <p><strong>Academic Year to Drop:</strong> {selectedYear}</p>
+                            <div className="mb-3">
+                                <label htmlFor="dropStatus" className="form-label">Select Drop Status</label>
+                                <select
+                                    id="dropStatus"
+                                    className="form-control"
+                                    value={dropStatus}
+                                    onChange={(e) => setDropStatus(e.target.value)}
+                                >
+                                    <option value="">Select Status</option>
+                                    <option value="Dropped">Dropped</option>
+                                    <option value="TC-Issued">TC-Issued</option>
+                                    <option value="Failed">Failed</option>
+                                </select>
+                            </div>
+
 
                             {selectedStudents.length > 0 ? (
                                 <table className="table table-bordered mt-3">
@@ -945,6 +1023,7 @@ export default function Students() {
                                         { key: "FreeStud", label: "Free Student" },
                                         { key: "academicYear", label: "Academic Year" },
                                         { key: "class", label: "Class" },
+                                        { key: "status", label: "Status" }
                                     ].map((field, index) => (
                                         <div className="col-md-4 col-sm-6 mb-2" key={index}>
                                             <div className="form-check">

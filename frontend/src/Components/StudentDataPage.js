@@ -14,11 +14,15 @@ const StudentDataPage = forwardRef(
         return field === "academicYear"
           ? yearEntry?.academicYear || "N/A"
           : yearEntry?.class || "N/A";
+      } else if (field === "status") {
+        const yearEntry = student.academicYears.find(
+          (y) => y.academicYear === selectedYear
+        );
+        return yearEntry?.status || "Active";
       } else if (field.startsWith("additional_")) {
         const key = field.replace("additional_", "");
         return (
-          student.additionalInfo?.find((info) => info.key === key)?.value ||
-          "N/A"
+          student.additionalInfo?.find((info) => info.key === key)?.value || "N/A"
         );
       } else {
         return student[field] || "N/A";

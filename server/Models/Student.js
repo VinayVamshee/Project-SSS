@@ -54,6 +54,11 @@ const studentSchema = new mongoose.Schema(
         type: String,
         required: true,
       },
+      status: {
+        type: String,
+        enum: ['Active', 'Passed', 'TC-Issued', 'Dropped'], // optional: to restrict allowed values
+        default: 'Active'
+      },
     }],
     additionalInfo: [
       {

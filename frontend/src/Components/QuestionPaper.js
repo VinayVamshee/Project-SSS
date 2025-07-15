@@ -573,24 +573,25 @@ export default function QuestionManager() {
         );
     };
 
-    const getAllQuestionIds = (questions) => {
-        const ids = [];
+    // const getAllQuestionIds = (questions) => {
+    //     const ids = [];
 
-        const collectIds = (list) => {
-            list.forEach(q => {
-                if (q.questionId) ids.push(q.questionId);
-                if (q.subQuestions?.length > 0) {
-                    collectIds(q.subQuestions);
-                }
-            });
-        };
+    //     const collectIds = (list) => {
+    //         list.forEach(q => {
+    //             if (q.questionId) ids.push(q.questionId);
+    //             if (q.subQuestions?.length > 0) {
+    //                 collectIds(q.subQuestions);
+    //             }
+    //         });
+    //     };
 
-        collectIds(questions);
-        console.log('All Question IDs:', ids);
-        return ids;
-    };
+    //     collectIds(questions);
+    //     console.log('All Question IDs:', ids);
+    //     return ids;
+    // };
 
     // Place this function at the top of your component file
+
     const toRoman = (num) => {
         const roman = ['i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'];
         return roman[num] || num + 1;
@@ -897,7 +898,12 @@ export default function QuestionManager() {
     );
 
     const [questionPaperSections, setQuestionPaperSections] = useState([]);
-    const [activeSectionIndex, setActiveSectionIndex] = useState(null);
+    const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+    useEffect(() => {
+        if (questionPaperSections.length > 0 && activeSectionIndex === null) {
+            setActiveSectionIndex(0); // default to Section A
+        }
+    }, [questionPaperSections, activeSectionIndex]);
 
     return (
         <div className="QuestionPaper py-2">
@@ -1004,58 +1010,58 @@ export default function QuestionManager() {
                         <div className="modal-body p-4">
 
                             {/* STEP 1 & 2: Chapter + Section + Toggle */}
-                                <div className="row g-3 align-items-end mb-1">
-                                    {/* Chapter Dropdown */}
-                                    <div className="col-md-6">
-                                        <label className="form-label">Select Chapter</label>
-                                        <select
-                                            onChange={onChapterChange}
-                                            value={selectedChapter}
-                                            className="form-select shadow-sm"
-                                            disabled={!selectedSubject}
-                                        >
-                                            <option value="">-- Select Chapter --</option>
-                                            {chapterList.map((ch, idx) => (
-                                                <option key={idx} value={ch}>{ch}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Section Info */}
-                                    <div className="col-md-4">
-                                        <label className="form-label">Select Section to Assign</label>
-                                        <select
-                                            className="form-select shadow-sm"
-                                            value={activeSectionIndex !== null ? activeSectionIndex : ''}
-                                            onChange={(e) => setActiveSectionIndex(parseInt(e.target.value))}
-                                        >
-                                            <option value="">-- No Section Selected --</option>
-                                            {questionPaperSections.map((sec, idx) => (
-                                                <option key={idx} value={idx}>
-                                                    {sec.title}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-
-                                    {/* Add Section Button */}
-                                    <div className="col-md-2">
-                                        <label className="form-label d-block invisible">Add Section</label>
-                                        <button
-                                            className="btn btn-outline-primary w-100"
-                                            onClick={() => {
-                                                const newSec = {
-                                                    title: `Section ${String.fromCharCode(65 + questionPaperSections.length)}`,
-                                                    questionIds: [],
-                                                };
-                                                setQuestionPaperSections([...questionPaperSections, newSec]);
-                                                setActiveSectionIndex(questionPaperSections.length);
-                                            }}
-                                        >
-                                            ➕ Add Section
-                                        </button>
-                                    </div>
+                            <div className="row g-3 align-items-end mb-1">
+                                {/* Chapter Dropdown */}
+                                <div className="col-md-6">
+                                    <label className="form-label">Select Chapter</label>
+                                    <select
+                                        onChange={onChapterChange}
+                                        value={selectedChapter}
+                                        className="form-select shadow-sm"
+                                        disabled={!selectedSubject}
+                                    >
+                                        <option value="">-- Select Chapter --</option>
+                                        {chapterList.map((ch, idx) => (
+                                            <option key={idx} value={ch}>{ch}</option>
+                                        ))}
+                                    </select>
                                 </div>
+
+                                {/* Section Info */}
+                                <div className="col-md-4">
+                                    <label className="form-label">Select Section to Assign</label>
+                                    <select
+                                        className="form-select shadow-sm"
+                                        value={activeSectionIndex !== null ? activeSectionIndex : ''}
+                                        onChange={(e) => setActiveSectionIndex(parseInt(e.target.value))}
+                                    >
+                                        <option value="">-- No Section Selected --</option>
+                                        {questionPaperSections.map((sec, idx) => (
+                                            <option key={idx} value={idx}>
+                                                {sec.title}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Add Section Button */}
+                                <div className="col-md-2">
+                                    <label className="form-label d-block invisible">Add Section</label>
+                                    <button
+                                        className="btn btn-outline-primary w-100"
+                                        onClick={() => {
+                                            const newSec = {
+                                                title: `Section ${String.fromCharCode(65 + questionPaperSections.length)}`,
+                                                questionIds: [],
+                                            };
+                                            setQuestionPaperSections([...questionPaperSections, newSec]);
+                                            setActiveSectionIndex(questionPaperSections.length);
+                                        }}
+                                    >
+                                        ➕ Add Section
+                                    </button>
+                                </div>
+                            </div>
 
                             {/* STEP 3: Filter + Question List */}
                             {questions.length > 0 && (
@@ -1102,7 +1108,7 @@ export default function QuestionManager() {
                                         </div>
                                     </div>
 
-                                    <div className="questions-list" style={{height:'60vh'}}>
+                                    <div className="questions-list" style={{ height: '60vh' }}>
                                         {filteredAndSortedQuestions.map((q, i) => renderQuestionBlock(q, i))}
                                     </div>
                                 </div>
