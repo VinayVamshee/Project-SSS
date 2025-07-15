@@ -929,12 +929,7 @@ export default function QuestionManager() {
     );
 
     const [questionPaperSections, setQuestionPaperSections] = useState([]);
-    const [activeSectionIndex, setActiveSectionIndex] = useState(0);
-    useEffect(() => {
-        if (questionPaperSections.length > 0 && activeSectionIndex === null) {
-            setActiveSectionIndex(0); // default to Section A
-        }
-    }, [questionPaperSections, activeSectionIndex]);
+    const [activeSectionIndex, setActiveSectionIndex] = useState(null);
 
     return (
         <div className="QuestionPaper py-2">
@@ -1864,7 +1859,6 @@ export default function QuestionManager() {
                     selectedSubject={filteredSubjects.find(s => s._id === selectedSubject)?.name || ''}
                 />
             </div>
-
 
         </div>
     );

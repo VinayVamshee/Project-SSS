@@ -175,6 +175,26 @@ const PrintQuestionPaper = forwardRef(
             </div>
           );
         })}
+
+        {/* 🔹 Render Unassigned Selected Questions */}
+        {(() => {
+          const sectionQuestionIds = new Set(
+            sections.flatMap(section => section.questionIds || [])
+          );
+
+          const unassignedQuestions = selectedQuestions
+            .filter(qid => !sectionQuestionIds.has(qid))
+            .map(qid => questionMap[qid])
+            .filter(Boolean); // remove undefined
+
+          if (unassignedQuestions.length === 0) return null;
+
+          return (
+            <div className="mb-5">
+              {unassignedQuestions.map((q, i) => renderQuestionWithSub(q, i))}
+            </div>
+          );
+        })()}
       </div>
     );
   }
