@@ -3,9 +3,10 @@ import React, { forwardRef } from 'react';
 const PrintQuestionPaper = forwardRef(
   (
     {
-      sections = [],                    // Section A, B, C...
-      questionMap = {},                // {questionId: fullQuestionObj}
+      sections = [],
+      questionMap = {},
       selectedQuestions = [],
+      fullWidthImagesMap = {}, // ✅ NEW PROP
       schoolName = '',
       address = '',
       examTitle = '',
@@ -18,7 +19,6 @@ const PrintQuestionPaper = forwardRef(
     },
     ref
   ) => {
-
     const getSubLabel = (index) => {
       const roman = ['(i)', '(ii)', '(iii)', '(iv)', '(v)', '(vi)', '(vii)', '(viii)', '(ix)', '(x)'];
       return roman[index] || `(${index + 1})`;
@@ -27,9 +27,10 @@ const PrintQuestionPaper = forwardRef(
     const renderQuestionWithSub = (q, idx, level = 0) => {
       const isMain = level === 0;
       const qNumber = isMain ? `Q${idx + 1}` : getSubLabel(idx);
+      const isFullWidth = !!fullWidthImagesMap[q.questionId]; // ✅ image width check
 
       return (
-        <div key={q._id || `${idx}-${level}`} className="mb-4" style={{ marginLeft: level * 32 }}>
+        <div key={q.questionId || `${idx}-${level}`} className="mb-4" style={{ marginLeft: level * 32 }}>
           <div className="d-flex justify-content-between" style={{ fontWeight: 'bold', marginBottom: '6px' }}>
             <span>{qNumber}. {q.questionText}</span>
             {q.questionMarks && <span>({q.questionMarks} Marks)</span>}
@@ -40,7 +41,12 @@ const PrintQuestionPaper = forwardRef(
               <img
                 src={q.questionImage}
                 alt="Question"
-                style={{ maxHeight: '100px', maxWidth: '100%', objectFit: 'contain', marginTop: '4px' }}
+                style={{
+                  maxHeight: isFullWidth ? '400px' : '100px',
+                  width: isFullWidth ? '100%' : 'auto',
+                  objectFit: 'contain',
+                  marginTop: '4px',
+                }}
               />
             </div>
           )}
@@ -152,6 +158,7 @@ const PrintQuestionPaper = forwardRef(
             <hr />
           </>
         )}
+
         {/* Section-wise Questions */}
         {sections.map((section, secIdx) => {
           const questionsInSection = section.questionIds

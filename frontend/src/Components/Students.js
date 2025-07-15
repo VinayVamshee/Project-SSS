@@ -346,7 +346,7 @@ export default function Students() {
 
                 {/* Year Filter */}
                 <div className="yearFilter">
-                    <select className="form-select form-select-sm" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}  style={{ width: '100px' }}>
+                    <select className="form-select form-select-sm" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} style={{ width: '100px' }}>
                         <option value="">Select Academic Year</option>
                         <option value="">All</option>
                         {academicYears.length > 0 ? (
@@ -392,7 +392,7 @@ export default function Students() {
                 </div>
 
                 {/* Filtered Count */}
-                <div className="filteredCount d-flex align-items-center btn fw-bold text-secondary border shadow" style={{backgroundColor:'white'}}>
+                <div className="filteredCount d-flex align-items-center btn fw-bold text-secondary border shadow" style={{ backgroundColor: 'white' }}>
                     {filteredStudents.length}
                 </div>
 

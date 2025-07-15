@@ -597,6 +597,8 @@ export default function QuestionManager() {
         return roman[num] || num + 1;
     };
 
+    const [fullWidthImagesMap, setFullWidthImagesMap] = useState({});
+
     const renderQuestionBlock = (q, i, level = 0) => (
 
         <div key={q.questionId || i} className={`border rounded p-4 mb-2 bg-white position-relative shadow-sm ${level > 0 ? 'ms-4' : ''}`}>
@@ -664,6 +666,129 @@ export default function QuestionManager() {
                     >
                         <i className="fas fa-trash-alt"></i>
                     </button>
+                </div>
+            )}
+
+            {/* Question Content */}
+            <div className="">
+                <h6 className="d-flex align-items-center flex-wrap">
+                    <strong className="me-2">
+                        {level === 0 ? `Q${i + 1}.` : `${toRoman(i)}.`}
+                    </strong>
+                    <span>
+                        <span className="text-muted">[ {q.questionId} ]</span> {q.questionText}
+                    </span>
+                </h6>
+
+              {q.questionImage && (
+  <div className="mt-2">
+    <img
+      src={q.questionImage}
+      alt="Question"
+      className="img-thumbnail"
+      style={{
+        width: fullWidthImagesMap[q.questionId] ? "100%" : 100,
+        height: 100,
+        objectFit: "contain",
+      }}
+    />
+
+    {/* ✅ Toggle Switch for Full Width */}
+    <div className="form-check form-switch mt-2">
+      <input
+        className="form-check-input"
+        type="checkbox"
+        role="switch"
+        id={`fullWidthImage-${q.questionId}-${i}-${level}`}
+        checked={!!fullWidthImagesMap[q.questionId]}
+        onChange={(e) => {
+          const isChecked = e.target.checked;
+          setFullWidthImagesMap((prev) => ({
+            ...prev,
+            [q.questionId]: isChecked,
+          }));
+        }}
+      />
+      <label
+        className="form-check-label"
+        htmlFor={`fullWidthImage-${q.questionId}-${i}-${level}`}
+      >
+        Display image in full width
+      </label>
+    </div>
+  </div>
+)}
+
+            </div>
+
+            {/* MCQ Options */}
+            {q.questionType === 'MCQ' && (
+                <div className="row">
+                    {q.options.map((opt, idx) => (
+                        <div key={idx} className="col-md-6 mb-2">
+                            <div className="border rounded p-2 d-flex align-items-center">
+                                <span className="me-2 fw-bold">({String.fromCharCode(65 + idx)})</span>
+                                <div className="d-flex align-items-center">
+                                    <span>{opt.text}</span>
+                                    {opt.imageUrl && (
+                                        <img
+                                            src={opt.imageUrl}
+                                            alt={`Option ${idx + 1}`}
+                                            className="img-thumbnail ms-2"
+                                            style={{ width: 50, height: 50, objectFit: 'cover' }}
+                                        />
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            )}
+
+            {/* Match the Following */}
+            {q.questionType === 'Match' && (
+                <div className="row mt-2">
+                    <div className="col-md-6">
+                        <div className="fw-bold mb-1">Column A</div>
+                        {q.pairs.map((pair, idx) => (
+                            <div key={idx} className="d-flex align-items-center mb-1">
+                                <span>{pair.leftText}</span>
+                                {pair.leftImage && (
+                                    <img
+                                        src={pair.leftImage}
+                                        alt="Left"
+                                        className="img-thumbnail ms-2"
+                                        style={{ width: 40, height: 40, objectFit: 'cover' }}
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                    <div className="col-md-6">
+                        <div className="fw-bold mb-1">Column B</div>
+                        {q.pairs.map((pair, idx) => (
+                            <div key={idx} className="d-flex align-items-center mb-1">
+                                <span>{pair.rightText}</span>
+                                {pair.rightImage && (
+                                    <img
+                                        src={pair.rightImage}
+                                        alt="Right"
+                                        className="img-thumbnail ms-2"
+                                        style={{ width: 40, height: 40, objectFit: 'cover' }}
+                                    />
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* 🔁 Sub-Questions Recursively */}
+            {q.subQuestions?.length > 0 && (
+                <div className="mt-3 border-top pt-3">
+                    {q.subQuestions.map((subQ, subIndex) =>
+                        renderQuestionBlock(subQ, subIndex, level + 1)
+                    )}
                 </div>
             )}
 
@@ -800,100 +925,6 @@ export default function QuestionManager() {
                     </div>
                 </div>
             </div>
-
-            {/* Question Content */}
-            <div className="">
-                <h6 className=" d-flex align-items-center flex-wrap">
-                    <strong className="me-2">
-                        {level === 0 ? `Q${i + 1}.` : `${toRoman(i)}.`}
-                    </strong>
-                    <span>
-                        <span className="text-muted">[ {q.questionId} ]</span> {q.questionText}
-                    </span>
-                </h6>
-
-                {q.questionImage && (
-                    <div className="mt-2">
-                        <img
-                            src={q.questionImage}
-                            alt="Question"
-                            className="img-thumbnail"
-                            style={{ width: 100, height: 100, objectFit: 'cover' }}
-                        />
-                    </div>
-                )}
-            </div>
-
-            {/* MCQ Options */}
-            {q.questionType === 'MCQ' && (
-                <div className="row">
-                    {q.options.map((opt, idx) => (
-                        <div key={idx} className="col-md-6 mb-2">
-                            <div className="border rounded p-2 d-flex align-items-center">
-                                <span className="me-2 fw-bold">({String.fromCharCode(65 + idx)})</span>
-                                <div className="d-flex align-items-center">
-                                    <span>{opt.text}</span>
-                                    {opt.imageUrl && (
-                                        <img
-                                            src={opt.imageUrl}
-                                            alt={`Option ${idx + 1}`}
-                                            className="img-thumbnail ms-2"
-                                            style={{ width: 50, height: 50, objectFit: 'cover' }}
-                                        />
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                    ))}
-                </div>
-            )}
-
-            {/* Match the Following */}
-            {q.questionType === 'Match' && (
-                <div className="row mt-2">
-                    <div className="col-md-6">
-                        <div className="fw-bold mb-1">Column A</div>
-                        {q.pairs.map((pair, idx) => (
-                            <div key={idx} className="d-flex align-items-center mb-1">
-                                <span>{pair.leftText}</span>
-                                {pair.leftImage && (
-                                    <img
-                                        src={pair.leftImage}
-                                        alt="Left"
-                                        className="img-thumbnail ms-2"
-                                        style={{ width: 40, height: 40, objectFit: 'cover' }}
-                                    />
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                    <div className="col-md-6">
-                        <div className="fw-bold mb-1">Column B</div>
-                        {q.pairs.map((pair, idx) => (
-                            <div key={idx} className="d-flex align-items-center mb-1">
-                                <span>{pair.rightText}</span>
-                                {pair.rightImage && (
-                                    <img
-                                        src={pair.rightImage}
-                                        alt="Right"
-                                        className="img-thumbnail ms-2"
-                                        style={{ width: 40, height: 40, objectFit: 'cover' }}
-                                    />
-                                )}
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
-
-            {/* 🔁 Sub-Questions Recursively */}
-            {q.subQuestions?.length > 0 && (
-                <div className="mt-3 border-top pt-3">
-                    {q.subQuestions.map((subQ, subIndex) =>
-                        renderQuestionBlock(subQ, subIndex, level + 1)
-                    )}
-                </div>
-            )}
         </div>
     );
 
@@ -933,7 +964,7 @@ export default function QuestionManager() {
                 </div>
 
                 {/* Chapter Dropdown */}
-                {/* <div>
+                <div>
                     <select
                         onChange={onChapterChange}
                         value={selectedChapter}
@@ -945,7 +976,7 @@ export default function QuestionManager() {
                             <option key={idx} value={ch}>{ch}</option>
                         ))}
                     </select>
-                </div> */}
+                </div>
 
                 {/* Select All */}
                 {/* <div className=" selectAll">
@@ -1131,8 +1162,6 @@ export default function QuestionManager() {
                     </div>
                 </div>
             </div>
-
-
 
             {/* Preivew  */}
             {previewImageUrl && (
@@ -1820,9 +1849,10 @@ export default function QuestionManager() {
             <div className="d-none">
                 <PrintQuestionPaper
                     ref={printRef}
-                    sections={questionPaperSections} // Section A, B, etc.
-                    questionMap={globalQuestionMap} // All loaded questions
+                    sections={questionPaperSections}
+                    questionMap={globalQuestionMap}
                     selectedQuestions={selectedQuestions}
+                    fullWidthImagesMap={fullWidthImagesMap}
                     schoolName={selectedSchoolName}
                     address={selectedAddress}
                     examTitle={selectedExamTitle}
@@ -1834,6 +1864,7 @@ export default function QuestionManager() {
                     selectedSubject={filteredSubjects.find(s => s._id === selectedSubject)?.name || ''}
                 />
             </div>
+
 
         </div>
     );
