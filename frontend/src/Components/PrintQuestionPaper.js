@@ -35,7 +35,6 @@ const PrintQuestionPaper = forwardRef(
             <span>{qNumber}. {q.questionText}</span>
             {q.questionMarks && <span>({q.questionMarks} Marks)</span>}
           </div>
-
           {q.questionImage && (
             <div style={{ marginBottom: '12px' }}>
               <img
@@ -46,11 +45,13 @@ const PrintQuestionPaper = forwardRef(
                   width: isFullWidth ? '100%' : 'auto',
                   objectFit: 'contain',
                   marginTop: '4px',
+                  display: 'block',       // ⬅️ Forces block display
+                  marginLeft: 0,          // ⬅️ Ensures left-aligned
+                  marginRight: 'auto'     // ⬅️ Prevents centering
                 }}
               />
             </div>
           )}
-
           {q.questionType === 'MCQ' && (
             <div className="d-flex flex-wrap mt-2" style={{ gap: '12px' }}>
               {q.options.map((opt, i) => (

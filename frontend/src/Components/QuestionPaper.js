@@ -680,44 +680,44 @@ export default function QuestionManager() {
                     </span>
                 </h6>
 
-              {q.questionImage && (
-  <div className="mt-2">
-    <img
-      src={q.questionImage}
-      alt="Question"
-      className="img-thumbnail"
-      style={{
-        width: fullWidthImagesMap[q.questionId] ? "100%" : 100,
-        height: 100,
-        objectFit: "contain",
-      }}
-    />
+                {q.questionImage && (
+                    <div className="mt-2">
+                        <img
+                            src={q.questionImage}
+                            alt="Question"
+                            className="img-thumbnail"
+                            style={{
+                                width: fullWidthImagesMap[q.questionId] ? "100%" : 100,
+                                height: 100,
+                                objectFit: "contain",
+                            }}
+                        />
 
-    {/* ✅ Toggle Switch for Full Width */}
-    <div className="form-check form-switch mt-2">
-      <input
-        className="form-check-input"
-        type="checkbox"
-        role="switch"
-        id={`fullWidthImage-${q.questionId}-${i}-${level}`}
-        checked={!!fullWidthImagesMap[q.questionId]}
-        onChange={(e) => {
-          const isChecked = e.target.checked;
-          setFullWidthImagesMap((prev) => ({
-            ...prev,
-            [q.questionId]: isChecked,
-          }));
-        }}
-      />
-      <label
-        className="form-check-label"
-        htmlFor={`fullWidthImage-${q.questionId}-${i}-${level}`}
-      >
-        Display image in full width
-      </label>
-    </div>
-  </div>
-)}
+                        {/* ✅ Toggle Switch for Full Width */}
+                        <div className="form-check form-switch mt-2">
+                            <input
+                                className="form-check-input"
+                                type="checkbox"
+                                role="switch"
+                                id={`fullWidthImage-${q.questionId}-${i}-${level}`}
+                                checked={!!fullWidthImagesMap[q.questionId]}
+                                onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    setFullWidthImagesMap((prev) => ({
+                                        ...prev,
+                                        [q.questionId]: isChecked,
+                                    }));
+                                }}
+                            />
+                            <label
+                                className="form-check-label"
+                                htmlFor={`fullWidthImage-${q.questionId}-${i}-${level}`}
+                            >
+                                Display image in full width
+                            </label>
+                        </div>
+                    </div>
+                )}
 
             </div>
 
