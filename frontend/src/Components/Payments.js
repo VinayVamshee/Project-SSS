@@ -107,8 +107,9 @@ export default function Payments() {
                 (selectedYear === "" && selectedClass === "") ||
                 student.academicYears.some((year) =>
                     (selectedYear === "" || year.academicYear === selectedYear) &&
-                    (selectedClass === "" || String(year.class) === String(selectedClass))
+                    (selectedClass === "" || year.class?.trim() === selectedClass.trim())
                 )
+
             ) &&
             (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
         )
@@ -304,7 +305,7 @@ export default function Payments() {
         const classId = classObject ? classObject._id : null;
         const yearFees = classFeesData.find(fee => fee.academicYear === selectedYear);
         const studentClassFee = yearFees?.classes.find(clsFee =>
-            clsFee.class_id?._id === classId
+            clsFee.class_id === classId
         );
 
 
@@ -435,7 +436,7 @@ export default function Payments() {
                         <option value="">All</option>
                         {classes.length > 0 ? (
                             classes.map((cls) => (
-                                <option key={cls._id} value={cls.class}>
+                                <option key={cls.class} value={cls.class}>
                                     {cls.class}
                                 </option>
                             ))
@@ -474,12 +475,13 @@ export default function Payments() {
                                 classFeesData[0].classes
                                     .filter((fee) => fee.class_id) // Ensure class_id exists
                                     .sort((a, b) => {
-                                        const classA = classes.find(cls => cls._id === a.class_id)?.class || "0";
-                                        const classB = classes.find(cls => cls._id === b.class_id)?.class || "0";
-                                        return Number(classA) - Number(classB);
+                                        const classA = classes.find(cls => cls.class === a.class_id)?.class || "0";
+                                        const classB = classes.find(cls => cls.class === b.class_id)?.class || "0";
+                                        return Number(classA.replace(/\D/g, '')) - Number(classB.replace(/\D/g, '')); // sort numerically ignoring text
                                     })
                                     .map((fee, idx) => {
-                                        const className = classes.find(cls => cls._id === fee.class_id._id)?.class || "Deleted Class";
+                                        const classObj = classes.find(cls => cls.class === fee.class_id);
+                                        const className = classObj ? classObj.class : "Deleted Class";
                                         const total =
                                             (fee.admission_fees || 0) +
                                             (fee.development_fee || 0) +
@@ -517,7 +519,7 @@ export default function Payments() {
 
 
                     <div className="modal fade" id="AddClassFees" tabIndex="-1" aria-labelledby="AddClassFeesLabel" aria-hidden="true">
-                        <div className="modal-dialog modal-lg">
+                        <div className="modal-dialog modal-xl">
                             <div className="modal-content">
                                 <div className="modal-header">
                                     <h5 className="modal-title" id="AddClassFeesLabel">Manage Class Fees</h5>
@@ -525,65 +527,54 @@ export default function Payments() {
                                 </div>
 
                                 <div className="modal-body">
-                                    <div className="mb-3">
-                                        <label className="form-label">Academic Year</label>
-                                        <select className="form-control" value={classFees.academicYear} onChange={(e) => setClassFees({ ...classFees, academicYear: e.target.value })}>
-                                            <option value="">Select Year</option>
-                                            {academicYears.map((year) => (
-                                                <option key={year._id} value={year.year}>{year.year}</option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="mb-3">
-                                        <label className="form-label">Select Class</label>
-                                        <select className="form-control" name="class_id" value={classFees.class_id} onChange={(e) => setClassFees({ ...classFees, class_id: e.target.value })} >
-                                            <option value="">Select a class</option>
-                                            {classes.map((cls) => (
-                                                <option key={cls._id} value={cls._id}>{cls.class}</option>
-                                            ))}
-                                        </select>
-                                    </div>
+                                    <div className="row g-3">
+                                        <div className="col-md-6">
+                                            <label className="form-label">Academic Year</label>
+                                            <select className="form-control" value={classFees.academicYear} onChange={(e) => setClassFees({ ...classFees, academicYear: e.target.value })}>
+                                                <option value="">Select Year</option>
+                                                {academicYears.map((year) => (
+                                                    <option key={year._id} value={year.year}>{year.year}</option>
+                                                ))}
+                                            </select>
+                                        </div>
 
-                                    <div className="mb-3">
-                                        <label className="form-label">Admission Fees</label>
-                                        <input type="number" className="form-control" name="admission_fees" value={classFees.admission_fees} onChange={(e) => setClassFees({ ...classFees, admission_fees: e.target.value })} />
-                                    </div>
+                                        <div className="col-md-6">
+                                            <label className="form-label">Select Class</label>
+                                            <select className="form-control" name="class_id" value={classFees.class_id} onChange={(e) => setClassFees({ ...classFees, class_id: e.target.value })} >
+                                                <option value="">Select a class</option>
+                                                {classes.length > 0 ? (
+                                                    classes.map((cls) => (
+                                                        <option key={cls.class} value={cls.class}>{cls.class}</option>
+                                                    ))
+                                                ) : (
+                                                    <option disabled>No Classes Available</option>
+                                                )}
+                                            </select>
+                                        </div>
 
-                                    <div className="mb-3">
-                                        <label className="form-label">Development Fee</label>
-                                        <input type="number" className="form-control" name="development_fee" value={classFees.development_fee} onChange={(e) => setClassFees({ ...classFees, development_fee: e.target.value })} />
+                                        {/* Fees Fields (Grid of 4 per row) */}
+                                        {[
+                                            { label: "Admission Fees", key: "admission_fees" },
+                                            { label: "Development Fee", key: "development_fee" },
+                                            { label: "Exam Fee", key: "exam_fee" },
+                                            { label: "Progress Card", key: "progress_card" },
+                                            { label: "Identity Card", key: "identity_card" },
+                                            { label: "School Diary", key: "school_diary" },
+                                            { label: "School Activity", key: "school_activity" },
+                                            { label: "Tuition Fee", key: "tuition_fee" }
+                                        ].map(({ label, key }) => (
+                                            <div className="col-md-3" key={key}>
+                                                <label className="form-label">{label}</label>
+                                                <input
+                                                    type="number"
+                                                    className="form-control"
+                                                    name={key}
+                                                    value={classFees[key]}
+                                                    onChange={(e) => setClassFees({ ...classFees, [key]: e.target.value })}
+                                                />
+                                            </div>
+                                        ))}
                                     </div>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">Exam Fee</label>
-                                        <input type="number" className="form-control" name="exam_fee" value={classFees.exam_fee} onChange={(e) => setClassFees({ ...classFees, exam_fee: e.target.value })} />
-                                    </div>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">Progress Card</label>
-                                        <input type="number" className="form-control" name="progress_card" value={classFees.progress_card} onChange={(e) => setClassFees({ ...classFees, progress_card: e.target.value })} />
-                                    </div>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">Identity Card</label>
-                                        <input type="number" className="form-control" name="identity_card" value={classFees.identity_card} onChange={(e) => setClassFees({ ...classFees, identity_card: e.target.value })} />
-                                    </div>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">School Diary</label>
-                                        <input type="number" className="form-control" name="school_diary" value={classFees.school_diary} onChange={(e) => setClassFees({ ...classFees, school_diary: e.target.value })} />
-                                    </div>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">School Activity</label>
-                                        <input type="number" className="form-control" name="school_activity" value={classFees.school_activity} onChange={(e) => setClassFees({ ...classFees, school_activity: e.target.value })} />
-                                    </div>
-
-                                    <div className="mb-3">
-                                        <label className="form-label">Tuition Fee</label>
-                                        <input type="number" className="form-control" name="tuition_fee" value={classFees.tuition_fee} onChange={(e) => setClassFees({ ...classFees, tuition_fee: e.target.value })} />
-                                    </div>
-
                                 </div>
 
                                 <div className="modal-footer">
@@ -593,6 +584,7 @@ export default function Payments() {
                             </div>
                         </div>
                     </div>
+
                 </div>
             </div>
 
@@ -622,7 +614,7 @@ export default function Payments() {
                         const classId = classObj ? classObj._id : null;
                         const yearFees = classFeesData.find(fee => fee.academicYear === selectedYear);
                         const classFees = yearFees?.classes.find(clsFee =>
-                            clsFee.class_id._id === classId
+                            clsFee.class_id === classId
                         );
 
                         if (classFees) {

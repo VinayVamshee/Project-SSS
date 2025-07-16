@@ -94,16 +94,16 @@ export default function Students() {
         .filter((student) => {
             const query = searchStudent.toLowerCase().trim();
 
-            // ✅ Match by year and class
-            const yearMatch =
-                selectedYear === "" ||
-                student.academicYears?.some((year) => year.academicYear === selectedYear);
+            // ✅ Match academicYear + class in same object
+            const yearAndClassMatch =
+                (selectedYear === "" && selectedClass === "") ||
+                student.academicYears?.some(
+                    (year) =>
+                        (selectedYear === "" || year.academicYear === selectedYear) &&
+                        (selectedClass === "" || String(year.class) === String(selectedClass))
+                );
 
-            const classMatch =
-                selectedClass === "" ||
-                student.academicYears?.some((year) => String(year.class) === String(selectedClass));
-
-            // ✅ Match status ONLY for selected year
+            // ✅ Match status only for selectedYear
             const statusMatch =
                 statusFilter === "" ||
                 student.academicYears?.some(
@@ -111,9 +111,9 @@ export default function Students() {
                         year.academicYear === selectedYear && year.status === statusFilter
                 );
 
-            if (!yearMatch || !classMatch || !statusMatch) return false;
+            if (!yearAndClassMatch || !statusMatch) return false;
 
-            // ✅ Handle search field
+            // ✅ Search Field Matching
             if (query === "") return true;
 
             if (searchType.startsWith("additional_")) {
@@ -138,6 +138,7 @@ export default function Students() {
             return false;
         })
         .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || ""));
+
 
     // Handle individual student selection
     const handleSelectStudent = (id) => {
@@ -200,6 +201,76 @@ export default function Students() {
         } catch (error) {
             console.error("Error passing students:", error);
             alert("An error occurred while updating students.");
+        }
+    };
+
+    const [isReAdmissionMode, setIsReAdmissionMode] = useState(false);
+
+    useEffect(() => {
+        const specialClasses = ["Pre-Nursery", "KG-2"];
+        setIsReAdmissionMode(specialClasses.includes(selectedClass));
+    }, [selectedClass]);
+
+
+    const handleReAdmission = async () => {
+        if (!passToSelectedYear || !passToSelectedClass) {
+            alert("Please select an academic year and class before proceeding.");
+            return;
+        }
+
+        if (selectedStudents.length === 0) {
+            alert("No students selected for re-admission.");
+            return;
+        }
+
+        try {
+            const reAdmissionList = students.filter(student =>
+                selectedStudents.includes(student._id)
+            );
+
+            for (const student of reAdmissionList) {
+                // Mark previous latest year as Passed
+                const updatedAcademicYears = student.academicYears.map((entry, idx, arr) => {
+                    if (idx === arr.length - 1 && entry.status === "Active") {
+                        return { ...entry, status: "Passed" };
+                    }
+                    return entry;
+                });
+
+                // Create new student object
+                const newStudent = {
+                    ...student,
+                    AdmissionNo: "Re-Admission",
+                    academicYears: [
+                        ...updatedAcademicYears,
+                        {
+                            academicYear: passToSelectedYear,
+                            class: passToSelectedClass,
+                            status: "Active"
+                        }
+                    ]
+                };
+
+                // Remove MongoDB-specific fields
+                delete newStudent._id;
+                delete newStudent.createdAt;
+                delete newStudent.updatedAt;
+                delete newStudent.__v;
+
+                // Post to backend
+                await axios.post("https://sss-server-eosin.vercel.app/addStudent", newStudent);
+            }
+
+            alert("Re-admission completed successfully!");
+            setSelectedStudents([]); // Clear selections
+            setPassToSelectedYear("");
+            setPassToSelectedClass("");
+
+            // Close modal
+            document.getElementById("passtoModal").click();
+        } catch (error) {
+            console.error("Re-admission error:", error);
+            alert("An error occurred during re-admission.");
         }
     };
 
@@ -399,7 +470,7 @@ export default function Students() {
                 {/* Search Type Dropdown */}
                 <div className="searchType">
                     <select
-                        className="form-select "
+                        className="form-select"
                         value={searchType}
                         onChange={(e) => setSearchType(e.target.value)}
                         style={{ width: '100px' }}
@@ -455,13 +526,31 @@ export default function Students() {
                 </div>
 
                 {/* Action Buttons */}
-                <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#passtoModal">
-                    <i className="fa-solid fa-forward me-2 fa-sm"></i>Pass to
-                </button>
-
-                <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#dropStudentModal">
-                    <i className="fa-solid fa-user-xmark me-2 fa-sm"></i>Drop Student
-                </button>
+                <div className="dropdown">
+                    <button className="btn dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                        Actions
+                    </button>
+                    <ul className="dropdown-menu">
+                        <li>
+                            <button
+                                className="dropdown-item"
+                                data-bs-toggle="modal"
+                                data-bs-target="#passtoModal"
+                            >
+                                <i className="fa-solid fa-forward me-2 fa-sm"></i>Pass Students
+                            </button>
+                        </li>
+                        <li>
+                            <button
+                                className="dropdown-item"
+                                data-bs-toggle="modal"
+                                data-bs-target="#dropStudentModal"
+                            >
+                                <i className="fa-solid fa-user-xmark me-2 fa-sm"></i>Drop Student
+                            </button>
+                        </li>
+                    </ul>
+                </div>
 
                 <div className="dropdown">
                     <button
@@ -489,7 +578,7 @@ export default function Students() {
 
 
                 <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#downloadDataModal">
-                    <i className="fa-solid fa-download me-2 fa-sm"></i>Download Data
+                    <i className="fa-solid fa-download me-2 fa-sm"></i>Download
                 </button>
 
             </div>
@@ -500,7 +589,7 @@ export default function Students() {
                     <div className="student-grid">
                         {filteredStudents.map((student, index) => (
                             <div className="student-card" style={{ animationDelay: `${index * 0.1}s` }}>
-                                <div key={student._id} data-bs-toggle="modal" data-bs-target="#studentModal" onClick={() => setSelectedStudent(student)}>
+                                <div className="student-info" key={student._id} data-bs-toggle="modal" data-bs-target="#studentModal" onClick={() => setSelectedStudent(student)}>
                                     <img src={student.image || boy} alt="..." />
                                     <strong>{student.name}</strong>
                                     <p>Age: {calculateAge(student.dob)}</p>
@@ -826,7 +915,9 @@ export default function Students() {
                 <div className="modal-dialog modal-lg">
                     <div className="modal-content">
                         <div className="modal-header">
-                            <h5 className="modal-title">Pass Students To</h5>
+                            <h5 className="modal-title">
+                                {isReAdmissionMode ? "Re-Admission Students" : "Pass Students To"}
+                            </h5>
                             <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
                         <div className="modal-body">
@@ -890,8 +981,23 @@ export default function Students() {
 
                         <div className="modal-footer">
                             <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" className="btn btn-primary" onClick={handlePassStudents} disabled={!canEdit}>
-                                Pass Students
+                            <button
+                                type="button"
+                                className="btn btn-primary"
+                                onClick={async () => {
+                                    const selectedStudentData = students.filter((student) =>
+                                        selectedStudents.includes(student._id)
+                                    );
+
+                                    if (isReAdmissionMode) {
+                                        await handleReAdmission(selectedStudentData);
+                                    } else {
+                                        await handlePassStudents();
+                                    }
+                                }}
+                                disabled={!canEdit}
+                            >
+                                {isReAdmissionMode ? "Re-Admission Students" : "Pass Students"}
                             </button>
                         </div>
                     </div>

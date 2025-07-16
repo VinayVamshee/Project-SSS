@@ -2,9 +2,7 @@ const mongoose = require('mongoose');
 
 const classFeeSubSchema = new mongoose.Schema({
   class_id: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "Class",
-    required: true,
+    type: String
   },
   admission_fees: {
     type: Number,

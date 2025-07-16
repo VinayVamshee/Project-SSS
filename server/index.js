@@ -129,20 +129,27 @@ app.delete('/deleteClass/:id', async (req, res) => {
 // app to Add New Subject
 app.post('/AddNewSubject', async (req, res) => {
     const { subjectName } = req.body;
-    if (!subjectName) {
+
+    if (!subjectName || typeof subjectName !== "string" || subjectName.trim() === "") {
         return res.status(400).json({ message: 'Subject name is required.' });
     }
+
     try {
-        const existingSubject = await Subject.findOne({ name: subjectName });
+        const existingSubject = await Subject.findOne({ name: subjectName.trim() });
         if (existingSubject) {
             return res.status(400).json({ message: 'Subject already exists' });
         }
-        const newSubject = new Subject({
-            name: subjectName,
-        });
+
+        const newSubject = new Subject({ name: subjectName.trim() });
         await newSubject.save();
-        return res.status(201).json({ message: 'Subject added successfully.' });
+
+        // ✅ Include the subject in the response
+        return res.status(201).json({
+            message: 'Subject added successfully.',
+            subject: newSubject,  // 👈 This is what your frontend expects
+        });
     } catch (error) {
+        console.error("Error adding subject:", error);
         return res.status(500).json({ message: 'Error adding subject. Please try again later.' });
     }
 });
@@ -737,7 +744,7 @@ app.post('/class-fees', async (req, res) => {
     try {
         const {
             academicYear,
-            class_id,
+            class_id, // now a simple string like "Class 1"
             admission_fees,
             development_fee,
             exam_fee,
@@ -749,13 +756,10 @@ app.post('/class-fees', async (req, res) => {
         } = req.body;
 
         if (!academicYear || !class_id) {
-            return res.status(400).json({ message: "Academic Year and Class ID are required." });
+            return res.status(400).json({ message: "Academic Year and Class are required." });
         }
 
-        const classExists = await Class.findById(class_id);
-        if (!classExists) {
-            return res.status(404).json({ message: "Class not found." });
-        }
+        // ✅ Removed reference lookup: No more Class.findById
 
         let classFeesDoc = await ClassFees.findOne({ academicYear });
 
@@ -772,23 +776,21 @@ app.post('/class-fees', async (req, res) => {
         };
 
         if (!classFeesDoc) {
-            // First time this year
             classFeesDoc = new ClassFees({
                 academicYear,
                 classes: [newFee]
             });
         } else {
-            // Check if class already has entry
-            const index = classFeesDoc.classes.findIndex(c => c.class_id.toString() === class_id);
+            const index = classFeesDoc.classes.findIndex(c => c.class_id === class_id);
 
             if (index !== -1) {
-                // Update existing class fee
+                // update existing
                 classFeesDoc.classes[index] = {
-                    ...classFeesDoc.classes[index]._doc,
+                    ...classFeesDoc.classes[index],
                     ...newFee
                 };
             } else {
-                // Add new class fee
+                // add new
                 classFeesDoc.classes.push(newFee);
             }
         }

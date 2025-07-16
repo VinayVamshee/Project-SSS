@@ -5,12 +5,21 @@ import { useNavigate } from "react-router-dom";
 export default function Classes() {
 
     const navigate = useNavigate();
+    const [canEdit, setCanEdit] = useState(false);
+
     useEffect(() => {
-        const token = localStorage.getItem('token');
-        if (!token) {
-            navigate('/login');
+        const token = localStorage.getItem("token");
+        const storedUserType = localStorage.getItem("userType");
+
+        if (!token || !storedUserType) {
+            navigate("/login");
+        } else {
+            if (storedUserType === "admin") {
+                setCanEdit(true);
+            }
         }
     }, [navigate]);
+
 
     const [classes, setClasses] = useState([]);
     const [subjects, setSubjects] = useState([]);
@@ -59,10 +68,18 @@ export default function Classes() {
         e.preventDefault();
         try {
             const response = await axios.post("https://sss-server-eosin.vercel.app/AddNewSubject", { subjectName });
-            setSubjects([...subjects, response.data.subject] || []);
-            setMessage("Subject added successfully!");
-            setSubjectName("");
+            const newSubject = response.data.subject;
+
+            if (newSubject && newSubject.name) {
+                setSubjects([...subjects, newSubject]);
+                setMessage("Subject added successfully!");
+                setSubjectName("");
+            } else {
+                setMessage("Invalid subject data received.");
+                console.error("Invalid subject:", response.data);
+            }
         } catch (error) {
+            console.error("Error adding subject:", error);
             setMessage("Error adding subject. Please try again.");
         }
     };
@@ -149,7 +166,6 @@ export default function Classes() {
         });
     };
 
-
     const handleSubmitExam = async (e) => {
         e.preventDefault();
         if (!selectedClass) {
@@ -207,26 +223,62 @@ export default function Classes() {
         }
     };
 
+    const [className, setClassName] = useState('');
+    const handleAddNewClass = async (e) => {
+        e.preventDefault();
+        try {
+            await axios.post('https://sss-server-eosin.vercel.app/AddNewClass', {
+                className,
+            });
+
+            setMessage('Class added successfully!');
+            setClassName('');
+        } catch (error) {
+            setMessage('Error adding class. Please try again.');
+        }
+    };
+
+    // Delete Classes
+    const deleteClass = async (classId) => {
+        try {
+            // Send request to delete class
+            await axios.delete(`https://sss-server-eosin.vercel.app/deleteClass/${classId}`);
+            // Remove the deleted class from the state
+            setClasses(classes.filter(cls => cls._id !== classId));
+        } catch (error) {
+            console.error('Error deleting class:', error);
+        }
+    };
+
     return (
         <div className="ClassesPage">
-            {/* 🔹 Top Bar: Classes + Subjects */}
-            <div className="d-flex flex-wrap gap-2 mb-4 justify-content-start SearchFilter">
-                {classes.map((cls) => (
-                    <button
-                        key={cls._id}
-                        className={`btn ${selectedClass === cls.class ? "active" : ""}`}
-                        onClick={() => handleClassClick(cls.class)}
-                        style={{ backgroundColor: 'white', color: 'black' }}
+
+            <div className="SearchFilter">
+                <div className="form-group mb-0">
+                    <select
+                        className="form-select"
+                        value={selectedClass}
+                        onChange={(e) => handleClassClick(e.target.value)}
                     >
-                        {cls.class}
-                    </button>
-                ))}
-                <button className="btn btn-secondary btn-sm" onClick={handleSubjectsClick}>
+                        <option value="">Select Class</option>
+                        {classes.map((cls) => (
+                            <option key={cls.class} value={cls.class}>
+                                {cls.class}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+                <button className="btn" onClick={handleSubjectsClick}>
                     <i className="fa-solid fa-book me-2"></i>Subjects
                 </button>
-                <button className="btn btn-sm" data-bs-toggle="modal" data-bs-target="#linkSubjectsModal" >
+                <button className="btn" data-bs-toggle="modal" data-bs-target="#linkSubjectsModal" >
                     <i className="fa-solid fa-link me-2"></i>Link Subjects
                 </button>
+                <button type="button" className="btn" data-bs-toggle="modal" data-bs-target="#AddNewClassModal">Classes</button>
+                <button className="btn" data-bs-toggle="modal" data-bs-target="#addExamModal">
+                    <i className="fa-solid fa-plus me-2"></i>Add Exams
+                </button>
+
             </div>
 
             {/* Link Subjects Modal */}
@@ -264,7 +316,7 @@ export default function Classes() {
                                 >
                                     <option value="">-- Choose Class --</option>
                                     {classes.map((cls) => (
-                                        <option key={cls._id} value={cls.class}>
+                                        <option key={cls.class} value={cls.class}>
                                             {cls.class}
                                         </option>
                                     ))}
@@ -331,8 +383,6 @@ export default function Classes() {
                 </div>
             </div>
 
-
-
             {/* 🔹 Main Content Area */}
             <div>
                 {selectedClass && (
@@ -378,79 +428,169 @@ export default function Classes() {
                             </tbody>
                         </table>
 
-                        {/* Show Exams */}
-                        <div className="card-body pt-0">
-                            <h6 className="mt-4">Exams Linked to Class {selectedClass}</h6>
-                            {examsData.length > 0 ? (
-                                <table className="table table-bordered table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>S.No</th>
-                                            <th>Exam Name</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {examsData
-                                            .filter((exam) => exam.class === selectedClass)
-                                            .flatMap((exam, index) =>
-                                                exam.examNames.map((examName, idx) => (
-                                                    <tr key={`${index}-${idx}`}>
-                                                        <td>{idx + 1}</td>
-                                                        <td>{examName}</td>
-                                                    </tr>
-                                                ))
-                                            )}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <p>No exams available for this class.</p>
-                            )}
+                        {/* Show Exams Section */}
+                        <div className="card shadow-sm mb-4 mt-4">
+                            <div className="card-body">
+                                <h5 className="card-title mb-3">📘 Exams Linked to <strong>{selectedClass}</strong></h5>
+
+                                {examsData.length > 0 &&
+                                    examsData.some(exam => exam.class === selectedClass) ? (
+                                    <div className="table-responsive">
+                                        <table className="table table-hover table-bordered align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th style={{ width: "80px" }}>S.No</th>
+                                                    <th>Exam Name</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {examsData
+                                                    .filter((exam) => exam.class === selectedClass)
+                                                    .flatMap((exam, index) =>
+                                                        exam.examNames.map((examName, idx) => (
+                                                            <tr key={`${index}-${idx}`}>
+                                                                <td>{idx + 1}</td>
+                                                                <td>{examName}</td>
+                                                            </tr>
+                                                        ))
+                                                    )}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                ) : (
+                                    <div className="alert alert-warning mb-0">
+                                        No exams available for this class.
+                                    </div>
+                                )}
+                            </div>
                         </div>
 
-                        {/* Add Exams Form */}
-                        <div className="card-body">
-                            <h6 className="mt-3">Add Exams to Class {selectedClass}</h6>
-                            <form onSubmit={handleSubmitExam}>
-                                <div className="mb-3">
-                                    <label className="form-label">Number of Exams</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={examData.numExams}
-                                        onChange={handleNumExamsChange}
-                                        min="1"
-                                        required
-                                    />
-                                </div>
+                        {/* Add Exams Form Section
+                        <div className="card shadow-sm">
+                            <div className="card-body">
+                                <h5 className="card-title mb-3">➕ Add Exams to <strong>{selectedClass}</strong></h5>
 
-                                {examData.numExams > 0 && (
-                                    <>
-                                        {examData.examNames.map((examName, index) => (
-                                            <div key={index} className="mb-3">
-                                                <label className="form-label">Exam {index + 1} Name</label>
+                                <form onSubmit={handleSubmitExam}>
+                                    <div className="row mb-3">
+                                        <div className="col-md-4">
+                                            <label className="form-label">Number of Exams</label>
+                                            <input
+                                                type="number"
+                                                className="form-control"
+                                                value={examData.numExams}
+                                                onChange={handleNumExamsChange}
+                                                min="1"
+                                                required
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {examData.numExams > 0 && (
+                                        <div className="row">
+                                            {examData.examNames.map((examName, index) => (
+                                                <div className="col-md-6 mb-3" key={index}>
+                                                    <label className="form-label">Exam {index + 1} Name</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        placeholder={`Enter name for Exam ${index + 1}`}
+                                                        value={examName}
+                                                        onChange={(e) =>
+                                                            handleExamNameChange(index, e.target.value)
+                                                        }
+                                                        required
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    <div className="d-flex justify-content-between align-items-center mt-3">
+                                        <button type="submit" className="btn btn-primary">
+                                            <i className="fa-solid fa-plus me-2"></i>Add Exams
+                                        </button>
+                                        {message && (
+                                            <span className="text-success fw-semibold">{message}</span>
+                                        )}
+                                    </div>
+                                </form>
+                            </div>
+                        </div> */}
+
+                        <div className="modal fade" id="addExamModal" tabIndex="-1" aria-labelledby="addExamModalLabel" aria-hidden="true">
+                            <div className="modal-dialog modal-lg modal-dialog-scrollable">
+                                <div className="modal-content">
+                                    <form onSubmit={handleSubmitExam} style={{ display: 'flex', flexDirection: 'column', width: "100%" }}>
+                                        <div className="modal-header w-100">
+                                            <h5 className="modal-title" id="addExamModalLabel">
+                                                <i className="fa-solid fa-pen-to-square me-2"></i>
+                                                Add Exams to <strong>{selectedClass}</strong>
+                                            </h5>
+                                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                        </div>
+
+
+                                        <div className="modal-body w-100">
+                                            {/* Number of Exams - Single line full width */}
+                                            <div className="mb-3">
+                                                <label className="form-label">Number of Exams</label>
                                                 <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    placeholder={`Enter name for Exam ${index + 1}`}
-                                                    value={examName}
-                                                    onChange={(e) => handleExamNameChange(index, e.target.value)}
+                                                    type="number"
+                                                    className="form-control w-25"
+                                                    value={examData.numExams}
+                                                    onChange={handleNumExamsChange}
+                                                    min="1"
                                                     required
+                                                    placeholder="e.g., 3"
                                                 />
                                             </div>
-                                        ))}
-                                    </>
-                                )}
 
-                                <button type="submit" className="btn btn-primary btn-sm">Add Exams</button>
-                            </form>
-                            {message && <p className="text-center text-info mt-2">{message}</p>}
+                                            {/* Exam Name Inputs */}
+                                            {examData.numExams > 0 && (
+                                                <div className="row g-3">
+                                                    {examData.examNames.map((examName, index) => (
+                                                        <div className="col-sm-6 col-md-4" key={index}>
+                                                            <label className="form-label">Exam {index + 1} Name</label>
+                                                            <input
+                                                                type="text"
+                                                                className="form-control"
+                                                                placeholder={`Enter name for Exam ${index + 1}`}
+                                                                value={examName}
+                                                                onChange={(e) => handleExamNameChange(index, e.target.value)}
+                                                                required
+                                                            />
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {/* Success Message */}
+                                            {message && (
+                                                <div className="text-success fw-semibold mt-3 w-100">
+                                                    {message}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="modal-footer w-100">
+                                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                                            <button type="submit" className="btn btn-primary">
+                                                <i className="fa-solid fa-check me-2"></i>Save Exams
+                                            </button>
+                                        </div>
+                                    </form>
+                                </div>
+                            </div>
                         </div>
+
+
+
                     </div>
                 )}
 
                 {/* 🔹 All Subjects Section */}
                 {showAllSubjects && (
-                    <div className="card Subjects">
+                    <div className="card Subjects mt-4">
                         <div className="card-header bg-secondary text-white">
                             Manage Subjects
                         </div>
@@ -486,6 +626,7 @@ export default function Classes() {
                                                 <button
                                                     className="btn btn-outline-danger btn-sm"
                                                     onClick={() => handleDeleteSubject(subject._id)}
+                                                    disabled={!canEdit}
                                                 >
                                                     Delete
                                                 </button>
@@ -499,14 +640,7 @@ export default function Classes() {
                 )}
             </div>
 
-            <div
-                className="modal fade"
-                id="chapterModal"
-                tabIndex="-1"
-                data-bs-backdrop="false"
-                aria-labelledby="chapterModalLabel"
-                aria-hidden="true"
-            >
+            <div className="modal fade" id="chapterModal" tabIndex="-1" data-bs-backdrop="false" aria-labelledby="chapterModalLabel" aria-hidden="true" >
                 <div className="modal-dialog modal-lg">
                     <div className="modal-content">
                         <div className="modal-header">
@@ -579,6 +713,9 @@ export default function Classes() {
                                                     <button
                                                         className="btn btn-outline-danger btn-sm"
                                                         onClick={async () => {
+                                                            const confirmDelete = window.confirm(`Are you sure you want to delete "${ch}"?`);
+                                                            if (!confirmDelete) return;
+
                                                             const updated = chapterList.filter((c) => c !== ch);
                                                             try {
                                                                 await axios.post("https://sss-server-eosin.vercel.app/chapters", {
@@ -588,9 +725,10 @@ export default function Classes() {
                                                                 });
                                                                 setChapterList(updated);
                                                             } catch (err) {
-                                                                console.error(err);
+                                                                console.error("Failed to update chapters:", err);
                                                             }
                                                         }}
+                                                        disabled={!canEdit}
                                                     >
                                                         Delete
                                                     </button>
@@ -621,6 +759,49 @@ export default function Classes() {
                 </div>
             </div>
 
+            {/* Add New Class Modal */}
+            <div className="modal fade" id="AddNewClassModal" tabIndex="-1" aria-labelledby="AddNewClassModalLabel" aria-hidden="true">
+                <div className="modal-dialog modal-lg">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h1 className="modal-title fs-5" id="AddNewClassModalLabel">Classes</h1>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div className="modal-body">
+                            <form onSubmit={handleAddNewClass}>
+                                <div className="mb-3">
+                                    <label htmlFor="className" className="form-label">Add a new class</label>
+                                    <input type="text" className="form-control" id="className" value={className} onChange={(e) => setClassName(e.target.value)} required />
+                                </div>
+                                {message && <p className="text-center">{message}</p>}
+                                <button type="submit" className="btn btn-success w-100">Save</button>
+                            </form>
+                            <hr />
+                            <div className="list-group">
+                                {classes.length > 0 ? (
+                                    classes.map((classItem) => (
+                                        <div key={classItem.class} className="list-group-item d-flex justify-content-between align-items-center">
+                                            <span>{classItem.class}</span>
+                                            <button
+                                                className="btn btn-outline-danger btn-sm"
+                                                onClick={() => deleteClass(classItem._id)}
+                                                disabled={!canEdit}
+                                            >
+                                                Delete
+                                            </button>
+                                        </div>
+                                    ))
+                                ) : (
+                                    <p>No classes available</p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
 
         </div>
     );

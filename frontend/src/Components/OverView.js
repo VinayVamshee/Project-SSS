@@ -46,6 +46,8 @@ export default function OverView() {
         if (!token) navigate("/login");
     }, [navigate]);
 
+    const [activeStudents, setActiveStudents] = useState([]);
+
     // Fetch all data: students, classes, academic years, fees
     useEffect(() => {
         const fetchData = async () => {
@@ -76,25 +78,43 @@ export default function OverView() {
                 const latest = sortedAcademicYears[0];
                 setLatestYear(latest);
 
+                const activeStudentsInLatestYear = studentList.filter((student) =>
+                    student.academicYears.some(
+                        (year) => year.academicYear === latest && year.status === "Active"
+                    )
+                );
+                setActiveStudents(activeStudentsInLatestYear);
+
                 // Count students per class for latestYear only
+                // Count students in latestYear where status is Active
                 const latestYearCount = {};
-                studentList.forEach((s) => {
-                    const latestEntry = s.academicYears.find((y) => y.academicYear === latest);
-                    if (latestEntry) {
-                        const cls = latestEntry.class;
+                studentList.forEach((student) => {
+                    const activeYearEntry = student.academicYears.find(
+                        (y) => y.academicYear === latest && y.status === "Active"
+                    );
+
+                    if (activeYearEntry) {
+                        const cls = activeYearEntry.class;
                         latestYearCount[cls] = (latestYearCount[cls] || 0) + 1;
                     }
                 });
                 setClassStudentCount(latestYearCount);
 
                 // Count students per academic year (for line chart)
-                const studentPerYearCount = {};
+                const activeStudentPerYearCount = {};
                 studentList.forEach((s) => {
                     s.academicYears.forEach((y) => {
-                        studentPerYearCount[y.academicYear] = (studentPerYearCount[y.academicYear] || 0) + 1;
+                        const year = y.academicYear;
+                        const status = y.status;
+
+                        if (year === latest && status === "Active") {
+                            activeStudentPerYearCount[year] = (activeStudentPerYearCount[year] || 0) + 1;
+                        } else if (year !== latest && status === "Passed") {
+                            activeStudentPerYearCount[year] = (activeStudentPerYearCount[year] || 0) + 1;
+                        }
                     });
                 });
-                setStudentCountPerYear(studentPerYearCount);
+                setStudentCountPerYear(activeStudentPerYearCount);
 
                 // Calculate total fees paid only for the latest academic year
                 const feesRes = await axios.get("https://sss-server-eosin.vercel.app/getFees");
@@ -189,7 +209,7 @@ export default function OverView() {
         .trim();
 
     const BarData = {
-        labels: classes.map((cls) => `Class ${cls.class}`),
+        labels: classes.map((cls) => `${cls.class}`),
         datasets: [
             {
                 label: "Students per Class",
@@ -247,7 +267,7 @@ export default function OverView() {
                 <div className="totalCard">
                     <i className="fa-solid fa-user fa-xl"></i>
                     <div className="totalValue">
-                        <strong>{students.length}</strong>
+                        <strong>{activeStudents.length}</strong>
                         <p>Total Students</p>
                     </div>
                 </div>

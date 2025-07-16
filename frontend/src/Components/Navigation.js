@@ -5,8 +5,11 @@ import { jwtDecode } from "jwt-decode";
 
 export default function Navigation() {
     const themes = [
+        // Base Themes
         "light",
         "dark",
+
+        // Colored Themes
         "midnight-red",
         "Ocean",
         "Deep Ocean",
@@ -16,8 +19,24 @@ export default function Navigation() {
         "Mint Cream",
         "Lavender Day",
         "Charcoal Cyan",
-        "Dracula Midnight"
+        "Dracula Midnight",
+
+        // Soft Vibrant Themes
+        "Candy Pop",
+        "Lemon Zest",
+        "Watermelon Twist",
+        "Sakura Bloom",
+        "Grape Soda",
+
+        // Bright Solid Themes (Softened)
+        "Cherry Red",
+        "Neon Orange",
+        "Solar Yellow",
+        "Tropical Green",
+        "Electric Blue",
+        "Ultra Violet"
     ];
+
     const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 
     const [username, setUsername] = useState('');
