@@ -78,6 +78,29 @@ export default function QuestionManager() {
         load();
     }, [navigate]);
 
+    const fetchQuestions = async (cls = selectedClass, subj = selectedSubject, chap = selectedChapter) => {
+        if (cls && subj && chap) {
+            try {
+                const res = await axios.get(
+                    `https://sss-server-eosin.vercel.app/questions?class=${cls}&subject=${subj}&chapter=${chap}`
+                );
+                setQuestions(res.data.questions);
+
+                setGlobalQuestionMap(prev => {
+                    const newMap = { ...prev };
+                    res.data.questions.forEach(q => {
+                        newMap[q.questionId] = q;
+                    });
+                    return newMap;
+                });
+            } catch (err) {
+                console.error("Failed to fetch questions:", err);
+            }
+        } else {
+            setQuestions([]);
+        }
+    };
+
     // Allow full access if QP Editor or Admin
     const canEdit = userType === 'qp-editor' || userType === 'admin';
 
@@ -201,6 +224,7 @@ export default function QuestionManager() {
         });
 
         setQuestions(res.data);
+        fetchQuestions();
 
         // Reset new question state
         setNewQuestion({
@@ -213,7 +237,6 @@ export default function QuestionManager() {
             subQuestions: [],
         });
     };
-
 
     const addSubQuestion = () => {
         setNewQuestion((prev) => ({
@@ -241,11 +264,25 @@ export default function QuestionManager() {
         }));
     };
 
-    const handleDelete = async idx => {
-        const res = await axios.delete('https://sss-server-eosin.vercel.app/questions', {
-            data: { class: selectedClass, subject: selectedSubject, index: idx }
-        });
-        setQuestions(res.data.questions);
+    const handleDelete = async (questionId) => {
+        console.log(questionId);
+        try {
+            const res = await axios.delete('https://sss-server-eosin.vercel.app/questions', {
+                data: {
+                    class: selectedClass,
+                    subject: selectedSubject,
+                    chapter: selectedChapter,
+                    questionId: questionId,
+                },
+            });
+
+            setQuestions(res.data.questions);
+            fetchQuestions();
+            alert('✅ Question deleted successfully.');
+        } catch (error) {
+            console.error('❌ Error deleting question:', error);
+            alert('❌ Failed to delete the question. Please try again.');
+        }
     };
 
     const [selectedQuestions, setSelectedQuestions] = useState([]);
@@ -366,6 +403,7 @@ export default function QuestionManager() {
             });
 
             setQuestions(res.data.questions);
+            fetchQuestions();
             alert('Question Updated Successfully')
         } catch (err) {
             console.error(err);
@@ -661,7 +699,7 @@ export default function QuestionManager() {
                     </button>
                     <button
                         className="btn btn-sm btn-outline-danger mb-2"
-                        onClick={() => handleDelete(i)}
+                        onClick={() => handleDelete(q.questionId)}
                         disabled={!canEdit}
                     >
                         <i className="fas fa-trash-alt"></i>
@@ -792,139 +830,6 @@ export default function QuestionManager() {
                 </div>
             )}
 
-            {/* Edit Question Modal */}
-            <div
-                className="modal fade"
-                id="editQuestionModal"
-                tabIndex="-1"
-                aria-labelledby="editQuestionModalLabel"
-                aria-hidden="true"
-                data-bs-backdrop="false"
-            >
-                <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-                    <div className="modal-content rounded-4 shadow">
-                        <div className="modal-header">
-                            <h5 className="modal-title" id="editQuestionModalLabel">
-                                <i className="fas fa-edit me-2 text-primary"></i>Edit Question
-                            </h5>
-                            <button type="button" className="btn-close" data-bs-dismiss="modal" />
-                        </div>
-
-                        <div className="modal-body">
-                            {editQuestionData && (
-                                <>
-                                    {/* Question Text + Marks + Image */}
-                                    <div className="row align-items-center mb-3">
-                                        <div className="col-md-7">
-                                            <input
-                                                type="text"
-                                                className="form-control shadow-sm"
-                                                placeholder="Enter question text"
-                                                value={editQuestionData.questionText}
-                                                onChange={(e) =>
-                                                    setEditQuestionData((q) => ({
-                                                        ...q,
-                                                        questionText: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="col-md-2">
-                                            <input
-                                                className="form-control shadow-sm"
-                                                placeholder="Marks"
-                                                value={editQuestionData.questionMarks}
-                                                onChange={(e) =>
-                                                    setEditQuestionData((q) => ({
-                                                        ...q,
-                                                        questionMarks: e.target.value,
-                                                    }))
-                                                }
-                                            />
-                                        </div>
-                                        <div className="col-md-3">
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                className="form-control"
-                                                onChange={async (e) => {
-                                                    const file = e.target.files[0];
-                                                    if (file) {
-                                                        const url = await uploadToImgBB(file);
-
-                                                        // Fallback handling if questionImage field doesn't yet exist
-                                                        setEditQuestionData((q) => ({
-                                                            ...q,
-                                                            questionImage: url || '',
-                                                            _id: q._id, // <- preserve this so edit works
-                                                        }));
-                                                    }
-                                                }}
-                                            />
-                                            {editQuestionData.questionImage && (
-                                                <div className="mt-2 d-flex gap-2 flex-wrap">
-                                                    <button
-                                                        className="btn btn-outline-secondary btn-sm"
-                                                        onClick={() => setPreviewImageUrl(editQuestionData.questionImage)}
-                                                    >
-                                                        <i className="fas fa-eye me-1"></i>View
-                                                    </button>
-                                                    <button
-                                                        className="btn btn-outline-danger btn-sm"
-                                                        onClick={() =>
-                                                            setEditQuestionData((q) => ({
-                                                                ...q,
-                                                                questionImage: '',
-                                                            }))
-                                                        }
-                                                    >
-                                                        <i className="fas fa-trash-alt me-1"></i>Remove
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    </div>
-
-                                    {/* Question Type Dropdown */}
-                                    <div className="mb-3">
-                                        <select
-                                            className="form-select w-auto shadow-sm"
-                                            value={editQuestionData.questionType}
-                                            onChange={(e) =>
-                                                setEditQuestionData((q) => ({
-                                                    ...q,
-                                                    questionType: e.target.value,
-                                                    options: [],
-                                                    pairs: [],
-                                                    subQuestions: [],
-                                                }))
-                                            }
-                                        >
-                                            <option value="">-- Select Question Type --</option>
-                                            <option value="MCQ">MCQ</option>
-                                            <option value="Descriptive">Descriptive</option>
-                                            <option value="Match">Match the Following</option>
-                                            <option value="sub-question">Sub-Questions</option>
-                                        </select>
-                                    </div>
-
-                                    {renderEditQuestionTypeFields(editQuestionData, setEditQuestionData)}
-
-                                </>
-                            )}
-                        </div>
-
-                        <div className="modal-footer">
-                            <button className="btn btn-secondary" data-bs-dismiss="modal">
-                                Cancel
-                            </button>
-                            <button className="btn btn-success" onClick={handleEditSubmit}>
-                                <i className="fas fa-save me-2"></i>Save Changes
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 
@@ -1023,6 +928,7 @@ export default function QuestionManager() {
                 tabIndex="-1"
                 aria-labelledby="createQuestionPaperModalLabel"
                 aria-hidden="true"
+                data-bs-backdrop="false"
             >
                 <div className="modal-dialog modal-fullscreen">
                     <div className="modal-content bg-light">
@@ -1781,6 +1687,140 @@ export default function QuestionManager() {
                             <button className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
                             <button className="btn btn-primary" onClick={handlePrint} disabled={!canEdit}>
                                 <i className="fas fa-download me-1"></i>Download
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {/* Edit Question Modal */}
+            <div
+                className="modal fade"
+                id="editQuestionModal"
+                tabIndex="-1"
+                aria-labelledby="editQuestionModalLabel"
+                aria-hidden="true"
+                data-bs-backdrop="false"
+            >
+                <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                    <div className="modal-content rounded-4 shadow">
+                        <div className="modal-header">
+                            <h5 className="modal-title" id="editQuestionModalLabel">
+                                <i className="fas fa-edit me-2 text-primary"></i>Edit Question
+                            </h5>
+                            <button type="button" className="btn-close" data-bs-dismiss="modal" />
+                        </div>
+
+                        <div className="modal-body">
+                            {editQuestionData && (
+                                <>
+                                    {/* Question Text + Marks + Image */}
+                                    <div className="row align-items-center mb-3">
+                                        <div className="col-md-7">
+                                            <input
+                                                type="text"
+                                                className="form-control shadow-sm"
+                                                placeholder="Enter question text"
+                                                value={editQuestionData.questionText}
+                                                onChange={(e) =>
+                                                    setEditQuestionData((q) => ({
+                                                        ...q,
+                                                        questionText: e.target.value,
+                                                    }))
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-md-2">
+                                            <input
+                                                className="form-control shadow-sm"
+                                                placeholder="Marks"
+                                                value={editQuestionData.questionMarks}
+                                                onChange={(e) =>
+                                                    setEditQuestionData((q) => ({
+                                                        ...q,
+                                                        questionMarks: e.target.value,
+                                                    }))
+                                                }
+                                            />
+                                        </div>
+                                        <div className="col-md-3">
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                className="form-control"
+                                                onChange={async (e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        const url = await uploadToImgBB(file);
+
+                                                        // Fallback handling if questionImage field doesn't yet exist
+                                                        setEditQuestionData((q) => ({
+                                                            ...q,
+                                                            questionImage: url || '',
+                                                            _id: q._id, // <- preserve this so edit works
+                                                        }));
+                                                    }
+                                                }}
+                                            />
+                                            {editQuestionData.questionImage && (
+                                                <div className="mt-2 d-flex gap-2 flex-wrap">
+                                                    <button
+                                                        className="btn btn-outline-secondary btn-sm"
+                                                        onClick={() => setPreviewImageUrl(editQuestionData.questionImage)}
+                                                    >
+                                                        <i className="fas fa-eye me-1"></i>View
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-outline-danger btn-sm"
+                                                        onClick={() =>
+                                                            setEditQuestionData((q) => ({
+                                                                ...q,
+                                                                questionImage: '',
+                                                            }))
+                                                        }
+                                                    >
+                                                        <i className="fas fa-trash-alt me-1"></i>Remove
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Question Type Dropdown */}
+                                    <div className="mb-3">
+                                        <select
+                                            className="form-select w-auto shadow-sm"
+                                            value={editQuestionData.questionType}
+                                            onChange={(e) =>
+                                                setEditQuestionData((q) => ({
+                                                    ...q,
+                                                    questionType: e.target.value,
+                                                    options: [],
+                                                    pairs: [],
+                                                    subQuestions: [],
+                                                }))
+                                            }
+                                        >
+                                            <option value="">-- Select Question Type --</option>
+                                            <option value="MCQ">MCQ</option>
+                                            <option value="Descriptive">Descriptive</option>
+                                            <option value="Match">Match the Following</option>
+                                            <option value="sub-question">Sub-Questions</option>
+                                        </select>
+                                    </div>
+
+                                    {renderEditQuestionTypeFields(editQuestionData, setEditQuestionData)}
+
+                                </>
+                            )}
+                        </div>
+
+                        <div className="modal-footer">
+                            <button className="btn btn-secondary" data-bs-dismiss="modal">
+                                Cancel
+                            </button>
+                            <button className="btn btn-success" onClick={handleEditSubmit}>
+                                <i className="fas fa-save me-2"></i>Save Changes
                             </button>
                         </div>
                     </div>

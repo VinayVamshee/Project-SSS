@@ -1097,22 +1097,38 @@ app.post('/questions', async (req, res) => {
 
 // DELETE a question by index (from a specific chapter if provided)
 app.delete('/questions', async (req, res) => {
-    const { class: classId, subject: subjectId, chapter: chapterId, index } = req.body;
+    const { class: classId, subject: subjectId, chapter: chapterName, questionId } = req.body;
+
+    if (!classId || !subjectId || !questionId) {
+        return res.status(400).json({ message: 'Missing required fields' });
+    }
 
     try {
-        const filter = { class: classId, subject: subjectId };
-        if (chapterId) filter.chapter = chapterId;
+        const filter = {
+            class: classId,
+            subject: subjectId,
+            chapter: chapterName || null,
+        };
 
         const paper = await QuestionPaper.findOne(filter);
-        if (!paper || index < 0 || index >= paper.questions.length) {
+        if (!paper) {
+            return res.status(404).json({ message: 'Question paper not found' });
+        }
+
+        const initialLength = paper.questions.length;
+
+        // Filter out the question with matching questionId
+        paper.questions = paper.questions.filter(q => q.questionId !== questionId);
+
+        if (paper.questions.length === initialLength) {
             return res.status(404).json({ message: 'Question not found' });
         }
 
-        paper.questions.splice(index, 1);
         await paper.save();
-        res.json({ questions: paper.questions });
+        return res.json({ questions: paper.questions });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('Delete error:', err);
+        return res.status(500).json({ message: 'Internal server error' });
     }
 });
 
