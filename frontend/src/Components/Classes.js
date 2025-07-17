@@ -29,35 +29,51 @@ export default function Classes() {
     const [showAllSubjects, setShowAllSubjects] = useState(false);
     const [subjectName, setSubjectName] = useState("");
     const [message, setMessage] = useState("");
+    const showMessage = (msg) => {
+        setMessage(msg);
+        setTimeout(() => setMessage(""), 5000);
+    };
+
+
+    const fetchClassesAndSubjects = async () => {
+        try {
+            const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
+            const sortedClasses = (classResponse.data.classes || []).sort((a, b) =>
+                parseInt(a.class) - parseInt(b.class)
+            );
+            setClasses(sortedClasses);
+
+            const response = await axios.get("https://sss-server-eosin.vercel.app/class-subjects");
+            setClassSubjectsData(response.data.data || []);
+
+            const subjectResponse = await axios.get("https://sss-server-eosin.vercel.app/getSubjects");
+            setSubjects(subjectResponse.data.subjects || []);
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        }
+    };
 
     useEffect(() => {
-        const fetchClassesAndSubjects = async () => {
-            try {
-                const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
-                const sortedClasses = (classResponse.data.classes || []).sort((a, b) =>
-                    parseInt(a.class) - parseInt(b.class)
-                );
-                setClasses(sortedClasses);
-
-                const response = await axios.get("https://sss-server-eosin.vercel.app/class-subjects");
-                setClassSubjectsData(response.data.data || []);
-
-                const subjectResponse = await axios.get("https://sss-server-eosin.vercel.app/getSubjects");
-                setSubjects(subjectResponse.data.subjects || []);
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            }
-        };
-
         fetchClassesAndSubjects();
     }, []);
 
-    const handleClassClick = (className) => {
-        setSelectedClass(className);
+    const handleClassClick = (classId) => {
+        setSelectedClass(classId);
         setShowAllSubjects(false);
-        const classData = classSubjectsData.find((item) => item.className === className);
-        setFilteredSubjects(classData ? classData.subjectNames : []);
+
+        const classData = classSubjectsData.find((item) => item.classId === classId);
+
+        if (!classData) {
+            setFilteredSubjects([]); // or setShowAllSubjects(true) if fallback needed
+            return;
+        }
+
+        const resolvedSubjects = subjects.filter((subj) =>
+            classData.subjectIds.includes(subj._id)
+        );
+        setFilteredSubjects(resolvedSubjects);
     };
+
 
     const handleSubjectsClick = () => {
         setSelectedClass(null);
@@ -72,15 +88,15 @@ export default function Classes() {
 
             if (newSubject && newSubject.name) {
                 setSubjects([...subjects, newSubject]);
-                setMessage("Subject added successfully!");
+                showMessage("Subject added successfully!");
                 setSubjectName("");
             } else {
-                setMessage("Invalid subject data received.");
+                showMessage("Invalid subject data received.");
                 console.error("Invalid subject:", response.data);
             }
         } catch (error) {
             console.error("Error adding subject:", error);
-            setMessage("Error adding subject. Please try again.");
+            showMessage("Error adding subject. Please try again.");
         }
     };
 
@@ -94,31 +110,39 @@ export default function Classes() {
     };
 
     const [newSelectedSubjects, setNewSelectedSubjects] = useState([]);
-    const handleCheckboxChange = (subjectName) => {
-        setNewSelectedSubjects((prevSubjects) =>
-            prevSubjects.includes(subjectName)
-                ? prevSubjects.filter((subject) => subject !== subjectName)
-                : [...prevSubjects, subjectName]
+    const handleCheckboxChange = (subjectId) => {
+        setNewSelectedSubjects((prev) =>
+            prev.includes(subjectId)
+                ? prev.filter((id) => id !== subjectId)
+                : [...prev, subjectId]
         );
     };
 
     const handleAddSubjectToClass = async (e) => {
         e.preventDefault();
 
+        if (!selectedClass) {
+            showMessage("Please select a class.");
+            return;
+        }
+
         if (newSelectedSubjects.length === 0) {
-            setMessage("Please select at least one subject.");
+            showMessage("Please select at least one subject.");
             return;
         }
 
         try {
             await axios.post("https://sss-server-eosin.vercel.app/ClassSubjectLink", {
-                className: selectedClass,
-                subjectNames: newSelectedSubjects,
+                classId: selectedClass,
+                subjectIds: newSelectedSubjects,
             });
-            window.location.reload();
+
+            await fetchClassesAndSubjects();
+            showMessage("Subject and Class Linked Successfully")
+
         } catch (error) {
-            setMessage("Error adding subjects. Please try again.");
-            console.error(error.response?.data || error);
+            console.error("Add subject error:", error.response?.data || error);
+            showMessage(error.response?.data?.message || "Error adding subjects. Please try again.");
         }
     };
 
@@ -169,20 +193,19 @@ export default function Classes() {
     const handleSubmitExam = async (e) => {
         e.preventDefault();
         if (!selectedClass) {
-            setMessage("Please select a class before adding exams.");
+            showMessage("Please select a class before adding exams.");
             return;
         }
         try {
-            const response = await axios.post('https://sss-server-eosin.vercel.app/addExams', {
-                className: selectedClass, // Use selectedClass instead of examData.selectedClass
+            await axios.post('https://sss-server-eosin.vercel.app/addExams', {
+                classId: selectedClass, // Use selectedClass instead of examData.selectedClass
                 numExams: examData.numExams,
                 examNames: examData.examNames,
             });
-            setMessage(response.data);
             fetchExamsData(); // Refresh the exams list
         } catch (err) {
             console.log(err);
-            setMessage('Error while saving exam data');
+            showMessage('Error while saving exam data');
         }
     };
 
@@ -206,16 +229,20 @@ export default function Classes() {
     const [chapterMessage, setChapterMessage] = useState("");
     const [selectedChapterSubject, setSelectedChapterSubject] = useState("");
 
-    const handleChapterOpen = async (subjectName) => {
-        setSelectedChapterSubject(subjectName);
+    const handleChapterOpen = async (subject) => {
+        setSelectedChapterSubject(subject);
         setChapterMessage("");
         setNewChapter("");
 
         try {
             const res = await axios.get("https://sss-server-eosin.vercel.app/chapters");
+
             const found = res.data.data.find(
-                (item) => item.className === selectedClass && item.subjectName === subjectName
+                (item) =>
+                    item.classId.toString() === selectedClass.toString() &&
+                    item.subjectId.toString() === subject._id.toString()
             );
+
             setChapterList(found ? found.chapters : []);
         } catch (err) {
             console.error("Error fetching chapters:", err);
@@ -231,10 +258,10 @@ export default function Classes() {
                 className,
             });
 
-            setMessage('Class added successfully!');
+            showMessage('Class added successfully!');
             setClassName('');
         } catch (error) {
-            setMessage('Error adding class. Please try again.');
+            showMessage('Error adding class. Please try again.');
         }
     };
 
@@ -250,6 +277,18 @@ export default function Classes() {
         }
     };
 
+    const [editChapterId, setEditChapterId] = useState(null);
+    const [editChapterName, setEditChapterName] = useState("");
+
+    const fetchChapters = async () => {
+        try {
+            const res = await axios.get(`https://sss-server-eosin.vercel.app/chapters/${selectedClass}/${selectedChapterSubject._id}`);
+            setChapterList(res.data.chapters);
+        } catch (err) {
+            console.error("❌ Failed to fetch chapters:", err);
+        }
+    };
+
     return (
         <div className="ClassesPage">
 
@@ -262,9 +301,8 @@ export default function Classes() {
                     >
                         <option value="">Select Class</option>
                         {classes.map((cls) => (
-                            <option key={cls.class} value={cls.class}>
-                                {cls.class}
-                            </option>
+                            <option key={cls._id} value={cls._id}>{cls.class}</option>
+
                         ))}
                     </select>
                 </div>
@@ -316,7 +354,7 @@ export default function Classes() {
                                 >
                                     <option value="">-- Choose Class --</option>
                                     {classes.map((cls) => (
-                                        <option key={cls.class} value={cls.class}>
+                                        <option key={cls._id} value={cls._id}>
                                             {cls.class}
                                         </option>
                                     ))}
@@ -347,8 +385,8 @@ export default function Classes() {
                                                                 <input
                                                                     type="checkbox"
                                                                     className="form-check-input"
-                                                                    checked={newSelectedSubjects.includes(subject.name)}
-                                                                    onChange={() => handleCheckboxChange(subject.name)}
+                                                                    checked={newSelectedSubjects.includes(subject._id)}
+                                                                    onChange={() => handleCheckboxChange(subject._id)}
                                                                 />
                                                             </td>
                                                         </tr>
@@ -388,7 +426,7 @@ export default function Classes() {
                 {selectedClass && (
                     <div className="mb-4 Class-Subjects">
                         <div className="p-2 text-dark w-100">
-                            Linked Subjects - {selectedClass}
+                            Linked Subjects - {classes.find(cls => cls._id === selectedClass)?.class || "Unknown"}
                         </div>
 
                         {/* Subjects Linked to Class */}
@@ -405,7 +443,7 @@ export default function Classes() {
                                     filteredSubjects.map((subject, index) => (
                                         <tr key={index}>
                                             <td>{index + 1}</td>
-                                            <td>{subject}</td>
+                                            <td>{subject.name}</td>
                                             <td>
                                                 <button
                                                     className="btn btn-outline-secondary btn-sm"
@@ -415,8 +453,6 @@ export default function Classes() {
                                                 >
                                                     Chapters
                                                 </button>
-
-
                                             </td>
                                         </tr>
                                     ))
@@ -431,7 +467,7 @@ export default function Classes() {
                         {/* Show Exams Section */}
                         <div className="card shadow-sm mb-4 mt-4">
                             <div className="card-body">
-                                <h5 className="card-title mb-3">📘 Exams Linked to <strong>{selectedClass}</strong></h5>
+                                <h5 className="card-title mb-3">📘 Exams Linked to <strong>{classes.find(cls => cls._id === selectedClass)?.class || "Unknown"}</strong></h5>
 
                                 {examsData.length > 0 &&
                                     examsData.some(exam => exam.class === selectedClass) ? (
@@ -583,8 +619,6 @@ export default function Classes() {
                             </div>
                         </div>
 
-
-
                     </div>
                 )}
 
@@ -641,11 +675,11 @@ export default function Classes() {
             </div>
 
             <div className="modal fade" id="chapterModal" tabIndex="-1" data-bs-backdrop="false" aria-labelledby="chapterModalLabel" aria-hidden="true" >
-                <div className="modal-dialog modal-lg">
+                <div className="modal-dialog modal-xl modal-dialog-scrollable">
                     <div className="modal-content">
                         <div className="modal-header">
                             <h5 className="modal-title" id="chapterModalLabel">
-                                Chapters for {selectedChapterSubject} (Class {selectedClass})
+                                Chapters for {selectedChapterSubject?.name || "Unknown"} (Class {classes.find(c => c._id === selectedClass)?.class || "Unknown"})
                             </h5>
                             <button
                                 type="button"
@@ -662,16 +696,18 @@ export default function Classes() {
                                     e.preventDefault();
                                     if (!newChapter.trim()) return;
 
-                                    const updatedChapters = [...chapterList, newChapter];
                                     try {
                                         await axios.post("https://sss-server-eosin.vercel.app/chapters", {
-                                            className: selectedClass,
-                                            subjectName: selectedChapterSubject,
-                                            chapters: updatedChapters,
+                                            classId: selectedClass,
+                                            subjectId: selectedChapterSubject._id,
+                                            chapters: [...chapterList, { name: newChapter }],
                                         });
-                                        setChapterList(updatedChapters);
+
+                                        await fetchChapters();
+
                                         setNewChapter("");
                                         setChapterMessage("Chapter added successfully!");
+                                        showMessage("Chapter added successfully!");
                                     } catch (err) {
                                         console.error(err);
                                         setChapterMessage("Failed to add chapter.");
@@ -708,30 +744,94 @@ export default function Classes() {
                                         chapterList.map((ch, idx) => (
                                             <tr key={idx}>
                                                 <td>{idx + 1}</td>
-                                                <td>{ch}</td>
                                                 <td>
-                                                    <button
-                                                        className="btn btn-outline-danger btn-sm"
-                                                        onClick={async () => {
-                                                            const confirmDelete = window.confirm(`Are you sure you want to delete "${ch}"?`);
-                                                            if (!confirmDelete) return;
+                                                    {editChapterId === ch._id ? (
+                                                        <input
+                                                            type="text"
+                                                            className="form-control form-control-sm"
+                                                            value={editChapterName}
+                                                            onChange={(e) => setEditChapterName(e.target.value)}
+                                                        />
+                                                    ) : (
+                                                        ch.name
+                                                    )}
+                                                </td>
+                                                <td className="d-flex gap-1">
+                                                    {editChapterId === ch._id ? (
+                                                        <>
+                                                            <button
+                                                                className="btn btn-success btn-sm"
+                                                                onClick={async () => {
+                                                                    try {
+                                                                        if (!ch?._id) {
+                                                                            console.error("❌ Chapter ID missing!", ch);
+                                                                            return alert("Chapter cannot be edited because ID is missing.");
+                                                                        }
 
-                                                            const updated = chapterList.filter((c) => c !== ch);
-                                                            try {
-                                                                await axios.post("https://sss-server-eosin.vercel.app/chapters", {
-                                                                    className: selectedClass,
-                                                                    subjectName: selectedChapterSubject,
-                                                                    chapters: updated,
-                                                                });
-                                                                setChapterList(updated);
-                                                            } catch (err) {
-                                                                console.error("Failed to update chapters:", err);
-                                                            }
-                                                        }}
-                                                        disabled={!canEdit}
-                                                    >
-                                                        Delete
-                                                    </button>
+                                                                        await axios.put(
+                                                                            `https://sss-server-eosin.vercel.app/chapters/${selectedClass?._id || selectedClass}/${selectedChapterSubject._id}/${ch._id}`,
+                                                                            { newName: editChapterName }
+                                                                        );
+                                                                        await fetchChapters();
+                                                                        setEditChapterId(null);
+                                                                        setEditChapterName("");
+                                                                        showMessage("Chapter Name updated!")
+                                                                    } catch (err) {
+                                                                        console.error("❌ Update failed:", err);
+                                                                        showMessage("Chapter Name Error!")
+                                                                    }
+                                                                }}
+                                                            >
+                                                                Save
+                                                            </button>
+
+                                                            <button
+                                                                className="btn btn-secondary btn-sm"
+                                                                onClick={() => {
+                                                                    setEditChapterId(null);
+                                                                    setEditChapterName("");
+                                                                }}
+                                                            >
+                                                                Cancel
+                                                            </button>
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <button
+                                                                className="btn btn-outline-primary btn-sm"
+                                                                onClick={() => {
+                                                                    setEditChapterId(ch._id);
+                                                                    setEditChapterName(ch.name);
+                                                                }}
+                                                                disabled={!canEdit}
+                                                            >
+                                                                Edit
+                                                            </button>
+
+                                                            <button
+                                                                className="btn btn-outline-danger btn-sm"
+                                                                onClick={async () => {
+                                                                    const confirmDelete = window.confirm(`Are you sure you want to delete "${ch.name}"?`);
+                                                                    if (!confirmDelete) return;
+
+                                                                    try {
+                                                                        await axios.delete(
+                                                                            `https://sss-server-eosin.vercel.app/chapters/${selectedClass}/${selectedChapterSubject._id}/${ch._id}`
+                                                                        );
+
+                                                                        const updated = chapterList.filter((c) => c._id !== ch._id);
+                                                                        setChapterList(updated);
+                                                                        showMessage("Chapter Deleted!")
+                                                                    } catch (err) {
+                                                                        console.error("Failed to delete chapter:", err);
+                                                                    }
+                                                                }}
+                                                                disabled={!canEdit}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        </>
+                                                    )}
                                                 </td>
                                             </tr>
                                         ))
@@ -802,6 +902,43 @@ export default function Classes() {
                     </div>
                 </div>
             </div>
+
+            {message && (
+                <div
+                    className="position-fixed"
+                    style={{
+                        bottom: "20px",
+                        right: "20px",
+                        zIndex: 9999,
+                        backgroundColor:
+                            message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                ? "#f8d7da" // Light red
+                                : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                    ? "#d1e7dd" // Light green
+                                    : message.toLowerCase().includes("please")
+                                        ? "#fff3cd" // Light yellow
+                                        : "#e2e3e5", // Neutral grey fallback
+                        color:
+                            message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                ? "#842029"
+                                : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                    ? "#0f5132"
+                                    : message.toLowerCase().includes("please")
+                                        ? "#664d03"
+                                        : "#41464b",
+                        padding: "12px 18px",
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                        fontWeight: "500",
+                        maxWidth: "300px",
+                        transition: "opacity 0.3s ease",
+                    }}
+                >
+                    {message}
+                </div>
+            )}
+
+
 
         </div>
     );

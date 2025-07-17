@@ -589,7 +589,7 @@ export default function Students() {
                 isGrid ?
                     <div className="student-grid">
                         {filteredStudents.map((student, index) => (
-                            <div className="student-card" style={{ animationDelay: `${index * 0.1}s` }}>
+                            <div className="student-card" key={index} style={{ animationDelay: `${index * 0.1}s` }}>
                                 <div className="student-info" key={student._id} data-bs-toggle="modal" data-bs-target="#studentModal" onClick={() => setSelectedStudent(student)}>
                                     <img src={student.image || boy} alt="..." />
                                     <strong>{student.name}</strong>
@@ -861,9 +861,8 @@ export default function Students() {
                                                 </tbody>
                                             </table>
 
-
                                             <button
-                                                class="btn btn-sm btn-outline-primary"
+                                                className="btn btn-sm btn-outline-primary"
                                                 data-bs-dismiss="modal"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#previousStudentModal"

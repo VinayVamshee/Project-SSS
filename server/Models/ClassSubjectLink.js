@@ -1,8 +1,18 @@
 const mongoose = require('mongoose');
 
 const classSubjectLinkSchema = new mongoose.Schema({
-    className: { type: String, required: true },
-    subjectNames: { type: [String], required: true } // Store multiple subjects in an array
+  classId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Class',
+    required: true,
+  },
+  subjectIds: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Subject',
+      required: true,
+    }
+  ]
 });
 
 module.exports = mongoose.model('ClassSubjectLink', classSubjectLinkSchema);

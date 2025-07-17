@@ -2,7 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./connectDB')
-const moment = require('moment');
+const mongoose = require('mongoose');
 
 const Class = require('./Models/Classes');
 const Subject = require('./Models/Subject');
@@ -183,21 +183,20 @@ app.delete('/deleteSubject/:id', async (req, res) => {
 // app to Link the Subjects and Classes
 app.post('/ClassSubjectLink', async (req, res) => {
     try {
-        const { className, subjectNames } = req.body;
+        const { classId, subjectIds } = req.body;
 
         // Validate input
-        if (!className || !Array.isArray(subjectNames) || subjectNames.length === 0) {
-            return res.status(400).json({ message: 'Class Name and Subject Names are required' });
+        if (!classId || !Array.isArray(subjectIds) || subjectIds.length === 0) {
+            return res.status(400).json({ message: 'Class ID and Subject IDs are required' });
         }
 
         // Check if the class already exists in the database
-        let existingClass = await ClassSubjectLink.findOne({ className });
+        let existingClass = await ClassSubjectLink.findOne({ classId });
 
         if (existingClass) {
-            // If the class exists, overwrite the existing subjects with the new ones
-            existingClass.subjectNames = subjectNames; // Replace old subjects with new ones
+            // If the class exists, update the subjectIds
+            existingClass.subjectIds = subjectIds;
 
-            // Save the updated class record
             await existingClass.save();
 
             return res.status(200).json({
@@ -206,8 +205,8 @@ app.post('/ClassSubjectLink', async (req, res) => {
             });
         }
 
-        // If class doesn't exist, create a new one with the subjects
-        const newClass = new ClassSubjectLink({ className, subjectNames });
+        // Create new link if classId is not found
+        const newClass = new ClassSubjectLink({ classId, subjectIds });
         await newClass.save();
 
         return res.status(201).json({
@@ -234,21 +233,21 @@ app.get('/class-subjects', async (req, res) => {
 
 app.post('/chapters', async (req, res) => {
     try {
-        const { className, subjectName, chapters } = req.body;
+        const { classId, subjectId, chapters } = req.body;
 
-        if (!className || !subjectName || !Array.isArray(chapters) || chapters.length === 0) {
-            return res.status(400).json({ message: 'className, subjectName and chapters are required' });
+        if (!classId || !subjectId || !Array.isArray(chapters) || chapters.length === 0) {
+            return res.status(400).json({ message: 'classId, subjectId and chapters are required' });
         }
 
-        let existing = await Chapter.findOne({ className, subjectName });
+        let existing = await Chapter.findOne({ classId, subjectId });
 
         if (existing) {
-            existing.chapters = chapters; // overwrite existing chapters
+            existing.chapters = chapters;
             await existing.save();
             return res.status(200).json({ message: 'Chapters updated successfully', data: existing });
         }
 
-        const newChapter = new Chapter({ className, subjectName, chapters });
+        const newChapter = new Chapter({ classId, subjectId, chapters });
         await newChapter.save();
         res.status(201).json({ message: 'Chapters added successfully', data: newChapter });
 
@@ -260,7 +259,14 @@ app.post('/chapters', async (req, res) => {
 
 app.get('/chapters', async (req, res) => {
     try {
-        const allChapters = await Chapter.find();
+        const { classId, subjectId } = req.query;
+
+        const filter = {};
+        if (classId) filter.classId = classId;
+        if (subjectId) filter.subjectId = subjectId;
+
+        const allChapters = await Chapter.find(filter);
+
         res.status(200).json({ success: true, data: allChapters });
     } catch (error) {
         console.error('Error fetching chapters:', error);
@@ -268,27 +274,85 @@ app.get('/chapters', async (req, res) => {
     }
 });
 
-app.delete('/chapters', async (req, res) => {
+app.get('/chapters/:classId/:subjectId', async (req, res) => {
     try {
-        const { className, subjectName } = req.body;
+        const { classId, subjectId } = req.params;
 
-        if (!className || !subjectName) {
-            return res.status(400).json({ message: 'className and subjectName are required' });
+        if (!classId || !subjectId) {
+            return res.status(400).json({ message: 'Missing classId or subjectId' });
         }
 
-        const deleted = await Chapter.findOneAndDelete({ className, subjectName });
+        const chapterDoc = await Chapter.findOne({ classId, subjectId });
 
-        if (!deleted) {
-            return res.status(404).json({ message: 'Chapters not found for given class and subject' });
+        if (!chapterDoc) {
+            return res.status(404).json({ message: 'No chapters found for this class and subject' });
         }
 
-        res.status(200).json({ message: 'Chapters deleted successfully', data: deleted });
-
+        res.status(200).json({ success: true, chapters: chapterDoc.chapters });
     } catch (error) {
-        console.error('Error deleting chapters:', error);
-        res.status(500).json({ message: 'Internal server error', error: error.message });
+        console.error('❌ Error in GET /chapters/:classId/:subjectId →', error);
+        res.status(500).json({ success: false, message: 'Server error' });
     }
 });
+
+app.delete('/chapters/:classId/:subjectId/:chapterId', async (req, res) => {
+    const { classId, subjectId, chapterId } = req.params;
+
+    if (!classId || !subjectId || !chapterId) {
+        return res.status(400).json({ message: 'Missing parameters' });
+    }
+
+    try {
+        const updated = await Chapter.findOneAndUpdate(
+            { classId, subjectId },
+            { $pull: { chapters: { _id: chapterId } } },
+            { new: true }
+        );
+
+        if (!updated) {
+            return res.status(404).json({ message: 'Chapter document not found' });
+        }
+
+        res.status(200).json({ message: 'Chapter deleted', data: updated });
+    } catch (err) {
+        console.error('Error deleting chapter:', err);
+        res.status(500).json({ message: 'Internal server error', error: err.message });
+    }
+});
+
+// PUT /chapters/:classId/:subjectId/:chapterId
+app.put('/chapters/:classId/:subjectId/:chapterId', async (req, res) => {
+    try {
+        const { classId, subjectId, chapterId } = req.params;
+        const { newName } = req.body;
+
+        if (!classId || !subjectId || !chapterId || !newName) {
+            return res.status(400).json({ message: 'Missing required fields' });
+        }
+
+        const updatedDoc = await Chapter.findOneAndUpdate(
+            {
+                classId: new mongoose.Types.ObjectId(classId),
+                subjectId: new mongoose.Types.ObjectId(subjectId),
+                "chapters._id": new mongoose.Types.ObjectId(chapterId)
+            },
+            {
+                $set: { "chapters.$.name": newName }
+            },
+            { new: true }
+        );
+
+        if (!updatedDoc) {
+            return res.status(404).json({ message: 'Chapter not found' });
+        }
+
+        res.status(200).json({ success: true, data: updatedDoc });
+    } catch (error) {
+        console.error('❌ Update chapter error:', error);
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 
 // Route to add additional personal information
 app.post('/AddAdditionalPersonalInformation', async (req, res) => {
@@ -367,8 +431,8 @@ app.post('/addStudent', async (req, res) => {
             image,
             category,
             AdmissionNo,
-            oldAdmissionNo,          
-            previousStudentId,      
+            oldAdmissionNo,
+            previousStudentId,
             Caste,
             CasteHindi,
             FreeStud,
@@ -387,8 +451,8 @@ app.post('/addStudent', async (req, res) => {
             image,
             category,
             AdmissionNo,
-            oldAdmissionNo,         
-            previousStudentId,     
+            oldAdmissionNo,
+            previousStudentId,
             Caste,
             CasteHindi,
             FreeStud,
@@ -763,7 +827,7 @@ app.post('/class-fees', async (req, res) => {
     try {
         const {
             academicYear,
-            class_id, // now a simple string like "Class 1"
+            class_id,
             admission_fees,
             development_fee,
             exam_fee,
@@ -778,12 +842,12 @@ app.post('/class-fees', async (req, res) => {
             return res.status(400).json({ message: "Academic Year and Class are required." });
         }
 
-        // ✅ Removed reference lookup: No more Class.findById
+        const classIdObj = new mongoose.Types.ObjectId(class_id);
 
         let classFeesDoc = await ClassFees.findOne({ academicYear });
 
         const newFee = {
-            class_id,
+            class_id: classIdObj,
             admission_fees,
             development_fee,
             exam_fee,
@@ -800,16 +864,17 @@ app.post('/class-fees', async (req, res) => {
                 classes: [newFee]
             });
         } else {
-            const index = classFeesDoc.classes.findIndex(c => c.class_id === class_id);
+            // ⚠️ Use .equals for ObjectId comparison
+            const index = classFeesDoc.classes.findIndex(c =>
+                c.class_id && c.class_id.equals(classIdObj)
+            );
 
             if (index !== -1) {
-                // update existing
                 classFeesDoc.classes[index] = {
-                    ...classFeesDoc.classes[index],
+                    ...classFeesDoc.classes[index]._doc,
                     ...newFee
                 };
             } else {
-                // add new
                 classFeesDoc.classes.push(newFee);
             }
         }
@@ -1096,12 +1161,16 @@ async function getNextQuestionId() {
 
 // Recursively assign unique questionIds to main and sub-questions
 async function assignQuestionIds(question) {
-    question.questionId = await getNextQuestionId();
-
-    if (question.subQuestions && question.subQuestions.length > 0) {
-        for (const subQ of question.subQuestions) {
-            await assignQuestionIds(subQ);
+    try {
+        question.questionId = await getNextQuestionId();
+        if (question.subQuestions && question.subQuestions.length > 0) {
+            for (const subQ of question.subQuestions) {
+                await assignQuestionIds(subQ);
+            }
         }
+    } catch (err) {
+        console.error("Error assigning questionId:", err);
+        throw err;
     }
 }
 
@@ -1141,7 +1210,7 @@ app.post('/questions', async (req, res) => {
 
 // DELETE a question by index (from a specific chapter if provided)
 app.delete('/questions', async (req, res) => {
-    const { class: classId, subject: subjectId, chapter: chapterName, questionId } = req.body;
+    const { class: classId, subject: subjectId, chapter: chapterId, questionId } = req.body;
 
     if (!classId || !subjectId || !questionId) {
         return res.status(400).json({ message: 'Missing required fields' });
@@ -1151,8 +1220,18 @@ app.delete('/questions', async (req, res) => {
         const filter = {
             class: classId,
             subject: subjectId,
-            chapter: chapterName || null,
         };
+
+        // Convert to ObjectId only if chapterId exists
+        if (chapterId) {
+            const safeChapterId = toObjectId(chapterId);
+            if (!safeChapterId) {
+                return res.status(400).json({ message: 'Invalid chapterId format' });
+            }
+            filter.chapter = safeChapterId;
+        } else {
+            filter.chapter = null; // match questions without any chapter
+        }
 
         const paper = await QuestionPaper.findOne(filter);
         if (!paper) {
@@ -1161,7 +1240,6 @@ app.delete('/questions', async (req, res) => {
 
         const initialLength = paper.questions.length;
 
-        // Filter out the question with matching questionId
         paper.questions = paper.questions.filter(q => q.questionId !== questionId);
 
         if (paper.questions.length === initialLength) {

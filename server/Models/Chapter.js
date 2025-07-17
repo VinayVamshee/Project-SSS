@@ -1,18 +1,28 @@
 const mongoose = require('mongoose');
 
 const chapterSchema = new mongoose.Schema({
-  className: {
-    type: String,
+  classId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Class',
     required: true,
   },
-  subjectName: {
-    type: String,
+  subjectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Subject',
     required: true,
   },
-  chapters: {
-    type: [String], // Array of chapter names
-    required: true,
-  }
+  chapters: [
+    {
+      _id: {
+        type: mongoose.Schema.Types.ObjectId,
+        default: () => new mongoose.Types.ObjectId(), // auto-generate unique ID
+      },
+      name: {
+        type: String,
+        required: true,
+      }
+    }
+  ]
 });
 
 module.exports = mongoose.model('Chapter', chapterSchema);

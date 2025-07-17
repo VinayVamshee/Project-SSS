@@ -55,7 +55,6 @@ export default function Payments() {
             const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
             const sortedClasses = classResponse.data.classes.sort((a, b) => Number(a.class) - Number(b.class));
             setClasses(sortedClasses || []);
-
             // 4. Get Fees (Other Fees)
             const feesResponse = await axios.get("https://sss-server-eosin.vercel.app/getFees");
             setFeesData(feesResponse.data || []);
@@ -305,9 +304,8 @@ export default function Payments() {
         const classId = classObject ? classObject._id : null;
         const yearFees = classFeesData.find(fee => fee.academicYear === selectedYear);
         const studentClassFee = yearFees?.classes.find(clsFee =>
-            clsFee.class_id === classId
+            clsFee.class_id?._id?.toString() === classId?.toString()
         );
-
 
         if (!studentClassFee) {
             console.error("❌ No fee structure found for this class.");
@@ -393,7 +391,7 @@ export default function Payments() {
         try {
             await axios.post('https://sss-server-eosin.vercel.app/class-fees', classFees);
             alert('Fee Structure Updated');
-            window.location.reload();
+            fetchData();
         } catch (error) {
             console.error("Error saving class fees", error);
         }
@@ -473,15 +471,14 @@ export default function Payments() {
                         <tbody>
                             {classFeesData.length > 0 &&
                                 classFeesData[0].classes
-                                    .filter((fee) => fee.class_id) // Ensure class_id exists
+                                    .filter(fee => fee.class_id && fee.class_id._id)
                                     .sort((a, b) => {
-                                        const classA = classes.find(cls => cls.class === a.class_id)?.class || "0";
-                                        const classB = classes.find(cls => cls.class === b.class_id)?.class || "0";
-                                        return Number(classA.replace(/\D/g, '')) - Number(classB.replace(/\D/g, '')); // sort numerically ignoring text
+                                        const classA = a.class_id.class || "0";
+                                        const classB = b.class_id.class || "0";
+                                        return Number(classA.replace(/\D/g, '')) - Number(classB.replace(/\D/g, ''));
                                     })
                                     .map((fee, idx) => {
-                                        const classObj = classes.find(cls => cls.class === fee.class_id);
-                                        const className = classObj ? classObj.class : "Deleted Class";
+                                        const className = fee.class_id.class || "Deleted Class";
                                         const total =
                                             (fee.admission_fees || 0) +
                                             (fee.development_fee || 0) +
@@ -544,7 +541,7 @@ export default function Payments() {
                                                 <option value="">Select a class</option>
                                                 {classes.length > 0 ? (
                                                     classes.map((cls) => (
-                                                        <option key={cls.class} value={cls.class}>{cls.class}</option>
+                                                        <option key={cls._id} value={cls._id}>{cls.class}</option>
                                                     ))
                                                 ) : (
                                                     <option disabled>No Classes Available</option>
@@ -614,9 +611,8 @@ export default function Payments() {
                         const classId = classObj ? classObj._id : null;
                         const yearFees = classFeesData.find(fee => fee.academicYear === selectedYear);
                         const classFees = yearFees?.classes.find(clsFee =>
-                            clsFee.class_id === classId
+                            (clsFee.class_id?._id || clsFee.class_id)?.toString() === classId?.toString()
                         );
-
                         if (classFees) {
                             let total = (classFees.development_fee || 0) + (classFees.exam_fee || 0) + (classFees.progress_card || 0) + (classFees.identity_card || 0) + (classFees.school_diary || 0) + (classFees.school_activity || 0) + (classFees.tuition_fee || 0) + (classFees.late_fee || 0) + (classFees.miscellaneous || 0);
                             if (element.isNewStudent) {

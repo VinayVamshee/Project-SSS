@@ -35,7 +35,7 @@ baseQuestionSchema.add({
 const questionPaperSchema = new mongoose.Schema({
   class: { type: mongoose.Schema.Types.ObjectId, ref: 'Class', required: true },
   subject: { type: mongoose.Schema.Types.ObjectId, ref: 'Subject', required: true },
-  chapter: { type: String },
+  chapter: { type: mongoose.Schema.Types.ObjectId, required: false },
   questions: [baseQuestionSchema],
 }, { timestamps: true });
 

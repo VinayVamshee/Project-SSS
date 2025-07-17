@@ -140,16 +140,16 @@ export default function QuestionManager() {
         setQuestions([]);
     };
     const onChapterChange = async (e) => {
-        const chap = e.target.value;
+        const chap = e.target.value; // This is now chapter _id
         setSelectedChapter(chap);
 
         if (selectedClass && selectedSubject && chap) {
             const r = await axios.get(
                 `https://sss-server-eosin.vercel.app/questions?class=${selectedClass}&subject=${selectedSubject}&chapter=${chap}`
             );
+
             setQuestions(r.data.questions);
 
-            // ✅ Merge questions into global map
             setGlobalQuestionMap(prev => {
                 const newMap = { ...prev };
                 r.data.questions.forEach(q => {
@@ -164,18 +164,26 @@ export default function QuestionManager() {
 
     useEffect(() => {
         if (selectedClass && selectedSubject && allChapters.length > 0) {
-            const selectedClassName = classes.find(c => c._id === selectedClass)?.class;
-            const selectedSubjectName = subjects.find(s => s._id === selectedSubject)?.name;
+            const match = allChapters.find((item) => {
+                const isClassMatch =
+                    item.classId === selectedClass || item.classId?._id === selectedClass;
+                const isSubjectMatch =
+                    item.subjectId === selectedSubject || item.subjectId?._id === selectedSubject;
 
-            const match = allChapters.find(
-                (item) => item.className === selectedClassName && item.subjectName === selectedSubjectName
-            );
+                return isClassMatch && isSubjectMatch;
+            });
+            if (match?.chapters?.length > 0) {
+                match.chapters.forEach((chapter, idx) => {
+                });
+            } else {
 
-            setChapterList(match ? match.chapters : []);
+            }
+
+            setChapterList(match?.chapters || []);
         } else {
             setChapterList([]);
         }
-    }, [selectedClass, selectedSubject, allChapters, classes, subjects]);
+    }, [selectedClass, selectedSubject, allChapters]);
 
     const addOption = () => setNewQuestion(q => ({
         ...q, options: [...q.options, { text: '', imageUrl: '' }]
@@ -211,7 +219,6 @@ export default function QuestionManager() {
         // Final cleaned question with chapter
         const cleanedQuestion = {
             ...newQuestion,
-            chapter: selectedChapter || null,
             subQuestions: cleanSubQuestions(newQuestion.subQuestions || [])
         };
 
@@ -225,6 +232,7 @@ export default function QuestionManager() {
 
         setQuestions(res.data);
         fetchQuestions();
+        alert("Question Added Successfully")
 
         // Reset new question state
         setNewQuestion({
@@ -265,7 +273,6 @@ export default function QuestionManager() {
     };
 
     const handleDelete = async (questionId) => {
-        console.log(questionId);
         try {
             const res = await axios.delete('https://sss-server-eosin.vercel.app/questions', {
                 data: {
@@ -405,7 +412,6 @@ export default function QuestionManager() {
     const [editQuestionData, setEditQuestionData] = useState(null);
 
     const openEditModal = (q, index) => {
-        console.log("Opening modal with question:", q)
         setEditQuestionData(q);
         setEditQuestionIndex(index);
     };
@@ -679,29 +685,39 @@ export default function QuestionManager() {
                             const toAdd = [q.questionId, ...allSubIds];
 
                             if (isChecked) {
-                                // ✅ Add to global selection
+                                // ✅ Always add to global selection
                                 setSelectedQuestions(prev => [...new Set([...prev, ...toAdd])]);
 
-                                // ✅ Also push to active section's questionIds
-                                if (activeSectionIndex !== null) {
+                                // ✅ If section is active, assign to it
+                                if (
+                                    activeSectionIndex !== null &&
+                                    questionPaperSections[activeSectionIndex]
+                                ) {
                                     setQuestionPaperSections(prev => {
                                         const updated = [...prev];
+                                        const existingIds = updated[activeSectionIndex].questionIds || [];
                                         updated[activeSectionIndex].questionIds = [
-                                            ...new Set([...(updated[activeSectionIndex].questionIds || []), ...toAdd])
+                                            ...new Set([...existingIds, ...toAdd])
                                         ];
                                         return updated;
                                     });
                                 }
                             } else {
-                                // ❌ Remove from selection
+                                // ❌ Remove from global selection
                                 setSelectedQuestions(prev => prev.filter(id => !toAdd.includes(id)));
 
-                                // ❌ Also remove from section
-                                setQuestionPaperSections(prev => {
-                                    const updated = [...prev];
-                                    updated[activeSectionIndex].questionIds = (updated[activeSectionIndex].questionIds || []).filter(id => !toAdd.includes(id));
-                                    return updated;
-                                });
+                                // ❌ If section is active, remove from it
+                                if (
+                                    activeSectionIndex !== null &&
+                                    questionPaperSections[activeSectionIndex]
+                                ) {
+                                    setQuestionPaperSections(prev => {
+                                        const updated = [...prev];
+                                        const existingIds = updated[activeSectionIndex].questionIds || [];
+                                        updated[activeSectionIndex].questionIds = existingIds.filter(id => !toAdd.includes(id));
+                                        return updated;
+                                    });
+                                }
                             }
                         }}
                     />
@@ -898,7 +914,7 @@ export default function QuestionManager() {
                     >
                         <option value="">-- Select Chapter --</option>
                         {chapterList.map((ch, idx) => (
-                            <option key={idx} value={ch}>{ch}</option>
+                            <option key={idx} value={ch._id}>{ch.name}</option>
                         ))}
                     </select>
                 </div>
@@ -979,7 +995,7 @@ export default function QuestionManager() {
                                     >
                                         <option value="">-- Select Chapter --</option>
                                         {chapterList.map((ch, idx) => (
-                                            <option key={idx} value={ch}>{ch}</option>
+                                            <option key={idx} value={ch._id}>{ch.name}</option>
                                         ))}
                                     </select>
                                 </div>

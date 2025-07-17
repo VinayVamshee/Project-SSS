@@ -301,6 +301,10 @@
     justify-content: flex-start;
 }
 
+.LinkToPages .Link i {
+    width: 17px;
+}
+
 .LinkToPages .Link:hover {
     cursor: pointer;
 }
@@ -426,7 +430,7 @@
     max-width: fit-content;
     padding: 20px;
     background: #fff;
-    border-radius: 3px;
+    border-radius: 50px;
     box-shadow: 0 5px 8px rgba(0, 0, 0, 0.096);
     display: flex;
     justify-content: center;
@@ -438,7 +442,7 @@
     max-width: fit-content;
     padding: 20px;
     background: #fff;
-    border-radius: 3px;
+    border-radius: 50px;
     box-shadow: 0 5px 8px rgba(0, 0, 0, 0.096);
     display: flex;
     justify-content: center;
@@ -458,11 +462,35 @@
     height: 100%;
     padding: 20px;
     background: #fff;
-    border-radius: 3px;
+    border-radius: 50px;
     box-shadow: 0 5px 8px rgba(0, 0, 0, 0.096);
     width: fit-content;
     width: 60%;
 
+}
+
+.AcademicYearStudentsChart .ClassWiseSummary {
+     height: 100%;
+    padding: 20px;
+    background: #fff;
+    border-radius: 50px;
+    box-shadow: 0 5px 8px rgba(0, 0, 0, 0.096);
+    width: fit-content;
+    width: 60%;
+}
+
+.AcademicYearStudentsChart .ClassWiseSummary table {
+    border-radius: 50px;
+    width: 100%;
+}
+
+.AcademicYearStudentsChart .ClassWiseSummary table thead {
+    background-color: var(--background-color);
+}
+
+.AcademicYearStudentsChart .ClassWiseSummary table thead tr th, .AcademicYearStudentsChart .ClassWiseSummary table tbody tr td {
+    border: 0.5px solid rgba(128, 128, 128, 0.438);
+    padding: 10px;
 }
 
 .AcademicYearStudentsChart .ClassFeesPieChart {
