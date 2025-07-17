@@ -356,7 +356,25 @@ app.delete('/DeletePersonalInfo/:id', async (req, res) => {
 // Route to add a student
 app.post('/addStudent', async (req, res) => {
     try {
-        const { name, nameHindi, dob, dobInWords, aadharNo, gender, bloodGroup, image, category, AdmissionNo, Caste, CasteHindi, FreeStud, additionalInfo, academicYears } = req.body;
+        const {
+            name,
+            nameHindi,
+            dob,
+            dobInWords,
+            aadharNo,
+            gender,
+            bloodGroup,
+            image,
+            category,
+            AdmissionNo,
+            oldAdmissionNo,          
+            previousStudentId,      
+            Caste,
+            CasteHindi,
+            FreeStud,
+            additionalInfo,
+            academicYears
+        } = req.body;
 
         const newStudent = new Student({
             name,
@@ -369,6 +387,8 @@ app.post('/addStudent', async (req, res) => {
             image,
             category,
             AdmissionNo,
+            oldAdmissionNo,         
+            previousStudentId,     
             Caste,
             CasteHindi,
             FreeStud,
@@ -383,7 +403,6 @@ app.post('/addStudent', async (req, res) => {
         res.status(500).json({ message: 'Error adding student', error: error.message });
     }
 });
-
 
 // Route to get all students
 app.get('/getStudent', async (req, res) => {

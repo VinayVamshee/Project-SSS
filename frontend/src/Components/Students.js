@@ -32,7 +32,7 @@ export default function Students() {
     //         if (!token) return navigate('/login');
 
     //         try {
-    //             await axios.get('http://localhost:3001/verifyToken', {
+    //             await axios.get('https://sss-server-eosin.vercel.app/verifyToken', {
     //                 headers: { Authorization: `Bearer ${token}` }
     //             });
     //         } catch (err) {
@@ -57,10 +57,10 @@ export default function Students() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const studentResponse = await axios.get("http://localhost:3001/getStudent");
+                const studentResponse = await axios.get("https://sss-server-eosin.vercel.app/getStudent");
                 setStudents(studentResponse.data.students || []);
 
-                const yearResponse = await axios.get("http://localhost:3001/GetAcademicYear");
+                const yearResponse = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");
                 const sortedYears = (yearResponse.data.data || []).sort((a, b) => {
                     return parseInt(b.year.split("-")[0]) - parseInt(a.year.split("-")[0]);
                 });
@@ -70,7 +70,7 @@ export default function Students() {
                     setSelectedYear(sortedYears[0].year);
                 }
 
-                const classResponse = await axios.get("http://localhost:3001/getClasses");
+                const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
                 const sortedClasses = (classResponse.data.classes || []).sort((a, b) =>
                     parseInt(a.class) - parseInt(b.class)
                 );
@@ -184,7 +184,7 @@ export default function Students() {
         }
 
         try {
-            const response = await axios.post("http://localhost:3001/pass-students-to", {
+            const response = await axios.post("https://sss-server-eosin.vercel.app/pass-students-to", {
                 studentIds: selectedStudents,
                 newAcademicYear: passToSelectedYear,
                 newClass: passToSelectedClass,
@@ -213,62 +213,62 @@ export default function Students() {
 
 
     const handleReAdmission = async () => {
-    if (!passToSelectedYear || !passToSelectedClass) {
-        alert("Please select an academic year and class before proceeding.");
-        return;
-    }
-
-    if (selectedStudents.length === 0) {
-        alert("No students selected for re-admission.");
-        return;
-    }
-
-    try {
-        const reAdmissionList = students.filter(student =>
-            selectedStudents.includes(student._id)
-        );
-
-        for (const student of reAdmissionList) {
-            // ✅ Step 1: Update last academic year status of original student in DB
-            await axios.put(`http://localhost:3001/updateAcademicYearStatus/${student._id}`, {
-                status: "Passed"
-            });
-
-            // ✅ Step 2: Create new student with **only new academic year**
-            const newStudent = {
-                ...student,
-                AdmissionNo: "Re-Admission",
-                academicYears: [
-                    {
-                        academicYear: passToSelectedYear,
-                        class: passToSelectedClass,
-                        status: "Active"
-                    }
-                ]
-            };
-
-            // ✅ Clean up MongoDB-specific fields
-            delete newStudent._id;
-            delete newStudent.createdAt;
-            delete newStudent.updatedAt;
-            delete newStudent.__v;
-
-            // ✅ Step 3: Add new student entry
-            await axios.post("http://localhost:3001/addStudent", newStudent);
+        if (!passToSelectedYear || !passToSelectedClass) {
+            alert("Please select an academic year and class before proceeding.");
+            return;
         }
 
-        alert("Re-admission completed successfully!");
-        setSelectedStudents([]);
-        setPassToSelectedYear("");
-        setPassToSelectedClass("");
+        if (selectedStudents.length === 0) {
+            alert("No students selected for re-admission.");
+            return;
+        }
 
-        // ✅ Close modal
-        document.getElementById("passtoModal").click();
-    } catch (error) {
-        console.error("Re-admission error:", error);
-        alert("An error occurred during re-admission.");
-    }
-};
+        try {
+            const reAdmissionList = students.filter(student =>
+                selectedStudents.includes(student._id)
+            );
+
+            for (const student of reAdmissionList) {
+                // ✅ Step 1: Mark current academic year as "Passed"
+                await axios.put(`https://sss-server-eosin.vercel.app/updateAcademicYearStatus/${student._id}`, {
+                    status: "Passed"
+                });
+
+                // ✅ Step 2: Create new student with old _id and AdmissionNo saved
+                const newStudent = {
+                    ...student,
+                    AdmissionNo: "Re-Admission",
+                    previousStudentId: student._id,        // 👈 Save original _id
+                    oldAdmissionNo: student.AdmissionNo,   // 👈 Save original admission number
+                    academicYears: [
+                        {
+                            academicYear: passToSelectedYear,
+                            class: passToSelectedClass,
+                            status: "Active"
+                        }
+                    ]
+                };
+
+                // ✅ Clean up fields not needed for the new entry
+                delete newStudent._id;
+                delete newStudent.createdAt;
+                delete newStudent.updatedAt;
+                delete newStudent.__v;
+
+                await axios.post("https://sss-server-eosin.vercel.app/addStudent", newStudent);
+            }
+
+            alert("Re-admission completed successfully!");
+            setSelectedStudents([]);
+            setPassToSelectedYear("");
+            setPassToSelectedClass("");
+            document.getElementById("passtoModal").click();
+
+        } catch (error) {
+            console.error("Re-admission error:", error);
+            alert("An error occurred during re-admission.");
+        }
+    };
 
     const [dropStatus, setDropStatus] = useState("");
 
@@ -279,7 +279,7 @@ export default function Students() {
         }
 
         try {
-            const response = await axios.post("http://localhost:3001/drop-academic-year", {
+            const response = await axios.post("https://sss-server-eosin.vercel.app/drop-academic-year", {
                 studentIds: selectedStudents,
                 academicYear: selectedYear,
                 status: dropStatus
@@ -350,7 +350,7 @@ export default function Students() {
     const [latestMaster, setLatestMaster] = useState([]);
 
     useEffect(() => {
-        axios.get('http://localhost:3001/masters')
+        axios.get('https://sss-server-eosin.vercel.app/masters')
             .then(res => {
                 setLatestMaster(res.data);
             })
@@ -406,6 +406,11 @@ export default function Students() {
         XLSX.utils.book_append_sheet(workbook, worksheet, "Students");
         XLSX.writeFile(workbook, "Student_Data.xlsx");
     };
+
+    // Get previous student object from already fetched students
+    const previousStudentData = students.find(
+        stu => stu._id === selectedStudent?.previousStudentId
+    );
 
     return (
         <div className="Students">
@@ -826,6 +831,48 @@ export default function Students() {
                                         </div>
                                     </div>
 
+                                    {selectedStudent?.previousStudentId && previousStudentData && (
+                                        <div className="border p-3 rounded bg-light mb-3">
+                                            <h6 className="fw-bold text-primary">Previous Admission Record:</h6>
+
+                                            <table className="table table-sm table-bordered mb-3">
+                                                <thead className="table-light">
+                                                    <tr>
+                                                        <th>Academic Year</th>
+                                                        <th>Class</th>
+                                                        <th>Status</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    {previousStudentData.academicYears.map((entry, idx) => {
+                                                        let badgeClass = "text-secondary";
+                                                        if (entry.status === "Active") badgeClass = "text-success";
+                                                        else if (entry.status === "Dropped") badgeClass = "text-danger";
+                                                        else if (entry.status === "TC-Issued") badgeClass = "text-warning";
+
+                                                        return (
+                                                            <tr key={idx}>
+                                                                <td>{entry.academicYear}</td>
+                                                                <td>{entry.class}</td>
+                                                                <td className={badgeClass}>{entry.status}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+
+
+                                            <button
+                                                class="btn btn-sm btn-outline-primary"
+                                                data-bs-dismiss="modal"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#previousStudentModal"
+                                            >
+                                                View Full Previous Info
+                                            </button>
+
+                                        </div>
+                                    )}
 
                                     {/* Academic History */}
                                     <h6 className="mt-4"><strong>Academic History:</strong></h6>
@@ -877,7 +924,7 @@ export default function Students() {
                                         {isEditMode && (
                                             <button className="btn btn-success" onClick={async () => {
                                                 try {
-                                                    const response = await axios.put(`http://localhost:3001/updateStudent/${selectedStudent._id}`, editStudentData);
+                                                    const response = await axios.put(`https://sss-server-eosin.vercel.app/updateStudent/${selectedStudent._id}`, editStudentData);
                                                     if (response.status === 200) {
                                                         alert("Student updated successfully!");
                                                         setIsEditMode(false);
@@ -902,6 +949,164 @@ export default function Students() {
                                 </div>
                             </>
                         )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Previous Student Modal */}
+            <div
+                className="modal fade"
+                id="previousStudentModal"
+                tabIndex="-1"
+                aria-labelledby="previousStudentModalLabel"
+                aria-hidden="true"
+            >
+                <div className="modal-dialog modal-xl modal-dialog-scrollable">
+                    <div className="modal-content">
+                        <div className="modal-header">
+                            <h5 className="modal-title" id="previousStudentModalLabel">
+                                {previousStudentData?.name || "Previous Student Information"}
+                            </h5>
+                            <button
+                                type="button"
+                                className="btn-close"
+                                data-bs-dismiss="modal"
+                                aria-label="Close"
+                            ></button>
+                        </div>
+
+                        <div className="modal-body">
+                            <div className="student-details d-flex justify-content-between align-items-start">
+                                {/* Left: Details */}
+                                <div className="w-75">
+                                    <div className="row mb-2">
+                                        <div className="col-md-6 p-2">
+                                            <strong>Name:</strong> {previousStudentData?.name}
+                                        </div>
+                                        <div className="col-md-6 p-2">
+                                            <strong>Name (Hindi):</strong> {previousStudentData?.nameHindi}
+                                        </div>
+                                    </div>
+
+                                    <div className="row mb-2">
+                                        <div className="col-md-6 p-2">
+                                            <strong>DOB:</strong>{" "}
+                                            {previousStudentData?.dob
+                                                ? new Date(previousStudentData.dob).toLocaleDateString()
+                                                : "N/A"}
+                                        </div>
+                                        <div className="col-md-6 p-2">
+                                            <strong>DOB in Words:</strong> {previousStudentData?.dobInWords}
+                                        </div>
+                                    </div>
+
+                                    <div className="row mb-2">
+                                        <div className="col-md-6 p-2">
+                                            <strong>Age:</strong>{" "}
+                                            {previousStudentData?.dob
+                                                ? calculateAge(previousStudentData?.dob)
+                                                : "N/A"}
+                                        </div>
+                                        <div className="col-md-6 p-2">
+                                            <strong>Gender:</strong> {previousStudentData?.gender}
+                                        </div>
+                                    </div>
+
+                                    <div className="row mb-2">
+                                        <div className="col-md-6 p-2">
+                                            <strong>Aadhar No:</strong> {previousStudentData?.aadharNo}
+                                        </div>
+                                        <div className="col-md-6 p-2">
+                                            <strong>Blood Group:</strong> {previousStudentData?.bloodGroup}
+                                        </div>
+                                    </div>
+
+                                    <div className="row mb-2">
+                                        <div className="col-md-6 p-2">
+                                            <strong>Category:</strong> {previousStudentData?.category}
+                                        </div>
+                                        <div className="col-md-6 p-2">
+                                            <strong>Admission No:</strong> {previousStudentData?.AdmissionNo}
+                                        </div>
+                                    </div>
+
+                                    <div className="row mb-2">
+                                        <div className="col-md-6 p-2">
+                                            <strong>Caste:</strong> {previousStudentData?.Caste}
+                                        </div>
+                                        <div className="col-md-6 p-2">
+                                            <strong>Caste (Hindi):</strong> {previousStudentData?.CasteHindi}
+                                        </div>
+                                    </div>
+
+                                    <div className="row mb-2">
+                                        <div className="col-md-6 p-2">
+                                            <strong>Free Student:</strong> {previousStudentData?.FreeStud}
+                                        </div>
+                                    </div>
+
+                                    {previousStudentData?.additionalInfo?.length > 0 && (
+                                        <>
+                                            <hr />
+                                            <div className="row">
+                                                {previousStudentData.additionalInfo.map((info, index) => (
+                                                    <div className="col-md-6 mb-2 p-2" key={index}>
+                                                        <strong>{info.key}:</strong> {info.value}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+
+                                {/* Right: Image */}
+                                <div className="ms-3">
+                                    <img
+                                        src={previousStudentData?.image || "default.jpg"}
+                                        alt={previousStudentData?.name}
+                                        className="student-img mb-2"
+                                        style={{ width: "150px", height: "150px", objectFit: "cover", borderRadius: "5px" }}
+                                    />
+                                </div>
+                            </div>
+
+                            <hr />
+                            <h6 className="mt-3">Academic History</h6>
+                            <div className="table-responsive">
+                                <table className="table table-bordered table-sm">
+                                    <thead className="table-light">
+                                        <tr>
+                                            <th>Academic Year</th>
+                                            <th>Class</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {previousStudentData?.academicYears?.length > 0 ? (
+                                            previousStudentData.academicYears.map((entry, idx) => (
+                                                <tr key={idx}>
+                                                    <td>{entry.academicYear}</td>
+                                                    <td>{entry.class}</td>
+                                                    <td>{entry.status}</td>
+                                                </tr>
+                                            ))
+                                        ) : (
+                                            <tr>
+                                                <td colSpan="3" className="text-center">
+                                                    No academic history available.
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+
+                        <div className="modal-footer">
+                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
+                                Close
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

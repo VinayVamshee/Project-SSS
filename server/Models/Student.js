@@ -36,6 +36,13 @@ const studentSchema = new mongoose.Schema(
     AdmissionNo: {
       type: String,
     },
+    oldAdmissionNo: {                    // 🔹 NEW FIELD
+      type: String,
+    },
+    previousStudentId: {                // 🔹 NEW FIELD
+      type: mongoose.Types.ObjectId,
+      ref: 'Student',
+    },
     Caste: {
       type: String,
     },
@@ -56,7 +63,7 @@ const studentSchema = new mongoose.Schema(
       },
       status: {
         type: String,
-        enum: ['Active', 'Passed', 'TC-Issued', 'Dropped'], // optional: to restrict allowed values
+        enum: ['Active', 'Passed', 'TC-Issued', 'Dropped'],
         default: 'Active'
       },
     }],

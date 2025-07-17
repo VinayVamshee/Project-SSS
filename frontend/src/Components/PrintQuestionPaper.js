@@ -6,7 +6,7 @@ const PrintQuestionPaper = forwardRef(
       sections = [],
       questionMap = {},
       selectedQuestions = [],
-      fullWidthImagesMap = {}, // ✅ NEW PROP
+      fullWidthImagesMap = {},
       schoolName = '',
       address = '',
       examTitle = '',
@@ -46,7 +46,7 @@ const PrintQuestionPaper = forwardRef(
                   objectFit: 'contain',
                   marginTop: '4px',
                   display: 'block',       // ⬅️ Forces block display
-                  marginLeft: 0,          // ⬅️ Ensures left-aligned
+                  paddingLeft: '30px',          // ⬅️ Ensures left-aligned
                   marginRight: 'auto'     // ⬅️ Prevents centering
                 }}
               />
@@ -122,34 +122,32 @@ const PrintQuestionPaper = forwardRef(
         }}
       >
         {/* Heading */}
-        <div className="text-center mb-3">
-          {schoolName && <h3 className="mb-1">{schoolName}</h3>}
-          {address && <p className="mb-1">{address}</p>}
-          {examTitle && <p className="mb-2"><strong>{examTitle}</strong></p>}
-          <div className="d-flex justify-content-between mb-2">
+        <div className="text-center mb-1">
+          {schoolName && <h3 className="" style={{marginBottom:'1px'}}>{schoolName}</h3>}
+          {address && <p className="" style={{marginBottom:'1px'}}>{address}</p>}
+          {examTitle && <p className="" style={{marginBottom:'1px'}}><strong>{examTitle}</strong></p>}
+          <div className="d-flex justify-content-between mb-2" style={{borderBottom:'0.5px solid grey'}}>
             <span><strong>Name:</strong></span>
             <span style={{ marginRight: '150px' }}><strong>Roll No:</strong></span>
           </div>
         </div>
-        <hr />
 
         {/* Date & Subject */}
         <div className="d-flex justify-content-between mb-2">
           <span><strong>Date:</strong> {examDate}</span>
           <span><strong>Time:</strong> {examTime}</span>
         </div>
-        <div className="d-flex justify-content-between mb-1">
+        <div className="d-flex justify-content-between mb-1" style={{borderBottom:'0.5px solid grey'}}>
           <span><strong>Class:</strong> {selectedClass}</span>
           <span><strong>Subject:</strong> {selectedSubject}</span>
           <span><strong>Max Marks:</strong> {maxMarks}</span>
         </div>
-        <hr />
 
         {/* Instructions */}
         {instructions.length > 0 && (
           <>
-            <div className="mb-2">
-              <h5 style={{ textDecoration: 'underline' }}>Instructions:</h5>
+            <div className="mb-1">
+              <h5 className='text-center'>Instructions:</h5>
               <ul style={{ paddingLeft: '20px' }}>
                 {instructions.map((inst, i) => (
                   <li key={i}>{inst}</li>
@@ -169,7 +167,7 @@ const PrintQuestionPaper = forwardRef(
           if (!questionsInSection || questionsInSection.length === 0) return null;
 
           return (
-            <div key={secIdx} className="mb-5">
+            <div key={secIdx} className="mb-3">
               <h5 className="text-decoration-underline mb-3 text-center">{section.title}</h5>
               {questionsInSection.map((q, i) => renderQuestionWithSub(q, i))}
             </div>

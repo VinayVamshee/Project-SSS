@@ -59,10 +59,10 @@ export default function QuestionManager() {
         const load = async () => {
             try {
                 const [cRes, sRes, csRes, chRes] = await Promise.all([
-                    axios.get('http://localhost:3001/getClasses'),
-                    axios.get('http://localhost:3001/getSubjects'),
-                    axios.get('http://localhost:3001/class-subjects'),
-                    axios.get('http://localhost:3001/chapters'), // 🔹 Add this route in your backend if not present
+                    axios.get('https://sss-server-eosin.vercel.app/getClasses'),
+                    axios.get('https://sss-server-eosin.vercel.app/getSubjects'),
+                    axios.get('https://sss-server-eosin.vercel.app/class-subjects'),
+                    axios.get('https://sss-server-eosin.vercel.app/chapters'), // 🔹 Add this route in your backend if not present
                 ]);
 
                 setClasses(cRes.data.classes);
@@ -82,7 +82,7 @@ export default function QuestionManager() {
         if (cls && subj && chap) {
             try {
                 const res = await axios.get(
-                    `http://localhost:3001/questions?class=${cls}&subject=${subj}&chapter=${chap}`
+                    `https://sss-server-eosin.vercel.app/questions?class=${cls}&subject=${subj}&chapter=${chap}`
                 );
                 setQuestions(res.data.questions);
 
@@ -145,7 +145,7 @@ export default function QuestionManager() {
 
         if (selectedClass && selectedSubject && chap) {
             const r = await axios.get(
-                `http://localhost:3001/questions?class=${selectedClass}&subject=${selectedSubject}&chapter=${chap}`
+                `https://sss-server-eosin.vercel.app/questions?class=${selectedClass}&subject=${selectedSubject}&chapter=${chap}`
             );
             setQuestions(r.data.questions);
 
@@ -216,7 +216,7 @@ export default function QuestionManager() {
         };
 
         // Send to backend
-        const res = await axios.post('http://localhost:3001/questions', {
+        const res = await axios.post('https://sss-server-eosin.vercel.app/questions', {
             class: selectedClass,
             subject: selectedSubject,
             chapter: selectedChapter || null,
@@ -267,7 +267,7 @@ export default function QuestionManager() {
     const handleDelete = async (questionId) => {
         console.log(questionId);
         try {
-            const res = await axios.delete('http://localhost:3001/questions', {
+            const res = await axios.delete('https://sss-server-eosin.vercel.app/questions', {
                 data: {
                     class: selectedClass,
                     subject: selectedSubject,
@@ -299,13 +299,13 @@ export default function QuestionManager() {
 
     // Fetch templates
     useEffect(() => {
-        axios.get('http://localhost:3001/get-all-templates').then(res => setTemplates(res.data));
+        axios.get('https://sss-server-eosin.vercel.app/get-all-templates').then(res => setTemplates(res.data));
     }, []);
 
     const saveTemplate = async () => {
         try {
-            await axios.post('http://localhost:3001/save-template', newTemplate);
-            const res = await axios.get('http://localhost:3001/get-all-templates');
+            await axios.post('https://sss-server-eosin.vercel.app/save-template', newTemplate);
+            const res = await axios.get('https://sss-server-eosin.vercel.app/get-all-templates');
             setTemplates(res.data);
             setNewTemplate({
                 schoolName: '',
@@ -329,6 +329,31 @@ export default function QuestionManager() {
         const newInstructions = [...newTemplate.instructions];
         newInstructions[idx] = value;
         setNewTemplate(t => ({ ...t, instructions: newInstructions }));
+    };
+
+    const handleDeleteTemplate = async (id) => {
+        if (!window.confirm("Are you sure you want to delete this template?")) return;
+
+        try {
+            await axios.delete(`https://sss-server-eosin.vercel.app/delete-template/${id}`);
+            const res = await axios.get('https://sss-server-eosin.vercel.app/get-all-templates');
+            setTemplates(res.data);
+        } catch (error) {
+            console.error("Error deleting template:", error);
+            alert("Failed to delete template.");
+        }
+    };
+
+    const handleEditTemplate = (template) => {
+        setNewTemplate({
+            schoolName: template.schoolName || '',
+            address: template.address || '',
+            examTitle: template.examTitle || '',
+            date: template.date || '',
+            time: template.time || '',
+            maxMarks: template.maxMarks || '',
+            instructions: Array.isArray(template.instructions) ? [...template.instructions] : ['']
+        });
     };
 
     const [selectedSchoolName, setSelectedSchoolName] = useState('');
@@ -394,7 +419,7 @@ export default function QuestionManager() {
         }
 
         try {
-            const res = await axios.put(`http://localhost:3001/questions`, {
+            const res = await axios.put(`https://sss-server-eosin.vercel.app/questions`, {
                 class: selectedClass,
                 subject: selectedSubject,
                 chapter: selectedChapter || null,
@@ -942,7 +967,7 @@ export default function QuestionManager() {
                         <div className="modal-body p-4">
 
                             {/* STEP 1 & 2: Chapter + Section + Toggle */}
-                            <div className="row g-3 align-items-end mb-1">
+                            <div className="row g-3 align-items-end mb-2 ">
                                 {/* Chapter Dropdown */}
                                 <div className="col-md-6">
                                     <label className="form-label">Select Chapter</label>
@@ -980,7 +1005,7 @@ export default function QuestionManager() {
                                 <div className="col-md-2">
                                     <label className="form-label d-block invisible">Add Section</label>
                                     <button
-                                        className="btn btn-outline-primary w-100"
+                                        className="btn btn-warning w-100"
                                         onClick={() => {
                                             const newSec = {
                                                 title: `Section ${String.fromCharCode(65 + questionPaperSections.length)}`,
@@ -1004,18 +1029,18 @@ export default function QuestionManager() {
                                         <span className="badge bg-secondary ms-2">{filteredAndSortedQuestions.length}</span>
                                     </h6>
 
-                                    <div className="row mb-3">
-                                        <div className="col-md-4 mb-2">
+                                    <div className="row mb-3 SearchFilter">
+                                        <div className="col-md-4">
                                             <input
                                                 type="text"
-                                                className="form-control"
+                                                className="form-control SearchStudent border"
                                                 placeholder="Search question text..."
                                                 value={searchText}
                                                 onChange={(e) => setSearchText(e.target.value)}
                                             />
                                         </div>
-                                        <div className="col-md-3 mb-2">
-                                            <select className="form-select" value={filterType} onChange={(e) => setFilterType(e.target.value)}>
+                                        <div className="col-md-1">
+                                            <select className="form-select" value={filterType} onChange={(e) => setFilterType(e.target.value)} style={{ width: "100%" }}>
                                                 <option value="">All Types</option>
                                                 <option value="MCQ">MCQ</option>
                                                 <option value="Descriptive">Descriptive</option>
@@ -1023,16 +1048,16 @@ export default function QuestionManager() {
                                                 <option value="sub-question">Sub-Questions</option>
                                             </select>
                                         </div>
-                                        <div className="col-md-2 mb-2">
+                                        <div className="col-md-2">
                                             <input
                                                 type="number"
-                                                className="form-control"
+                                                className="form-control SearchStudent border"
                                                 placeholder="Filter by Marks"
                                                 value={filterMarks}
                                                 onChange={(e) => setFilterMarks(e.target.value)}
                                             />
                                         </div>
-                                        <div className="col-md-3 mb-2">
+                                        <div className="col-md-2">
                                             <select className="form-select" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
                                                 <option value="desc">Sort: High to Low</option>
                                                 <option value="asc">Sort: Low to High</option>
@@ -1040,7 +1065,7 @@ export default function QuestionManager() {
                                         </div>
                                     </div>
 
-                                    <div className="questions-list" style={{ height: '60vh' }}>
+                                    <div className="questions-list">
                                         {filteredAndSortedQuestions.map((q, i) => renderQuestionBlock(q, i))}
                                     </div>
                                 </div>
@@ -1109,7 +1134,7 @@ export default function QuestionManager() {
                                         className="form-control shadow-sm"
                                         placeholder="Enter question text"
                                         value={newQuestion.questionText}
-                                        title={newQuestion.questionText}  
+                                        title={newQuestion.questionText}
                                         onChange={e => setNewQuestion(q => ({ ...q, questionText: e.target.value }))}
                                     />
                                 </div>
@@ -1539,6 +1564,48 @@ export default function QuestionManager() {
                         </button>
                     </div>
                 </div>
+                {/* List of Saved Instruction Templates */}
+                {templates.length > 0 && (
+                    <div className="mt-4">
+                        <h5 className="mb-3 text-primary">Saved Instruction Templates</h5>
+                        {templates.map((template, idx) => (
+                            <div key={template._id} className="card mb-3 shadow-sm p-3 border-start border-4 border-primary">
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <h6 className="mb-0 fw-bold text-secondary">Template {idx + 1}</h6>
+                                    <div className="btn-group btn-group-sm">
+                                        <button className="btn btn-outline-primary" onClick={() => handleEditTemplate(template)}>
+                                            <i className="fas fa-edit me-1"></i>Edit
+                                        </button>
+                                        <button className="btn btn-outline-danger" onClick={() => handleDeleteTemplate(template._id)}>
+                                            <i className="fas fa-trash-alt me-1"></i>Delete
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <p><strong>🏫 School:</strong> {template.schoolName}</p>
+                                <p><strong>📍 Address:</strong> {template.address}</p>
+                                <p><strong>📝 Exam Title:</strong> {template.examTitle}</p>
+
+                                {(template.date || template.time || template.maxMarks) && (
+                                    <p className="mb-1 text-muted">
+                                        {template.date && <span><strong>📅 Date:</strong> {template.date} </span>}
+                                        {template.time && <span className="ms-3"><strong>⏰ Time:</strong> {template.time} </span>}
+                                        {template.maxMarks && <span className="ms-3"><strong>🧮 Max Marks:</strong> {template.maxMarks}</span>}
+                                    </p>
+                                )}
+
+                                <p className="mb-1"><strong>📌 Instructions:</strong></p>
+                                <ul className="mb-0 ps-3">
+                                    {template.instructions.map((inst, i) => (
+                                        <li key={i}>{inst}</li>
+                                    ))}
+                                </ul>
+                            </div>
+                        ))}
+                    </div>
+                )}
+
+
             </div>
 
             <div className="modal fade" id="selectInstructionsModal" tabIndex="-1">
