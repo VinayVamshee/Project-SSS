@@ -126,13 +126,21 @@ export default function QuestionManager() {
         const cls = e.target.value;
         setSelectedClass(cls);
         setSelectedSubject('');
-        setSelectedChapter(''); // ✅ Reset chapter
-        const c = classes.find((x) => x._id === cls);
-        const link = classSubjects.find((x) => x.className === c?.class);
-        const linkedSubs = subjects.filter((s) => link?.subjectNames.includes(s.name));
+        setSelectedChapter('');
+        setQuestions([]);
+
+        // Find the class-subject link by ObjectId
+        const link = classSubjects.find((x) =>
+            x.classId === cls || x.classId?._id === cls
+        );
+
+        const linkedSubs = subjects.filter((s) =>
+            link?.subjectIds?.some(id => id === s._id || id?._id === s._id)
+        );
+
         setFilteredSubjects(linkedSubs);
-        setQuestions([]); // ✅ Clear existing questions
     };
+
     const onSubjectChange = (e) => {
         const subj = e.target.value;
         setSelectedSubject(subj);
@@ -273,6 +281,9 @@ export default function QuestionManager() {
     };
 
     const handleDelete = async (questionId) => {
+        const confirmDelete = window.confirm('Are you sure you want to delete this question?');
+        if (!confirmDelete) return;
+
         try {
             const res = await axios.delete('https://sss-server-eosin.vercel.app/questions', {
                 data: {
@@ -461,7 +472,7 @@ export default function QuestionManager() {
                 {editQuestionData.questionType === 'MCQ' && (
                     <>
                         <button
-                            className="btn btn-outline-primary btn-sm mb-3"
+                            className="btn btn-primary btn-sm mb-3"
                             onClick={() =>
                                 setEditQuestionData(q => ({
                                     ...q,
@@ -502,7 +513,7 @@ export default function QuestionManager() {
                 {editQuestionData.questionType === 'Match' && (
                     <>
                         <button
-                            className="btn btn-outline-primary btn-sm mb-3"
+                            className="btn btn-primary btn-sm mb-3"
                             onClick={() =>
                                 setEditQuestionData(q => ({
                                     ...q,
@@ -546,7 +557,7 @@ export default function QuestionManager() {
                     <>
                         <h6 className="mt-4 mb-3">Sub-Questions</h6>
                         {editQuestionData.subQuestions?.map((subQ, index) => (
-                            <div key={index} className="mb-4 p-3 border rounded-3">
+                            <div key={index} className="mb-1 p-3 border rounded-3">
                                 <div className="row align-items-center mb-3">
                                     <div className="col-md-7">
                                         <input
@@ -619,7 +630,7 @@ export default function QuestionManager() {
                         ))}
 
                         <button
-                            className="btn btn-outline-success btn-sm"
+                            className="btn btn-success btn-sm"
                             onClick={() =>
                                 setEditQuestionData(q => ({
                                     ...q,
@@ -730,7 +741,7 @@ export default function QuestionManager() {
                     <span className="ms-auto badge bg-light text-dark" style={{ height: 'fit-content', fontSize: '10px' }}>{q.questionMarks} marks</span>
                     <p className=""><span className="badge bg-info" style={{ fontFamily: 'Times New Roman', fontSize: '14px' }}>{q.questionType}</span></p>
                     <button
-                        className="btn btn-sm btn-outline-primary mb-2"
+                        className="btn btn-sm btn-primary mb-2"
                         data-bs-toggle="modal"
                         data-bs-target="#editQuestionModal"
                         onClick={() => openEditModal(q, i)}
@@ -739,7 +750,7 @@ export default function QuestionManager() {
                         <i className="fas fa-edit"></i>
                     </button>
                     <button
-                        className="btn btn-sm btn-outline-danger mb-2"
+                        className="btn btn-sm btn-danger mb-2"
                         onClick={() => handleDelete(q.questionId)}
                         disabled={!canEdit}
                     >
@@ -980,12 +991,12 @@ export default function QuestionManager() {
                             <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                         </div>
 
-                        <div className="modal-body p-4">
+                        <div className="modal-body p-4 question-paper-selection">
 
                             {/* STEP 1 & 2: Chapter + Section + Toggle */}
-                            <div className="row g-3 align-items-end mb-2 ">
+                            <div className="row g-3 align-items-end mb-2">
                                 {/* Chapter Dropdown */}
-                                <div className="col-md-6">
+                                <div className="col-md-6 ">
                                     <label className="form-label">Select Chapter</label>
                                     <select
                                         onChange={onChapterChange}
@@ -1141,9 +1152,9 @@ export default function QuestionManager() {
                             <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close" />
                         </div>
 
-                        <div className="modal-body">
+                        <div className="modal-body question-paper-selection">
                             {/* Question Text + Marks + Image */}
-                            <div className="row align-items-start g-2 mb-3">
+                            <div className="row align-items-start g-2 mb-3" style={{ borderBottom: '0.5px solid gray', paddingBottom: '10px' }}>
                                 {/* Question Text */}
                                 <div className="col-md-6">
                                     <input
@@ -1213,7 +1224,7 @@ export default function QuestionManager() {
                                                 <i className="fas fa-eye me-1"></i>View
                                             </button>
                                             <button
-                                                className="btn btn-outline-danger btn-sm"
+                                                className="btn btn-danger btn-sm"
                                                 onClick={() => setNewQuestion(q => ({ ...q, questionImage: '' }))}
                                             >
                                                 <i className="fas fa-trash-alt me-1"></i>Remove
@@ -1228,7 +1239,7 @@ export default function QuestionManager() {
                             {newQuestion.questionType === 'MCQ' && (
                                 <>
                                     <button
-                                        className="btn btn-outline-primary btn-sm mb-3"
+                                        className="btn btn-primary btn-sm mb-3"
                                         style={{ width: 'fit-content' }}
                                         onClick={addOption}
                                     >
@@ -1264,7 +1275,7 @@ export default function QuestionManager() {
                                                             <i className="fas fa-eye me-1"></i>View
                                                         </button>
                                                         <button
-                                                            className="btn btn-outline-danger btn-sm"
+                                                            className="btn btn-danger btn-sm"
                                                             onClick={() => updateOption(i, 'imageUrl', '')}
                                                         >
                                                             <i className="fas fa-trash-alt me-1"></i>Remove
@@ -1282,7 +1293,7 @@ export default function QuestionManager() {
                             {newQuestion.questionType === 'Match' && (
                                 <>
                                     <button
-                                        className="btn btn-outline-primary btn-sm mb-3"
+                                        className="btn btn-primary btn-sm mb-3"
                                         style={{ width: 'fit-content' }}
                                         onClick={addPair}
                                     >
@@ -1319,7 +1330,7 @@ export default function QuestionManager() {
                                                                 <i className="fas fa-eye me-1"></i>View
                                                             </button>
                                                             <button
-                                                                className="btn btn-outline-danger btn-sm"
+                                                                className="btn btn-danger btn-sm"
                                                                 onClick={() => updatePair(i, side, 'Image', '')}
                                                             >
                                                                 <i className="fas fa-trash-alt me-1"></i>Remove
@@ -1337,12 +1348,12 @@ export default function QuestionManager() {
                             {/* Sub-Questions Section for Heading Type */}
                             {newQuestion.questionType === 'sub-question' && (
                                 <div className="mt-4 border-top pt-3">
-                                    <h6 className="mb-3">Sub-Questions</h6>
+                                    <h6 className="mb-1">Sub-Questions</h6>
                                     {newQuestion.subQuestions.map((subQ, index) => (
-                                        <div className="mb-4 p-3 border rounded-3" key={index}>
+                                        <div className="mb-1 py-2 border rounded-3" key={index}>
                                             {/* Sub-Question Text + Marks + Image */}
-                                            <div className="row align-items-center mb-3">
-                                                <div className="col-md-7">
+                                            <div className="row align-items-center mb-1">
+                                                <div className="col-md-6">
                                                     <input
                                                         type="text"
                                                         className="form-control shadow-sm"
@@ -1352,13 +1363,27 @@ export default function QuestionManager() {
                                                     />
                                                 </div>
 
-                                                <div className="col-md-2">
+                                                <div className="col-md-1">
                                                     <input
                                                         className="form-control shadow-sm"
                                                         placeholder="Marks"
                                                         value={subQ.questionMarks}
                                                         onChange={e => updateSubQuestion(index, 'questionMarks', e.target.value)}
                                                     />
+                                                </div>
+
+                                                {/* Sub-question Type Dropdown */}
+                                                <div className="col-md-2">
+                                                    <select
+                                                        className="form-select w-auto shadow-sm"
+                                                        value={subQ.questionType}
+                                                        onChange={e => updateSubQuestion(index, 'questionType', e.target.value)}
+                                                    >
+                                                        <option value="">-- Select Question Type --</option>
+                                                        <option value="MCQ">MCQ</option>
+                                                        <option value="Descriptive">Descriptive</option>
+                                                        <option value="Match">Match the Following</option>
+                                                    </select>
                                                 </div>
 
                                                 <div className="col-md-3">
@@ -1383,7 +1408,7 @@ export default function QuestionManager() {
                                                                 <i className="fas fa-eye me-1"></i>View
                                                             </button>
                                                             <button
-                                                                className="btn btn-outline-danger btn-sm"
+                                                                className="btn btn-danger btn-sm"
                                                                 onClick={() => updateSubQuestion(index, 'questionImage', '')}
                                                             >
                                                                 <i className="fas fa-trash-alt me-1"></i>Remove
@@ -1393,25 +1418,11 @@ export default function QuestionManager() {
                                                 </div>
                                             </div>
 
-                                            {/* Sub-question Type Dropdown */}
-                                            <div className="mb-3">
-                                                <select
-                                                    className="form-select w-auto shadow-sm"
-                                                    value={subQ.questionType}
-                                                    onChange={e => updateSubQuestion(index, 'questionType', e.target.value)}
-                                                >
-                                                    <option value="">-- Select Question Type --</option>
-                                                    <option value="MCQ">MCQ</option>
-                                                    <option value="Descriptive">Descriptive</option>
-                                                    <option value="Match">Match the Following</option>
-                                                </select>
-                                            </div>
-
                                             {/* Sub-question MCQ */}
                                             {subQ.questionType === 'MCQ' && (
                                                 <>
                                                     <button
-                                                        className="btn btn-outline-primary btn-sm mb-3"
+                                                        className="btn btn-primary btn-sm mb-3"
                                                         onClick={() => {
                                                             const updatedOptions = [...subQ.options, { text: '', imageUrl: '' }];
                                                             updateSubQuestion(index, 'options', updatedOptions);
@@ -1456,7 +1467,7 @@ export default function QuestionManager() {
                                             {subQ.questionType === 'Match' && (
                                                 <>
                                                     <button
-                                                        className="btn btn-outline-primary btn-sm mb-3"
+                                                        className="btn btn-primary btn-sm mb-3"
                                                         onClick={() => {
                                                             const updatedPairs = [...subQ.pairs, {
                                                                 leftText: '',
@@ -1507,7 +1518,7 @@ export default function QuestionManager() {
                                     ))}
 
                                     <button
-                                        className="btn btn-outline-success btn-sm"
+                                        className="btn btn-success btn-sm"
                                         onClick={addSubQuestion}
                                     >
                                         <i className="fas fa-plus me-1"></i>Add Sub-Question
@@ -1589,10 +1600,10 @@ export default function QuestionManager() {
                                 <div className="d-flex justify-content-between align-items-center mb-2">
                                     <h6 className="mb-0 fw-bold text-secondary">Template {idx + 1}</h6>
                                     <div className="btn-group btn-group-sm">
-                                        <button className="btn btn-outline-primary" onClick={() => handleEditTemplate(template)}>
+                                        <button className="btn btn-primary" onClick={() => handleEditTemplate(template)}>
                                             <i className="fas fa-edit me-1"></i>Edit
                                         </button>
-                                        <button className="btn btn-outline-danger" onClick={() => handleDeleteTemplate(template._id)}>
+                                        <button className="btn btn-danger" onClick={() => handleDeleteTemplate(template._id)}>
                                             <i className="fas fa-trash-alt me-1"></i>Delete
                                         </button>
                                     </div>
@@ -1783,7 +1794,7 @@ export default function QuestionManager() {
                 aria-hidden="true"
                 data-bs-backdrop="false"
             >
-                <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                <div className="modal-dialog modal-fullscreen modal-dialog-centered modal-dialog-scrollable">
                     <div className="modal-content rounded-4 shadow">
                         <div className="modal-header">
                             <h5 className="modal-title" id="editQuestionModalLabel">
@@ -1792,12 +1803,12 @@ export default function QuestionManager() {
                             <button type="button" className="btn-close" data-bs-dismiss="modal" />
                         </div>
 
-                        <div className="modal-body">
+                        <div className="modal-body question-paper-selection">
                             {editQuestionData && (
                                 <>
                                     {/* Question Text + Marks + Image */}
-                                    <div className="row align-items-center mb-3">
-                                        <div className="col-md-7">
+                                    <div className="row align-items-center mb-3" style={{ borderBottom: '0.5px solid gray', paddingBottom: '10px' }}>
+                                        <div className="col-md-6">
                                             <input
                                                 type="text"
                                                 className="form-control shadow-sm"
@@ -1811,7 +1822,7 @@ export default function QuestionManager() {
                                                 }
                                             />
                                         </div>
-                                        <div className="col-md-2">
+                                        <div className="col-md-1">
                                             <input
                                                 className="form-control shadow-sm"
                                                 placeholder="Marks"
@@ -1823,6 +1834,28 @@ export default function QuestionManager() {
                                                     }))
                                                 }
                                             />
+                                        </div>
+                                        {/* Question Type Dropdown */}
+                                        <div className="col-md-2">
+                                            <select
+                                                className="form-select w-auto shadow-sm"
+                                                value={editQuestionData.questionType}
+                                                onChange={(e) =>
+                                                    setEditQuestionData((q) => ({
+                                                        ...q,
+                                                        questionType: e.target.value,
+                                                        options: [],
+                                                        pairs: [],
+                                                        subQuestions: [],
+                                                    }))
+                                                }
+                                            >
+                                                <option value="">-- Select Question Type --</option>
+                                                <option value="MCQ">MCQ</option>
+                                                <option value="Descriptive">Descriptive</option>
+                                                <option value="Match">Match the Following</option>
+                                                <option value="sub-question">Sub-Questions</option>
+                                            </select>
                                         </div>
                                         <div className="col-md-3">
                                             <input
@@ -1852,7 +1885,7 @@ export default function QuestionManager() {
                                                         <i className="fas fa-eye me-1"></i>View
                                                     </button>
                                                     <button
-                                                        className="btn btn-outline-danger btn-sm"
+                                                        className="btn btn-danger btn-sm"
                                                         onClick={() =>
                                                             setEditQuestionData((q) => ({
                                                                 ...q,
@@ -1865,29 +1898,6 @@ export default function QuestionManager() {
                                                 </div>
                                             )}
                                         </div>
-                                    </div>
-
-                                    {/* Question Type Dropdown */}
-                                    <div className="mb-3">
-                                        <select
-                                            className="form-select w-auto shadow-sm"
-                                            value={editQuestionData.questionType}
-                                            onChange={(e) =>
-                                                setEditQuestionData((q) => ({
-                                                    ...q,
-                                                    questionType: e.target.value,
-                                                    options: [],
-                                                    pairs: [],
-                                                    subQuestions: [],
-                                                }))
-                                            }
-                                        >
-                                            <option value="">-- Select Question Type --</option>
-                                            <option value="MCQ">MCQ</option>
-                                            <option value="Descriptive">Descriptive</option>
-                                            <option value="Match">Match the Following</option>
-                                            <option value="sub-question">Sub-Questions</option>
-                                        </select>
                                     </div>
 
                                     {renderEditQuestionTypeFields(editQuestionData, setEditQuestionData)}

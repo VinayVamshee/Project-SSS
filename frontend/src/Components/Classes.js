@@ -293,6 +293,29 @@ export default function Classes() {
         }
     };
 
+    const [editSubjectId, setEditSubjectId] = useState(null); // stores the ID of the subject being edited
+    const [editedSubjectName, setEditedSubjectName] = useState(""); // stores new value during editing
+
+    const handleSaveSubject = async (id) => {
+        if (!editedSubjectName.trim()) return;
+
+        try {
+            await axios.put(`https://sss-server-eosin.vercel.app/updateSubject/${id}`, {
+                name: editedSubjectName.trim(),
+            });
+
+            // Update subject in local state
+            const updatedSubjects = subjects.map((s) =>
+                s._id === id ? { ...s, name: editedSubjectName.trim() } : s
+            );
+            setSubjects(updatedSubjects);
+            setEditSubjectId(null);
+        } catch (error) {
+            console.error("Error updating subject:", error);
+            alert(error.response?.data?.message || "Update failed");
+        }
+    };
+
     return (
         <div className="ClassesPage">
 
@@ -659,19 +682,61 @@ export default function Classes() {
                                     {subjects.map((subject, index) => (
                                         <tr key={subject._id}>
                                             <td>{index + 1}</td>
-                                            <td>{subject.name}</td>
                                             <td>
-                                                <button
-                                                    className="btn btn-outline-danger btn-sm"
-                                                    onClick={() => handleDeleteSubject(subject._id)}
-                                                    disabled={!canEdit}
-                                                >
-                                                    Delete
-                                                </button>
+                                                {editSubjectId === subject._id ? (
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        value={editedSubjectName}
+                                                        onChange={(e) => setEditedSubjectName(e.target.value)}
+                                                        autoFocus
+                                                    />
+                                                ) : (
+                                                    subject.name
+                                                )}
+                                            </td>
+                                            <td className="d-flex gap-2">
+                                                {editSubjectId === subject._id ? (
+                                                    <>
+                                                        <button
+                                                            className="btn btn-success btn-sm"
+                                                            onClick={() => handleSaveSubject(subject._id)}
+                                                        >
+                                                            Save
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-secondary btn-sm"
+                                                            onClick={() => setEditSubjectId(null)}
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <button
+                                                            className="btn btn-outline-primary btn-sm"
+                                                            onClick={() => {
+                                                                setEditSubjectId(subject._id);
+                                                                setEditedSubjectName(subject.name);
+                                                            }}
+                                                            disabled={!canEdit}
+                                                        >
+                                                            Edit
+                                                        </button>
+                                                        <button
+                                                            className="btn btn-outline-danger btn-sm"
+                                                            onClick={() => handleDeleteSubject(subject._id)}
+                                                            disabled={!canEdit}
+                                                        >
+                                                            Delete
+                                                        </button>
+                                                    </>
+                                                )}
                                             </td>
                                         </tr>
                                     ))}
                                 </tbody>
+
                             </table>
                         </div>
                     </div>

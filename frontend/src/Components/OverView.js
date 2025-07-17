@@ -49,15 +49,15 @@ export default function OverView() {
 
     const [activeStudents, setActiveStudents] = useState([]);
 
-    // const customClassOrder = [
-    //     "Pre-Nursery",
-    //     "Nursery",
-    //     "KG-1",
-    //     "KG-2",
-    //     "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
-    //     "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
-    //     "Class-11", "Class-12"
-    // ];
+    const customClassOrder = [
+        "Pre-Nursery",
+        "Nursery",
+        "KG-1",
+        "KG-2",
+        "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
+        "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
+        "Class-11", "Class-12"
+    ];
 
     // Fetch all data: students, classes, academic years, fees
     const fetchData = async () => {
@@ -175,91 +175,104 @@ export default function OverView() {
         fetchClassFees();
     }, []);
 
+
+    const [totalDiscountAmount, setTotalDiscountAmount] = useState(0);
+    const [payableAfterDiscount, setPayableAfterDiscount] = useState(0);
     const [classWiseFees, setClassWiseFees] = useState({});
 
     // Calculate total fees to collect for latest academic year
     useEffect(() => {
-        if (classes.length === 0 || classFeesData.length === 0 || students.length === 0 || !latestYear)
-            return;
+    if (
+        classes.length === 0 ||
+        classFeesData.length === 0 ||
+        students.length === 0 ||
+        !latestYear
+    ) {
+        return;
+    }
 
-        let totalFees = 0;
-        const classWiseSummary = {};
-        students.forEach(student => {
-            const academicYear = student.academicYears.find(
-                y => y.academicYear === latestYear && y.status === "Active"
-            );
+    let totalFees = 0;
+    let totalDiscount = 0;
+    let totalPayableAfterDiscount = 0;
 
-            if (!academicYear) return;
+    const classWiseSummary = {};
 
-            const studentClassName = academicYear.class;
-            const classObj = classes.find(c => c.class === studentClassName);
-            const classId = classObj?._id;
+    students.forEach(student => {
+        const academicYear = student.academicYears.find(
+            y => y.academicYear === latestYear && y.status === "Active"
+        );
 
-            const studentFeeRecord = student.fees?.[0]?.academicYears?.find(
+        if (!academicYear) return;
+
+        const studentClassName = academicYear.class;
+        const classObj = classes.find(c => c.class === studentClassName);
+        const classId = classObj?._id;
+
+        const studentPaymentRecord = allPayments.find(
+            payment => payment.studentId === student._id
+        );
+
+        let fullFee = 0;
+        let discount = 0;
+        let paidAmount = 0;
+
+        if (studentPaymentRecord) {
+            const yearData = studentPaymentRecord.academicYears.find(
                 y => y.academicYear === latestYear
             );
 
-            let studentTotal = 0;
+            if (yearData) {
+                fullFee = yearData.totalFees || 0;
+                discount = yearData.discount || 0;
+                paidAmount = yearData.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+            }
+        }
 
-            if (studentFeeRecord && studentFeeRecord.totalFees) {
-                studentTotal = studentFeeRecord.totalFees - (studentFeeRecord.discount || 0);
-            } else {
-                const yearFees = classFeesData.find(fee => fee.academicYear === latestYear);
-                const classFees = yearFees?.classes.find(clsFee =>
-                    (clsFee.class_id?._id || clsFee.class_id)?.toString() === classId?.toString()
-                );
+        // ❗ If no payment record or no yearData, fallback to class fee calculation
+        if (fullFee === 0) {
+            const yearFees = classFeesData.find(fee => fee.academicYear === latestYear);
+            const classFees = yearFees?.classes.find(clsFee =>
+                (clsFee.class_id?._id || clsFee.class_id)?.toString() === classId?.toString()
+            );
 
-                if (classFees) {
-                    let classTotal =
-                        (classFees.development_fee || 0) +
-                        (classFees.exam_fee || 0) +
-                        (classFees.progress_card || 0) +
-                        (classFees.identity_card || 0) +
-                        (classFees.school_diary || 0) +
-                        (classFees.school_activity || 0) +
-                        (classFees.tuition_fee || 0) +
-                        (classFees.late_fee || 0) +
-                        (classFees.miscellaneous || 0);
+            if (classFees) {
+                fullFee =
+                    (classFees.admission_fees || 0) * (student.isNewStudent ? 1 : 0) +
+                    (classFees.development_fee || 0) +
+                    (classFees.exam_fee || 0) +
+                    (classFees.progress_card || 0) +
+                    (classFees.identity_card || 0) +
+                    (classFees.school_diary || 0) +
+                    (classFees.school_activity || 0) +
+                    (classFees.tuition_fee || 0) +
+                    (classFees.late_fee || 0) +
+                    (classFees.miscellaneous || 0);
+            }
+        }
 
-                    if (student.isNewStudent) {
-                        classTotal += (classFees.admission_fees || 0);
-                    }
+        const payableAfterDiscount = fullFee - discount;
 
-                    studentTotal = classTotal;
-                }
+        totalFees += fullFee;
+        totalDiscount += discount;
+        totalPayableAfterDiscount += payableAfterDiscount;
+
+        if (studentClassName) {
+            if (!classWiseSummary[studentClassName]) {
+                classWiseSummary[studentClassName] = { total: 0, paid: 0 };
             }
 
-            // Add student fee to class-wise total
-            if (studentClassName) {
-                if (!classWiseSummary[studentClassName]) {
-                    classWiseSummary[studentClassName] = { total: 0, paid: 0 };
-                }
+            classWiseSummary[studentClassName].total += payableAfterDiscount;
+            classWiseSummary[studentClassName].paid += paidAmount;
+        }
+    });
 
-                classWiseSummary[studentClassName].total += studentTotal;
-
-                // ✅ Corrected paid calculation
-                const studentPaymentRecord = allPayments.find(
-                    payment => payment.studentId === student._id
-                );
-
-                const yearData = studentPaymentRecord?.academicYears.find(
-                    y => y.academicYear === latestYear
-                );
-
-                const paidAmount = yearData?.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
-
-                classWiseSummary[studentClassName].paid += paidAmount;
-            }
+    setTotalFeesAmount(totalFees);
+    setTotalDiscountAmount(totalDiscount);
+    setPayableAfterDiscount(totalPayableAfterDiscount);
+    setClassWiseFees(classWiseSummary);
+}, [classes, classFeesData, students, latestYear, allPayments]);
 
 
-
-            totalFees += studentTotal;
-        });
-
-        setTotalFeesAmount(totalFees);
-        setClassWiseFees(classWiseSummary); // 🆕 You need to define this state
-
-    }, [classes, classFeesData, students, latestYear, allPayments]);
 
     // Prepare chart data
     const buttonColor = getComputedStyle(document.documentElement)
@@ -284,7 +297,7 @@ export default function OverView() {
     };
 
     const pieData = {
-        labels: ["Amount Paid", "Remaining Amount"],
+        labels: ["Paid Fees", "Total Fees"],
         datasets: [
             {
                 label: "Fee Payment",
@@ -353,8 +366,24 @@ export default function OverView() {
                 <div className="totalCard">
                     <i className="fa-solid fa-wallet bg-wallet fa-xl"></i>
                     <div className="totalValue">
+                        <strong>{totalDiscountAmount.toLocaleString("en-IN")}</strong>
+                        <p>Concession Provided</p>
+                    </div>
+                </div>
+
+                <div className="totalCard">
+                    <i className="fa-solid fa-wallet bg-wallet fa-xl"></i>
+                    <div className="totalValue">
+                        <strong>{payableAfterDiscount.toLocaleString("en-IN")}</strong>
+                        <p>Fees After Concession</p>
+                    </div>
+                </div>
+
+                <div className="totalCard">
+                    <i className="fa-solid fa-wallet bg-wallet fa-xl"></i>
+                    <div className="totalValue">
                         <strong>{totalFeesAmount.toLocaleString("en-IN")}</strong>
-                        <p>Fees to be Collected</p>
+                        <p>Total Fees to be Collected</p>
                     </div>
                 </div>
 
@@ -386,7 +415,11 @@ export default function OverView() {
                                 </tr>
                             </thead>
                             <tbody>
-                                {Object.entries(classWiseFees).map(([cls, data], idx) => {
+                                {Object.entries(classWiseFees).sort(([classA], [classB]) => {
+                                    const indexA = customClassOrder.indexOf(classA);
+                                    const indexB = customClassOrder.indexOf(classB);
+                                    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+                                }).map(([cls, data], idx) => {
                                     const total = data.total;
                                     const paid = data.paid;
                                     const progress = total > 0 ? (paid / total) * 100 : 0;

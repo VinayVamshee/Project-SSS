@@ -126,6 +126,38 @@ app.delete('/deleteClass/:id', async (req, res) => {
     }
 });
 
+// Update Subject
+app.put('/updateSubject/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { name } = req.body;
+
+        if (!name || typeof name !== "string" || name.trim() === "") {
+            return res.status(400).json({ message: 'Subject name is required.' });
+        }
+
+        const existingSubject = await Subject.findOne({ name: name.trim() });
+        if (existingSubject && existingSubject._id.toString() !== id) {
+            return res.status(400).json({ message: 'Subject with this name already exists.' });
+        }
+
+        const updatedSubject = await Subject.findByIdAndUpdate(
+            id,
+            { name: name.trim() },
+            { new: true }
+        );
+
+        if (!updatedSubject) {
+            return res.status(404).json({ message: 'Subject not found' });
+        }
+
+        res.json({ message: 'Subject updated successfully', subject: updatedSubject });
+    } catch (error) {
+        console.error("Error updating subject:", error);
+        res.status(500).json({ message: 'Error updating subject' });
+    }
+});
+
 // app to Add New Subject
 app.post('/AddNewSubject', async (req, res) => {
     const { subjectName } = req.body;
@@ -1224,7 +1256,7 @@ app.delete('/questions', async (req, res) => {
 
         // Convert to ObjectId only if chapterId exists
         if (chapterId) {
-            const safeChapterId = toObjectId(chapterId);
+            const safeChapterId = new mongoose.Types.ObjectId(chapterId);
             if (!safeChapterId) {
                 return res.status(400).json({ message: 'Invalid chapterId format' });
             }

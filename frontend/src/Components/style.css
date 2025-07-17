@@ -1109,7 +1109,23 @@
 
 .question-paper-selection {
     background-color: var(--background-color);
-    padding: 10px;
+}
+
+.question-paper-selection select,
+.question-paper-selection input {
+    border-radius: 15px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.359);
+}
+
+.question-paper-selection .btn {
+    border-radius: 7px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.359);
+}
+
+.question-paper-selection label {
+    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+    border-bottom: 0.5px solid gray;
+    font-size: large;
 }
 
 .questions-list {
