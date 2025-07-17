@@ -49,6 +49,16 @@ export default function OverView() {
 
     const [activeStudents, setActiveStudents] = useState([]);
 
+    // const customClassOrder = [
+    //     "Pre-Nursery",
+    //     "Nursery",
+    //     "KG-1",
+    //     "KG-2",
+    //     "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
+    //     "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
+    //     "Class-11", "Class-12"
+    // ];
+
     // Fetch all data: students, classes, academic years, fees
     const fetchData = async () => {
         try {
@@ -57,9 +67,23 @@ export default function OverView() {
             setStudents(studentList);
 
             const classRes = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
-            const sortedClasses = (classRes.data.classes || []).sort(
-                (a, b) => parseInt(a.class) - parseInt(b.class)
-            );
+            const customOrder = [
+                "Pre-Nursery",
+                "Nursery",
+                "KG-1",
+                "KG-2",
+                "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
+                "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
+                "Class-11", "Class-12"
+            ];
+
+            const sortedClasses = (classRes.data.classes || []).sort((a, b) => {
+                const indexA = customOrder.indexOf(a.class);
+                const indexB = customOrder.indexOf(b.class);
+
+                return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+            });
+
             setClasses(sortedClasses);
 
             const yearRes = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");

@@ -470,7 +470,7 @@
 }
 
 .AcademicYearStudentsChart .ClassWiseSummary {
-     height: 100%;
+    height: 100%;
     padding: 20px;
     background: #fff;
     border-radius: 50px;
@@ -488,7 +488,8 @@
     background-color: var(--background-color);
 }
 
-.AcademicYearStudentsChart .ClassWiseSummary table thead tr th, .AcademicYearStudentsChart .ClassWiseSummary table tbody tr td {
+.AcademicYearStudentsChart .ClassWiseSummary table thead tr th,
+.AcademicYearStudentsChart .ClassWiseSummary table tbody tr td {
     border: 0.5px solid rgba(128, 128, 128, 0.438);
     padding: 10px;
 }
@@ -904,7 +905,7 @@
 }
 
 .Payment .class {
-    width: 100px;
+    max-width: fit-content;
 }
 
 .fees-container {

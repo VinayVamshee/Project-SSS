@@ -101,9 +101,13 @@ export default function Classes() {
     };
 
     const handleDeleteSubject = async (subjectId) => {
+        const confirmDelete = window.confirm("Are you sure you want to delete this subject?");
+        if (!confirmDelete) return;
+
         try {
             await axios.delete(`https://sss-server-eosin.vercel.app/deleteSubject/${subjectId}`);
             setSubjects(subjects.filter((subject) => subject._id !== subjectId));
+            showMessage("Subject Deleted")
         } catch (error) {
             console.error("Error deleting subject:", error);
         }

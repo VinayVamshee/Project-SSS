@@ -473,9 +473,24 @@ export default function Payments() {
                                 classFeesData[0].classes
                                     .filter(fee => fee.class_id && fee.class_id._id)
                                     .sort((a, b) => {
-                                        const classA = a.class_id.class || "0";
-                                        const classB = b.class_id.class || "0";
-                                        return Number(classA.replace(/\D/g, '')) - Number(classB.replace(/\D/g, ''));
+                                        const customOrder = [
+                                            "Pre-Nursery",
+                                            "Nursery",
+                                            "KG-1",
+                                            "KG-2",
+                                            "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
+                                            "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
+                                            "Class-11", "Class-12"
+                                        ];
+
+                                        const nameA = a.class_id.class || "";
+                                        const nameB = b.class_id.class || "";
+
+                                        const indexA = customOrder.indexOf(nameA);
+                                        const indexB = customOrder.indexOf(nameB);
+
+                                        // If not found, push to end
+                                        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
                                     })
                                     .map((fee, idx) => {
                                         const className = fee.class_id.class || "Deleted Class";
