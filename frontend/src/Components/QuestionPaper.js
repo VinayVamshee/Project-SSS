@@ -59,10 +59,10 @@ export default function QuestionManager() {
         const load = async () => {
             try {
                 const [cRes, sRes, csRes, chRes] = await Promise.all([
-                    axios.get('https://sss-server-eosin.vercel.app/getClasses'),
-                    axios.get('https://sss-server-eosin.vercel.app/getSubjects'),
-                    axios.get('https://sss-server-eosin.vercel.app/class-subjects'),
-                    axios.get('https://sss-server-eosin.vercel.app/chapters'), // 🔹 Add this route in your backend if not present
+                    axios.get('http://localhost:3001/getClasses'),
+                    axios.get('http://localhost:3001/getSubjects'),
+                    axios.get('http://localhost:3001/class-subjects'),
+                    axios.get('http://localhost:3001/chapters'), // 🔹 Add this route in your backend if not present
                 ]);
 
                 setClasses(cRes.data.classes);
@@ -82,7 +82,7 @@ export default function QuestionManager() {
         if (cls && subj && chap) {
             try {
                 const res = await axios.get(
-                    `https://sss-server-eosin.vercel.app/questions?class=${cls}&subject=${subj}&chapter=${chap}`
+                    `http://localhost:3001/questions?class=${cls}&subject=${subj}&chapter=${chap}`
                 );
                 setQuestions(res.data.questions);
 
@@ -145,7 +145,7 @@ export default function QuestionManager() {
 
         if (selectedClass && selectedSubject && chap) {
             const r = await axios.get(
-                `https://sss-server-eosin.vercel.app/questions?class=${selectedClass}&subject=${selectedSubject}&chapter=${chap}`
+                `http://localhost:3001/questions?class=${selectedClass}&subject=${selectedSubject}&chapter=${chap}`
             );
             setQuestions(r.data.questions);
 
@@ -216,7 +216,7 @@ export default function QuestionManager() {
         };
 
         // Send to backend
-        const res = await axios.post('https://sss-server-eosin.vercel.app/questions', {
+        const res = await axios.post('http://localhost:3001/questions', {
             class: selectedClass,
             subject: selectedSubject,
             chapter: selectedChapter || null,
@@ -267,7 +267,7 @@ export default function QuestionManager() {
     const handleDelete = async (questionId) => {
         console.log(questionId);
         try {
-            const res = await axios.delete('https://sss-server-eosin.vercel.app/questions', {
+            const res = await axios.delete('http://localhost:3001/questions', {
                 data: {
                     class: selectedClass,
                     subject: selectedSubject,
@@ -299,13 +299,13 @@ export default function QuestionManager() {
 
     // Fetch templates
     useEffect(() => {
-        axios.get('https://sss-server-eosin.vercel.app/get-all-templates').then(res => setTemplates(res.data));
+        axios.get('http://localhost:3001/get-all-templates').then(res => setTemplates(res.data));
     }, []);
 
     const saveTemplate = async () => {
         try {
-            await axios.post('https://sss-server-eosin.vercel.app/save-template', newTemplate);
-            const res = await axios.get('https://sss-server-eosin.vercel.app/get-all-templates');
+            await axios.post('http://localhost:3001/save-template', newTemplate);
+            const res = await axios.get('http://localhost:3001/get-all-templates');
             setTemplates(res.data);
             setNewTemplate({
                 schoolName: '',
@@ -394,7 +394,7 @@ export default function QuestionManager() {
         }
 
         try {
-            const res = await axios.put(`https://sss-server-eosin.vercel.app/questions`, {
+            const res = await axios.put(`http://localhost:3001/questions`, {
                 class: selectedClass,
                 subject: selectedSubject,
                 chapter: selectedChapter || null,
@@ -1090,7 +1090,7 @@ export default function QuestionManager() {
             )}
 
             <div className="modal fade" id="addQuestionModal" tabIndex="-1" aria-labelledby="addQuestionModalLabel" aria-hidden="true" >
-                <div className="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+                <div className="modal-dialog modal-fullscreen modal-dialog-centered modal-dialog-scrollable">
                     <div className="modal-content rounded-4 shadow">
 
                         <div className="modal-header">
@@ -1102,20 +1102,20 @@ export default function QuestionManager() {
 
                         <div className="modal-body">
                             {/* Question Text + Marks + Image */}
-                            <div className="row align-items-center mb-3">
+                            <div className="row align-items-start g-2 mb-3">
                                 {/* Question Text */}
-                                <div className="col-md-7">
+                                <div className="col-md-6">
                                     <input
-                                        type="text"
                                         className="form-control shadow-sm"
                                         placeholder="Enter question text"
                                         value={newQuestion.questionText}
+                                        title={newQuestion.questionText}  
                                         onChange={e => setNewQuestion(q => ({ ...q, questionText: e.target.value }))}
                                     />
                                 </div>
 
                                 {/* Marks */}
-                                <div className="col-md-2">
+                                <div className="col-md-1">
                                     <input
                                         className="form-control shadow-sm"
                                         placeholder="Marks"
@@ -1124,23 +1124,43 @@ export default function QuestionManager() {
                                     />
                                 </div>
 
+                                {/* Question Type Dropdown */}
+                                <div className="col-md-2">
+                                    <select
+                                        className="form-select shadow-sm"
+                                        value={newQuestion.questionType}
+                                        onChange={e =>
+                                            setNewQuestion(q => ({
+                                                ...q,
+                                                questionType: e.target.value,
+                                                options: [],
+                                                pairs: []
+                                            }))
+                                        }
+                                    >
+                                        <option value="">-- Select Type --</option>
+                                        <option value="MCQ">MCQ</option>
+                                        <option value="Descriptive">Descriptive</option>
+                                        <option value="Match">Match the Following</option>
+                                        <option value="sub-question">Sub-Questions</option>
+                                    </select>
+                                </div>
+
                                 {/* Upload Image */}
                                 <div className="col-md-3">
-                                    <div className="input-group">
-                                        <input
-                                            type="file"
-                                            accept="image/*"
-                                            className="form-control"
-                                            title="Upload Question Image"
-                                            onChange={async e => {
-                                                const file = e.target.files[0];
-                                                if (file) {
-                                                    const url = await uploadToImgBB(file);
-                                                    setNewQuestion(q => ({ ...q, questionImage: url }));
-                                                }
-                                            }}
-                                        />
-                                    </div>
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="form-control shadow-sm"
+                                        title="Upload Question Image"
+                                        onChange={async e => {
+                                            const file = e.target.files[0];
+                                            if (file) {
+                                                const url = await uploadToImgBB(file);
+                                                setNewQuestion(q => ({ ...q, questionImage: url }));
+                                            }
+                                        }}
+                                    />
 
                                     {/* Image Actions */}
                                     {newQuestion.questionImage && (
@@ -1162,28 +1182,6 @@ export default function QuestionManager() {
                                 </div>
                             </div>
 
-
-                            {/* Question Type Dropdown */}
-                            <div className="mb-3">
-                                <select
-                                    className="form-select w-auto shadow-sm"
-                                    value={newQuestion.questionType}
-                                    onChange={e =>
-                                        setNewQuestion(q => ({
-                                            ...q,
-                                            questionType: e.target.value,
-                                            options: [],
-                                            pairs: []
-                                        }))
-                                    }
-                                >
-                                    <option value="">-- Select Question Type --</option>
-                                    <option value="MCQ">MCQ</option>
-                                    <option value="Descriptive">Descriptive</option>
-                                    <option value="Match">Match the Following</option>
-                                    <option value="sub-question">Sub-Questions</option>
-                                </select>
-                            </div>
 
                             {/* MCQ Options */}
                             {newQuestion.questionType === 'MCQ' && (

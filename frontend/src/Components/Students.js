@@ -32,7 +32,7 @@ export default function Students() {
     //         if (!token) return navigate('/login');
 
     //         try {
-    //             await axios.get('https://sss-server-eosin.vercel.app/verifyToken', {
+    //             await axios.get('http://localhost:3001/verifyToken', {
     //                 headers: { Authorization: `Bearer ${token}` }
     //             });
     //         } catch (err) {
@@ -57,10 +57,10 @@ export default function Students() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const studentResponse = await axios.get("https://sss-server-eosin.vercel.app/getStudent");
+                const studentResponse = await axios.get("http://localhost:3001/getStudent");
                 setStudents(studentResponse.data.students || []);
 
-                const yearResponse = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");
+                const yearResponse = await axios.get("http://localhost:3001/GetAcademicYear");
                 const sortedYears = (yearResponse.data.data || []).sort((a, b) => {
                     return parseInt(b.year.split("-")[0]) - parseInt(a.year.split("-")[0]);
                 });
@@ -70,7 +70,7 @@ export default function Students() {
                     setSelectedYear(sortedYears[0].year);
                 }
 
-                const classResponse = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
+                const classResponse = await axios.get("http://localhost:3001/getClasses");
                 const sortedClasses = (classResponse.data.classes || []).sort((a, b) =>
                     parseInt(a.class) - parseInt(b.class)
                 );
@@ -184,7 +184,7 @@ export default function Students() {
         }
 
         try {
-            const response = await axios.post("https://sss-server-eosin.vercel.app/pass-students-to", {
+            const response = await axios.post("http://localhost:3001/pass-students-to", {
                 studentIds: selectedStudents,
                 newAcademicYear: passToSelectedYear,
                 newClass: passToSelectedClass,
@@ -213,66 +213,62 @@ export default function Students() {
 
 
     const handleReAdmission = async () => {
-        if (!passToSelectedYear || !passToSelectedClass) {
-            alert("Please select an academic year and class before proceeding.");
-            return;
-        }
+    if (!passToSelectedYear || !passToSelectedClass) {
+        alert("Please select an academic year and class before proceeding.");
+        return;
+    }
 
-        if (selectedStudents.length === 0) {
-            alert("No students selected for re-admission.");
-            return;
-        }
+    if (selectedStudents.length === 0) {
+        alert("No students selected for re-admission.");
+        return;
+    }
 
-        try {
-            const reAdmissionList = students.filter(student =>
-                selectedStudents.includes(student._id)
-            );
+    try {
+        const reAdmissionList = students.filter(student =>
+            selectedStudents.includes(student._id)
+        );
 
-            for (const student of reAdmissionList) {
-                // Mark previous latest year as Passed
-                const updatedAcademicYears = student.academicYears.map((entry, idx, arr) => {
-                    if (idx === arr.length - 1 && entry.status === "Active") {
-                        return { ...entry, status: "Passed" };
+        for (const student of reAdmissionList) {
+            // ✅ Step 1: Update last academic year status of original student in DB
+            await axios.put(`http://localhost:3001/updateAcademicYearStatus/${student._id}`, {
+                status: "Passed"
+            });
+
+            // ✅ Step 2: Create new student with **only new academic year**
+            const newStudent = {
+                ...student,
+                AdmissionNo: "Re-Admission",
+                academicYears: [
+                    {
+                        academicYear: passToSelectedYear,
+                        class: passToSelectedClass,
+                        status: "Active"
                     }
-                    return entry;
-                });
+                ]
+            };
 
-                // Create new student object
-                const newStudent = {
-                    ...student,
-                    AdmissionNo: "Re-Admission",
-                    academicYears: [
-                        ...updatedAcademicYears,
-                        {
-                            academicYear: passToSelectedYear,
-                            class: passToSelectedClass,
-                            status: "Active"
-                        }
-                    ]
-                };
+            // ✅ Clean up MongoDB-specific fields
+            delete newStudent._id;
+            delete newStudent.createdAt;
+            delete newStudent.updatedAt;
+            delete newStudent.__v;
 
-                // Remove MongoDB-specific fields
-                delete newStudent._id;
-                delete newStudent.createdAt;
-                delete newStudent.updatedAt;
-                delete newStudent.__v;
-
-                // Post to backend
-                await axios.post("https://sss-server-eosin.vercel.app/addStudent", newStudent);
-            }
-
-            alert("Re-admission completed successfully!");
-            setSelectedStudents([]); // Clear selections
-            setPassToSelectedYear("");
-            setPassToSelectedClass("");
-
-            // Close modal
-            document.getElementById("passtoModal").click();
-        } catch (error) {
-            console.error("Re-admission error:", error);
-            alert("An error occurred during re-admission.");
+            // ✅ Step 3: Add new student entry
+            await axios.post("http://localhost:3001/addStudent", newStudent);
         }
-    };
+
+        alert("Re-admission completed successfully!");
+        setSelectedStudents([]);
+        setPassToSelectedYear("");
+        setPassToSelectedClass("");
+
+        // ✅ Close modal
+        document.getElementById("passtoModal").click();
+    } catch (error) {
+        console.error("Re-admission error:", error);
+        alert("An error occurred during re-admission.");
+    }
+};
 
     const [dropStatus, setDropStatus] = useState("");
 
@@ -283,7 +279,7 @@ export default function Students() {
         }
 
         try {
-            const response = await axios.post("https://sss-server-eosin.vercel.app/drop-academic-year", {
+            const response = await axios.post("http://localhost:3001/drop-academic-year", {
                 studentIds: selectedStudents,
                 academicYear: selectedYear,
                 status: dropStatus
@@ -354,7 +350,7 @@ export default function Students() {
     const [latestMaster, setLatestMaster] = useState([]);
 
     useEffect(() => {
-        axios.get('https://sss-server-eosin.vercel.app/masters')
+        axios.get('http://localhost:3001/masters')
             .then(res => {
                 setLatestMaster(res.data);
             })
@@ -881,7 +877,7 @@ export default function Students() {
                                         {isEditMode && (
                                             <button className="btn btn-success" onClick={async () => {
                                                 try {
-                                                    const response = await axios.put(`https://sss-server-eosin.vercel.app/updateStudent/${selectedStudent._id}`, editStudentData);
+                                                    const response = await axios.put(`http://localhost:3001/updateStudent/${selectedStudent._id}`, editStudentData);
                                                     if (response.status === 200) {
                                                         alert("Student updated successfully!");
                                                         setIsEditMode(false);

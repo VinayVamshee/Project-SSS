@@ -815,6 +815,29 @@ app.get('/class-fees', async (req, res) => {
     }
 });
 
+// Update last academicYear status to "Passed"
+app.put("/updateAcademicYearStatus/:id", async (req, res) => {
+    const studentId = req.params.id;
+    const { status } = req.body;
+
+    try {
+        const student = await Student.findById(studentId);
+        if (!student) return res.status(404).json({ message: "Student not found." });
+
+        // Update the latest academicYear
+        if (student.academicYears.length > 0) {
+            const lastIndex = student.academicYears.length - 1;
+            student.academicYears[lastIndex].status = status || "Passed";
+        }
+
+        await student.save();
+        return res.status(200).json({ message: "Academic year status updated." });
+    } catch (err) {
+        console.error(err);
+        return res.status(500).json({ message: "Failed to update academic year." });
+    }
+});
+
 //pass students to
 app.post("/pass-students-to", async (req, res) => {
     try {
