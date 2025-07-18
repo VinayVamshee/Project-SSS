@@ -333,7 +333,6 @@ export default function Students() {
         }
     };
 
-
     const calculateAge = (dob) => {
         const birthDate = new Date(dob);
         const currentDate = new Date();
