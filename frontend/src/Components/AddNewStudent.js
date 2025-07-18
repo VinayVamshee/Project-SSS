@@ -209,11 +209,11 @@ export default function AddNewStudent() {
                         <form onSubmit={handleAddAdditionalPersonalInformation}>
                             <div className="mb-3">
                                 <label htmlFor="sno" className="form-label">S.No</label>
-                                <input type="text" className="form-control" id="sno" placeholder="Enter S.No" value={personalInfo.sno} onChange={e => setPersonalInfo(p => ({ ...p, sno: e.target.value }))} required />
+                                <input type="text" className="form-control" id="sno" placeholder="Enter S.No" value={personalInfo.sno} onChange={e => setPersonalInfo(p => ({ ...p, sno: e.target.value }))}  />
                             </div>
                             <div className="mb-3">
                                 <label htmlFor="name" className="form-label">Name</label>
-                                <input type="text" className="form-control" id="name" placeholder='Enter the Additional Personal Information You Want to Take ' value={personalInfo.personalInformationList_name} onChange={e => setPersonalInfo(p => ({ ...p, personalInformationList_name: e.target.value }))} required />
+                                <input type="text" className="form-control" id="name" placeholder='Enter the Additional Personal Information You Want to Take ' value={personalInfo.personalInformationList_name} onChange={e => setPersonalInfo(p => ({ ...p, personalInformationList_name: e.target.value }))}  />
                             </div>
                             <button type="submit" className="btn btn-success btn-sm ">Save</button>
                         </form>
@@ -267,7 +267,6 @@ export default function AddNewStudent() {
                                     }
                                 }
                             }}
-                            required
                         />
                     </div>
 
@@ -293,7 +292,7 @@ export default function AddNewStudent() {
                             id="dob"
                             value={student.dob}
                             onChange={(e) => setStudent((prev) => ({ ...prev, dob: e.target.value }))}
-                            required
+                            
                         />
                     </div>
 
@@ -312,7 +311,7 @@ export default function AddNewStudent() {
                     <div className="col-md-6 mb-3">
                         <label className="form-label">Gender</label>
                         <select className="form-select" value={student.gender}
-                            onChange={(e) => setStudent((prev) => ({ ...prev, gender: e.target.value }))} required>
+                            onChange={(e) => setStudent((prev) => ({ ...prev, gender: e.target.value }))} >
                             <option value="">Select Gender</option>
                             <option value="Male">Male</option>
                             <option value="Female">Female</option>
@@ -323,7 +322,7 @@ export default function AddNewStudent() {
                     <div className="col-md-6 mb-3">
                         <label className="form-label">Blood Group</label>
                         <select className="form-select" value={student.bloodGroup}
-                            onChange={(e) => setStudent((prev) => ({ ...prev, bloodGroup: e.target.value }))} required>
+                            onChange={(e) => setStudent((prev) => ({ ...prev, bloodGroup: e.target.value }))} >
                             <option value="">Select Blood Group</option>
                             <option value="A+">A+</option>
                             <option value="A-">A-</option>
@@ -340,7 +339,7 @@ export default function AddNewStudent() {
                     <div className="col-md-6 mb-3">
                         <label className="form-label">Category</label>
                         <select className="form-select" value={student.category}
-                            onChange={(e) => setStudent((prev) => ({ ...prev, category: e.target.value }))} required>
+                            onChange={(e) => setStudent((prev) => ({ ...prev, category: e.target.value }))} >
                             <option value="">Select category</option>
                             <option value="General">General</option>
                             <option value="OBC">OBC (Other Backward Classes)</option>
@@ -358,7 +357,7 @@ export default function AddNewStudent() {
                             className="form-control"
                             value={student.AdmissionNo}
                             onChange={(e) => setStudent((prev) => ({ ...prev, AdmissionNo: e.target.value }))}
-                            required
+                            
                         />
                     </div>
 
@@ -370,7 +369,7 @@ export default function AddNewStudent() {
                             className="form-control"
                             value={student.Caste}
                             onChange={(e) => setStudent((prev) => ({ ...prev, Caste: e.target.value }))}
-                            required
+                            
                         />
                     </div>
 
@@ -437,7 +436,7 @@ export default function AddNewStudent() {
                                             newAcademicYears[index].academicYear = e.target.value;
                                             setStudent((prev) => ({ ...prev, academicYears: newAcademicYears }));
                                         }}
-                                        required
+                                        
                                     >
                                         <option value="">Select Academic Year</option>
                                         {academicYears.map((year) => (
@@ -456,7 +455,7 @@ export default function AddNewStudent() {
                                             newAcademicYears[index].class = e.target.value;
                                             setStudent((prev) => ({ ...prev, academicYears: newAcademicYears }));
                                         }}
-                                        required
+                                        
                                     >
                                         <option value="">Select Class</option>
                                         {classes.map((cls) => (

@@ -12,14 +12,14 @@ const studentSchema = new mongoose.Schema(
     },
     dob: {
       type: Date,
-      required: true,
+      
     },
     dobInWords: {
       type: String,
     },
     gender: {
       type: String,
-      required: true,
+      
     },
     aadharNo: {
       type: String
@@ -55,11 +55,11 @@ const studentSchema = new mongoose.Schema(
     academicYears: [{
       academicYear: {
         type: String,
-        required: true,
+        
       },
       class: {
         type: String,
-        required: true,
+        
       },
       status: {
         type: String,

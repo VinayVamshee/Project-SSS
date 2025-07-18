@@ -207,9 +207,9 @@ export default function Students() {
     const [isReAdmissionMode, setIsReAdmissionMode] = useState(false);
 
     useEffect(() => {
-        const specialClasses = ["Pre-Nursery", "KG-2"];
-        setIsReAdmissionMode(specialClasses.includes(selectedClass));
-    }, [selectedClass]);
+        const specialClasses = ["Nursery", "Class-1"];
+        setIsReAdmissionMode(specialClasses.includes(passToSelectedClass));
+    }, [passToSelectedClass]);
 
 
     const handleReAdmission = async () => {
@@ -288,6 +288,7 @@ export default function Students() {
             if (response.status === 200) {
                 alert(`Students marked as ${dropStatus} successfully.`);
                 setDropStatus(""); // reset
+                setSelectedStudents([]);
             }
         } catch (error) {
             console.error("❌ Error updating student status:", error);
@@ -1167,8 +1168,8 @@ export default function Students() {
                                                         <td>{student.name}</td>
                                                         <td>{latestAcademicRecord?.academicYear || "N/A"}</td>
                                                         <td>{latestAcademicRecord?.class || "N/A"}</td>
-                                                        <td>{selectedYear}</td>
-                                                        <td>{selectedClass}</td>
+                                                        <td>{passToSelectedYear}</td>
+                                                        <td>{passToSelectedClass}</td>
                                                     </tr>
                                                 );
                                             })}
