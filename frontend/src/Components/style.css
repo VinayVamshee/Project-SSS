@@ -1107,6 +1107,11 @@
     height: 100vh;
 }
 
+.QuestionPaper .QuestionPaper-Page-Content {
+    height: 100vh - 41px;
+    overflow: scroll;
+}
+
 .question-paper-selection {
     background-color: var(--background-color);
 }
@@ -1123,9 +1128,10 @@
 }
 
 .question-paper-selection label {
-    font-family: Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif;
+    font-family: 'Times New Roman', Times, serif;
     border-bottom: 0.5px solid gray;
-    font-size: large;
+    font-size: larger;
+    font-weight: bolder;
 }
 
 .questions-list {
@@ -1148,3 +1154,4 @@
     font-family: "Times New Roman", Times, serif !important;
     font-size: 16px;
 }
+

@@ -2,6 +2,7 @@ const mongoose = require('mongoose');
 
 const instructionTemplateSchema = new mongoose.Schema({
   name: { type: String }, 
+  logo: {type : String},
   schoolName: { type: String },
   address: { type: String},
   examTitle: { type: String},

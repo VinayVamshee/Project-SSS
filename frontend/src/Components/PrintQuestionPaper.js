@@ -8,6 +8,7 @@ const PrintQuestionPaper = forwardRef(
       selectedQuestions = [],
       fullWidthImagesMap = {},
       schoolName = '',
+      schoolLogo = '',
       address = '',
       examTitle = '',
       examDate = '',
@@ -53,7 +54,7 @@ const PrintQuestionPaper = forwardRef(
             </div>
           )}
           {q.questionType === 'MCQ' && (
-            <div className="d-flex flex-wrap mt-2" style={{ gap: '12px' }}>
+            <div className="d-flex flex-wrap mt-2" style={{ gap: '12px', paddingLeft: '30px', }}>
               {q.options.map((opt, i) => (
                 <div key={i} style={{ width: 'calc(25% - 12px)', display: 'flex' }}>
                   <div style={{ fontWeight: 'bold', marginRight: '6px' }}>
@@ -73,7 +74,7 @@ const PrintQuestionPaper = forwardRef(
           )}
 
           {q.questionType === 'Match' && (
-            <div className="mt-3 d-flex flex-column gap-2">
+            <div className="mt-3 d-flex flex-column gap-2" style={{ paddingLeft: '30px', }}>
               {q.pairs.map((pair, i) => (
                 <div key={i} className="d-flex justify-content-between align-items-center">
                   <div className="d-flex align-items-center" style={{ width: '45%' }}>
@@ -102,7 +103,7 @@ const PrintQuestionPaper = forwardRef(
           )}
 
           {q.subQuestions?.length > 0 && (
-            <div className="mt-3">
+            <div className="mt-3" style={{ paddingLeft: '30px', }}>
               {q.subQuestions.map((subQ, subIdx) => renderQuestionWithSub(subQ, subIdx, level + 1))}
             </div>
           )}
@@ -122,11 +123,22 @@ const PrintQuestionPaper = forwardRef(
         }}
       >
         {/* Heading */}
-        <div className="text-center mb-1">
-          {schoolName && <h3 className="" style={{marginBottom:'1px'}}>{schoolName}</h3>}
-          {address && <p className="" style={{marginBottom:'1px'}}>{address}</p>}
-          {examTitle && <p className="" style={{marginBottom:'1px'}}><strong>{examTitle}</strong></p>}
-          <div className="d-flex justify-content-between mb-2" style={{borderBottom:'0.5px solid grey'}}>
+        <div className="mb-1 text-center">
+          <div className="d-flex align-items-center justify-content-center gap-2 mb-1">
+            {schoolLogo && (
+              <img
+                src={schoolLogo}
+                alt="School Logo"
+                style={{ height: '35px', width: '35px', objectFit: 'contain', borderRadius: '50%' }}
+              />
+            )}
+            {schoolName && <h3 className="mb-0">{schoolName}</h3>}
+          </div>
+
+          {address && <p className="mb-1">{address}</p>}
+          {examTitle && <p className="mb-1"><strong>{examTitle}</strong></p>}
+
+          <div className="d-flex justify-content-between mb-2" style={{ borderBottom: '0.5px solid grey' }}>
             <span><strong>Name:</strong></span>
             <span style={{ marginRight: '150px' }}><strong>Roll No:</strong></span>
           </div>
@@ -137,7 +149,7 @@ const PrintQuestionPaper = forwardRef(
           <span><strong>Date:</strong> {examDate}</span>
           <span><strong>Time:</strong> {examTime}</span>
         </div>
-        <div className="d-flex justify-content-between mb-1" style={{borderBottom:'0.5px solid grey'}}>
+        <div className="d-flex justify-content-between mb-1" style={{ borderBottom: '0.5px solid grey' }}>
           <span><strong>Class:</strong> {selectedClass}</span>
           <span><strong>Subject:</strong> {selectedSubject}</span>
           <span><strong>Max Marks:</strong> {maxMarks}</span>

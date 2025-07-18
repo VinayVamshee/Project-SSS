@@ -307,6 +307,7 @@ export default function QuestionManager() {
     const [templates, setTemplates] = useState([]);
     const [newTemplate, setNewTemplate] = useState({
         schoolName: '',
+        logo: '',
         address: '',
         examTitle: '',
         date: '',
@@ -375,6 +376,7 @@ export default function QuestionManager() {
     };
 
     const [selectedSchoolName, setSelectedSchoolName] = useState('');
+    const [selectedLogo, setSelectedLogo] = useState('');
     const [selectedAddress, setSelectedAddress] = useState('');
     const [selectedExamTitle, setSelectedExamTitle] = useState('');
     const [selectedInstructions, setSelectedInstructions] = useState([]);
@@ -681,59 +683,7 @@ export default function QuestionManager() {
 
     const renderQuestionBlock = (q, i, level = 0) => (
 
-        <div key={q.questionId || i} className={`border rounded p-4 mb-2 bg-white position-relative shadow-sm ${level > 0 ? 'ms-4' : ''}`}>
-
-            {/* Checkbox for Main Questions only */}
-            {q.questionId && (
-                <div className="position-absolute top-0 start-0 m-2">
-                    <input
-                        type="checkbox"
-                        className="form-check-input"
-                        checked={selectedQuestions.includes(q.questionId)}
-                        onChange={(e) => {
-                            const isChecked = e.target.checked;
-                            const allSubIds = q.subQuestions?.map(sub => sub.questionId) || [];
-                            const toAdd = [q.questionId, ...allSubIds];
-
-                            if (isChecked) {
-                                // ✅ Always add to global selection
-                                setSelectedQuestions(prev => [...new Set([...prev, ...toAdd])]);
-
-                                // ✅ If section is active, assign to it
-                                if (
-                                    activeSectionIndex !== null &&
-                                    questionPaperSections[activeSectionIndex]
-                                ) {
-                                    setQuestionPaperSections(prev => {
-                                        const updated = [...prev];
-                                        const existingIds = updated[activeSectionIndex].questionIds || [];
-                                        updated[activeSectionIndex].questionIds = [
-                                            ...new Set([...existingIds, ...toAdd])
-                                        ];
-                                        return updated;
-                                    });
-                                }
-                            } else {
-                                // ❌ Remove from global selection
-                                setSelectedQuestions(prev => prev.filter(id => !toAdd.includes(id)));
-
-                                // ❌ If section is active, remove from it
-                                if (
-                                    activeSectionIndex !== null &&
-                                    questionPaperSections[activeSectionIndex]
-                                ) {
-                                    setQuestionPaperSections(prev => {
-                                        const updated = [...prev];
-                                        const existingIds = updated[activeSectionIndex].questionIds || [];
-                                        updated[activeSectionIndex].questionIds = existingIds.filter(id => !toAdd.includes(id));
-                                        return updated;
-                                    });
-                                }
-                            }
-                        }}
-                    />
-                </div>
-            )}
+        <div key={q.questionId || i} className={`border rounded p-1 mb-2 bg-white position-relative shadow-sm ${level > 0 ? 'ms-4' : ''}`}>
 
             {/* Delete Button */}
             {level === 0 && (
@@ -762,7 +712,57 @@ export default function QuestionManager() {
             {/* Question Content */}
             <div className="">
                 <h6 className="d-flex align-items-center flex-wrap">
-                    <strong className="me-2">
+                    <strong className="me-2 d-flex align-items-center">
+                        {/* Checkbox for Main Questions only */}
+                        {q.questionId && (
+                            <input
+                                type="checkbox"
+                                className="form-check-input me-2 p-3"
+                                style={{ boxShadow: 'none' }}
+                                checked={selectedQuestions.includes(q.questionId)}
+                                onChange={(e) => {
+                                    const isChecked = e.target.checked;
+                                    const allSubIds = q.subQuestions?.map(sub => sub.questionId) || [];
+                                    const toAdd = [q.questionId, ...allSubIds];
+
+                                    if (isChecked) {
+                                        // ✅ Always add to global selection
+                                        setSelectedQuestions(prev => [...new Set([...prev, ...toAdd])]);
+
+                                        // ✅ If section is active, assign to it
+                                        if (
+                                            activeSectionIndex !== null &&
+                                            questionPaperSections[activeSectionIndex]
+                                        ) {
+                                            setQuestionPaperSections(prev => {
+                                                const updated = [...prev];
+                                                const existingIds = updated[activeSectionIndex].questionIds || [];
+                                                updated[activeSectionIndex].questionIds = [
+                                                    ...new Set([...existingIds, ...toAdd])
+                                                ];
+                                                return updated;
+                                            });
+                                        }
+                                    } else {
+                                        // ❌ Remove from global selection
+                                        setSelectedQuestions(prev => prev.filter(id => !toAdd.includes(id)));
+
+                                        // ❌ If section is active, remove from it
+                                        if (
+                                            activeSectionIndex !== null &&
+                                            questionPaperSections[activeSectionIndex]
+                                        ) {
+                                            setQuestionPaperSections(prev => {
+                                                const updated = [...prev];
+                                                const existingIds = updated[activeSectionIndex].questionIds || [];
+                                                updated[activeSectionIndex].questionIds = existingIds.filter(id => !toAdd.includes(id));
+                                                return updated;
+                                            });
+                                        }
+                                    }
+                                }}
+                            />
+                        )}
                         {level === 0 ? `Q${i + 1}.` : `${toRoman(i)}.`}
                     </strong>
                     <span>
@@ -771,7 +771,7 @@ export default function QuestionManager() {
                 </h6>
 
                 {q.questionImage && (
-                    <div className="mt-2">
+                    <div className="mt-2 ms-5">
                         <img
                             src={q.questionImage}
                             alt="Question"
@@ -802,6 +802,7 @@ export default function QuestionManager() {
                             <label
                                 className="form-check-label"
                                 htmlFor={`fullWidthImage-${q.questionId}-${i}-${level}`}
+                                style={{ fontSize: '1rem' }}
                             >
                                 Display image in full width
                             </label>
@@ -894,7 +895,7 @@ export default function QuestionManager() {
                 {uploading && <span className="badge bg-warning text-dark">Uploading...</span>}
             </div>
 
-            <div className="SearchFilter d-flex gap-2 flex-wrap">
+            <div className="SearchFilter">
                 {/* Class Dropdown */}
                 <div>
                     <select onChange={onClassChange} value={selectedClass} className="form-select shadow-sm">
@@ -961,11 +962,7 @@ export default function QuestionManager() {
                 <button className="btn" type="button" data-bs-toggle="collapse" data-bs-target="#addInstructionCollapse" aria-expanded="false" aria-controls="addInstructionCollapse" disabled={!canEdit}>
                     <i className="fas fa-book me-2"></i>Add Instruction Template
                 </button>
-                <button
-                    className="btn"
-                    data-bs-toggle="modal"
-                    data-bs-target="#createQuestionPaperModal"
-                >
+                <button className="btn" data-bs-toggle="modal" data-bs-target="#createQuestionPaperModal" >
                     ➕ Create Question Paper
                 </button>
                 {/* <button className="btn" data-bs-toggle="modal" data-bs-target="#selectInstructionsModal">
@@ -994,9 +991,9 @@ export default function QuestionManager() {
                         <div className="modal-body p-4 question-paper-selection">
 
                             {/* STEP 1 & 2: Chapter + Section + Toggle */}
-                            <div className="row g-3 align-items-end mb-2">
+                            <div className="row g-3 align-items-end mb-2" style={{ borderBottom: '0.5px solid gray', paddingBottom: '10px' }}>
                                 {/* Chapter Dropdown */}
-                                <div className="col-md-6 ">
+                                <div className=" " style={{ width: 'fit-content' }}>
                                     <label className="form-label">Select Chapter</label>
                                     <select
                                         onChange={onChapterChange}
@@ -1012,7 +1009,7 @@ export default function QuestionManager() {
                                 </div>
 
                                 {/* Section Info */}
-                                <div className="col-md-4">
+                                <div className="" style={{ width: 'fit-content' }}>
                                     <label className="form-label">Select Section to Assign</label>
                                     <select
                                         className="form-select shadow-sm"
@@ -1029,7 +1026,7 @@ export default function QuestionManager() {
                                 </div>
 
                                 {/* Add Section Button */}
-                                <div className="col-md-2">
+                                <div className="" style={{ width: 'fit-content' }}>
                                     <label className="form-label d-block invisible">Add Section</label>
                                     <button
                                         className="btn btn-warning w-100"
@@ -1547,96 +1544,128 @@ export default function QuestionManager() {
                 </div>
             </div>
 
-            <div className="collapse" id="addInstructionCollapse">
-                <div className="card p-3 mb-4 shadow-sm">
-                    <h5 className="mb-3">Instruction Template</h5>
+            <div className='QuestionPaper-Page-Content'>
+                <div className="collapse" id="addInstructionCollapse">
+                    <div className="card p-3 mb-4 shadow-sm">
+                        <h5 className="mb-3">Instruction Template</h5>
 
-                    <input
-                        className="form-control mb-2"
-                        placeholder="School Name"
-                        value={newTemplate.schoolName}
-                        onChange={e => setNewTemplate(t => ({ ...t, schoolName: e.target.value }))}
-                    />
-
-                    <input
-                        className="form-control mb-2"
-                        placeholder="Address"
-                        value={newTemplate.address}
-                        onChange={e => setNewTemplate(t => ({ ...t, address: e.target.value }))}
-                    />
-
-                    <input
-                        className="form-control mb-2"
-                        placeholder="Exam Title"
-                        value={newTemplate.examTitle}
-                        onChange={e => setNewTemplate(t => ({ ...t, examTitle: e.target.value }))}
-                    />
-
-                    {newTemplate.instructions.map((inst, i) => (
-                        <input
-                            key={i}
-                            className="form-control mb-2"
-                            placeholder={`Instruction ${i + 1}`}
-                            value={inst}
-                            onChange={e => updateInstruction(i, e.target.value)}
-                        />
-                    ))}
-
-                    <div className="d-flex justify-content-between">
-                        <button className="btn btn-sm btn-outline-secondary" onClick={addInstruction}>
-                            <i className="fas fa-plus me-1"></i>Add Instruction
-                        </button>
-                        <button className="btn btn-sm btn-success" onClick={saveTemplate}>
-                            <i className="fas fa-save me-1"></i>Save Template
-                        </button>
-                    </div>
-                </div>
-                {/* List of Saved Instruction Templates */}
-                {templates.length > 0 && (
-                    <div className="mt-4">
-                        <h5 className="mb-3 text-primary">Saved Instruction Templates</h5>
-                        {templates.map((template, idx) => (
-                            <div key={template._id} className="card mb-3 shadow-sm p-3 border-start border-4 border-primary">
-                                <div className="d-flex justify-content-between align-items-center mb-2">
-                                    <h6 className="mb-0 fw-bold text-secondary">Template {idx + 1}</h6>
-                                    <div className="btn-group btn-group-sm">
-                                        <button className="btn btn-primary" onClick={() => handleEditTemplate(template)}>
-                                            <i className="fas fa-edit me-1"></i>Edit
-                                        </button>
-                                        <button className="btn btn-danger" onClick={() => handleDeleteTemplate(template._id)}>
-                                            <i className="fas fa-trash-alt me-1"></i>Delete
-                                        </button>
-                                    </div>
+                        <div>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                className="form-control mb-2"
+                                onChange={async (e) => {
+                                    const file = e.target.files[0];
+                                    if (file) {
+                                        try {
+                                            const url = await uploadToImgBB(file);
+                                            setNewTemplate(t => ({ ...t, logo: url }));
+                                        } catch (err) {
+                                            alert("❌ Logo upload failed.");
+                                            console.error(err);
+                                        }
+                                    }
+                                }}
+                            />
+                            {newTemplate.logo && (
+                                <div className="mb-2">
+                                    <img
+                                        src={newTemplate.logo}
+                                        alt="Uploaded Logo"
+                                        style={{ height: '60px', objectFit: 'contain' }}
+                                    />
                                 </div>
+                            )}
+                        </div>
 
-                                <p><strong>🏫 School:</strong> {template.schoolName}</p>
-                                <p><strong>📍 Address:</strong> {template.address}</p>
-                                <p><strong>📝 Exam Title:</strong> {template.examTitle}</p>
+                        <input
+                            className="form-control mb-2"
+                            placeholder="School Name"
+                            value={newTemplate.schoolName}
+                            onChange={e => setNewTemplate(t => ({ ...t, schoolName: e.target.value }))}
+                        />
 
-                                {(template.date || template.time || template.maxMarks) && (
-                                    <p className="mb-1 text-muted">
-                                        {template.date && <span><strong>📅 Date:</strong> {template.date} </span>}
-                                        {template.time && <span className="ms-3"><strong>⏰ Time:</strong> {template.time} </span>}
-                                        {template.maxMarks && <span className="ms-3"><strong>🧮 Max Marks:</strong> {template.maxMarks}</span>}
-                                    </p>
-                                )}
+                        <input
+                            className="form-control mb-2"
+                            placeholder="Address"
+                            value={newTemplate.address}
+                            onChange={e => setNewTemplate(t => ({ ...t, address: e.target.value }))}
+                        />
 
-                                <p className="mb-1"><strong>📌 Instructions:</strong></p>
-                                <ul className="mb-0 ps-3">
-                                    {template.instructions.map((inst, i) => (
-                                        <li key={i}>{inst}</li>
-                                    ))}
-                                </ul>
-                            </div>
+                        <input
+                            className="form-control mb-2"
+                            placeholder="Exam Title"
+                            value={newTemplate.examTitle}
+                            onChange={e => setNewTemplate(t => ({ ...t, examTitle: e.target.value }))}
+                        />
+
+                        {newTemplate.instructions.map((inst, i) => (
+                            <input
+                                key={i}
+                                className="form-control mb-2"
+                                placeholder={`Instruction ${i + 1}`}
+                                value={inst}
+                                onChange={e => updateInstruction(i, e.target.value)}
+                            />
                         ))}
+
+                        <div className="d-flex justify-content-between">
+                            <button className="btn btn-sm btn-outline-secondary" onClick={addInstruction}>
+                                <i className="fas fa-plus me-1"></i>Add Instruction
+                            </button>
+                            <button className="btn btn-sm btn-success" onClick={saveTemplate}>
+                                <i className="fas fa-save me-1"></i>Save Template
+                            </button>
+                        </div>
                     </div>
-                )}
+                    {/* List of Saved Instruction Templates */}
+                    {templates.length > 0 && (
+                        <div className="mt-4">
+                            <h5 className="mb-3 text-primary">Saved Instruction Templates</h5>
+                            {templates.map((template, idx) => (
+                                <div key={template._id} className="card mb-3 shadow-sm p-3 border-start border-4 border-primary">
+                                    <div className="d-flex justify-content-between align-items-center mb-2">
+                                        <h6 className="mb-0 fw-bold text-secondary">Template {idx + 1}</h6>
+                                        <div className="btn-group btn-group-sm">
+                                            <button className="btn btn-primary" onClick={() => handleEditTemplate(template)}>
+                                                <i className="fas fa-edit me-1"></i>Edit
+                                            </button>
+                                            <button className="btn btn-danger" onClick={() => handleDeleteTemplate(template._id)}>
+                                                <i className="fas fa-trash-alt me-1"></i>Delete
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <p><strong>🏫 School:</strong> {template.schoolName}</p>
+                                    <p><strong>📍 Address:</strong> {template.address}</p>
+                                    <p><strong>📝 Exam Title:</strong> {template.examTitle}</p>
+
+                                    {(template.date || template.time || template.maxMarks) && (
+                                        <p className="mb-1 text-muted">
+                                            {template.date && <span><strong>📅 Date:</strong> {template.date} </span>}
+                                            {template.time && <span className="ms-3"><strong>⏰ Time:</strong> {template.time} </span>}
+                                            {template.maxMarks && <span className="ms-3"><strong>🧮 Max Marks:</strong> {template.maxMarks}</span>}
+                                        </p>
+                                    )}
+
+                                    <p className="mb-1"><strong>📌 Instructions:</strong></p>
+                                    <ul className="mb-0 ps-3">
+                                        {template.instructions.map((inst, i) => (
+                                            <li key={i}>{inst}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            ))}
+                        </div>
+                    )}
 
 
+                </div>
             </div>
 
+
             <div className="modal fade" id="selectInstructionsModal" tabIndex="-1">
-                <div className="modal-dialog modal-lg">
+                <div className="modal-dialog modal-xl modal-dialog-scrollable">
                     <div className="modal-content border border-2">
                         <div className="modal-header bg-light border-bottom">
                             <h5 className="modal-title">
@@ -1651,6 +1680,41 @@ export default function QuestionManager() {
                             <div className="border p-3 mb-3 rounded shadow-sm bg-white">
                                 <h6 className="mb-3 border-bottom pb-2">Heading Details</h6>
                                 <div className="row">
+                                    <div className="row">
+                                        {templates.map((template, idx) => {
+                                            const isSelected =
+                                                selectedSchoolName === template.schoolName &&
+                                                selectedAddress === template.address &&
+                                                selectedExamTitle === template.examTitle;
+
+                                            return (
+                                                <div className="col-md-4 mb-3" key={template._id}>
+                                                    <div
+                                                        className={`card h-100 shadow-sm p-3 cursor-pointer border border-2 ${isSelected ? 'border-primary' : 'border-transparent'
+                                                            }`}
+                                                        onClick={() => {
+                                                            setSelectedSchoolName(template.schoolName);
+                                                            setSelectedAddress(template.address);
+                                                            setSelectedExamTitle(template.examTitle);
+                                                            if (template.logo) setSelectedLogo(template.logo);
+                                                        }}
+                                                    >
+                                                        {template.logo && (
+                                                            <img
+                                                                src={template.logo}
+                                                                alt="Logo"
+                                                                style={{ height: '50px', objectFit: 'contain' }}
+                                                                className="mb-2"
+                                                            />
+                                                        )}
+                                                        <p className="mb-1"><strong>🏫 {template.schoolName}</strong></p>
+                                                        <p className="mb-1 text-muted"><small>📍 {template.address}</small></p>
+                                                        <p className="mb-0 text-primary"><small>📝 {template.examTitle}</small></p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                     <div className="col-md-4 mb-3">
                                         <label className="form-label">Select School Name</label>
                                         <select
@@ -1979,6 +2043,7 @@ export default function QuestionManager() {
                     questionMap={globalQuestionMap}
                     selectedQuestions={selectedQuestions}
                     fullWidthImagesMap={fullWidthImagesMap}
+                    schoolLogo={selectedLogo}
                     schoolName={selectedSchoolName}
                     address={selectedAddress}
                     examTitle={selectedExamTitle}

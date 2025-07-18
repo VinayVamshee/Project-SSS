@@ -329,7 +329,7 @@ export default function Students() {
 
     const uploadToImgBB = async (file) => {
         const formData = new FormData();
-        formData.append("key", "8451f34223c6e62555eec9187d855f8f"); // Your API key
+        formData.append("key", "8451f34223c6e62555eec9187d855f8f"); 
         formData.append("image", file);
 
         const res = await fetch("https://api.imgbb.com/1/upload", {
