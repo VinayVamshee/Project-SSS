@@ -50,7 +50,6 @@ export default function Students() {
     const [academicYears, setAcademicYears] = useState([]);
     const [selectedClass, setSelectedClass] = useState("");
     const [classes, setClasses] = useState([]);
-    const [searchStudent, setSearchStudent] = useState("");
     const [selectedStudents, setSelectedStudents] = useState([]);
     const [selectAllChecked, setSelectAllChecked] = useState(false);
 
@@ -85,60 +84,98 @@ export default function Students() {
         fetchData();
     }, []);
 
-
-    const [searchType, setSearchType] = useState("name");
     const [statusFilter, setStatusFilter] = useState("Active");
 
+    const [filters, setFilters] = useState([]);
+    const [selectedField, setSelectedField] = useState('');
+    const [searchText, setSearchText] = useState('');
+
     // Final Filtered Students
-    const filteredStudents = students
-        .filter((student) => {
-            const query = searchStudent.toLowerCase().trim();
+    const filteredStudents = students.filter((student) => {
+        // ✅ Year + Class match in the same academicYear object
+        const yearAndClassMatch =
+            (selectedYear === "" && selectedClass === "") ||
+            student.academicYears?.some(
+                (year) =>
+                    (selectedYear === "" || year.academicYear === selectedYear) &&
+                    (selectedClass === "" || String(year.class) === String(selectedClass))
+            );
 
-            // ✅ Match academicYear + class in same object
-            const yearAndClassMatch =
-                (selectedYear === "" && selectedClass === "") ||
-                student.academicYears?.some(
-                    (year) =>
-                        (selectedYear === "" || year.academicYear === selectedYear) &&
-                        (selectedClass === "" || String(year.class) === String(selectedClass))
+        // ✅ Status match in selectedYear only
+        const statusMatch =
+            statusFilter === "" ||
+            student.academicYears?.some(
+                (year) =>
+                    year.academicYear === selectedYear && year.status === statusFilter
+            );
+
+        if (!yearAndClassMatch || !statusMatch) return false;
+
+        // ✅ Extra filters (like caste, gender, etc.)
+        for (const { field, value } of filters) {
+            let fieldValue = null;
+
+            if (field.startsWith("Additional - ")) {
+                const key = field.split(" - ")[1];
+                const infoObj = student.additionalInfo?.find(
+                    (info) => info.key === key
                 );
+                fieldValue = infoObj?.value;
 
-            // ✅ Match status only for selectedYear
-            const statusMatch =
-                statusFilter === "" ||
-                student.academicYears?.some(
-                    (year) =>
-                        year.academicYear === selectedYear && year.status === statusFilter
+            } else if (field.startsWith("Academic - ")) {
+                const subField = field.split(" - ")[1];
+
+                const selectedYearObj = student.academicYears?.find(
+                    (year) => year.academicYear === selectedYear
                 );
+                fieldValue = selectedYearObj?.[subField];
 
-            if (!yearAndClassMatch || !statusMatch) return false;
-
-            // ✅ Search Field Matching
-            if (query === "") return true;
-
-            if (searchType.startsWith("additional_")) {
-                const key = searchType.replace("additional_", "");
-                return student.additionalInfo?.some(
-                    (info) =>
-                        info.key.toLowerCase() === key.toLowerCase() &&
-                        info.value?.toLowerCase().includes(query)
-                );
-            } else if (searchType === "name") {
-                return student.name?.toLowerCase().includes(query);
-            } else if (searchType === "rollNo") {
-                return student.rollNo?.toLowerCase().includes(query);
-            } else if (searchType === "dob") {
-                return student.dob?.toLowerCase().includes(query);
-            } else if (searchType === "aadharNo") {
-                return student.aadharNo?.toLowerCase().includes(query);
-            } else if (searchType === "AdmissionNo") {
-                return student.AdmissionNo?.toLowerCase().includes(query);
+            } else {
+                fieldValue = student[field];
             }
 
-            return false;
-        })
-        .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || ""));
+            if (!fieldValue) return false;
 
+            // Handle date range
+            if (typeof value === "string" && value.includes(" to ")) {
+                const [fromStr, toStr] = value.split(" to ");
+                const fromDate = new Date(fromStr);
+                const toDate = new Date(toStr);
+                const actualDate = new Date(fieldValue);
+
+                if (
+                    isNaN(fromDate.getTime()) ||
+                    isNaN(toDate.getTime()) ||
+                    isNaN(actualDate.getTime()) ||
+                    actualDate < fromDate ||
+                    actualDate > toDate
+                ) {
+                    return false;
+                }
+            } else {
+                // Normal string match
+                if (typeof fieldValue === "string") {
+                    const val = value.toLowerCase();
+                    const actual = fieldValue.toLowerCase();
+
+                    // Use exact match for known discrete fields
+                    const exactMatchFields = ["gender", "status", "caste", "religion", "bloodGroup"];
+
+                    const isExactField = field.startsWith("Academic - ")
+                        ? exactMatchFields.includes(field.split(" - ")[1])
+                        : exactMatchFields.includes(field);
+
+                    if (isExactField) {
+                        if (actual !== val) return false;
+                    } else {
+                        if (!actual.includes(val)) return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }).sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || "", undefined, { numeric: true }));
 
     // Handle individual student selection
     const handleSelectStudent = (id) => {
@@ -330,7 +367,7 @@ export default function Students() {
 
     const uploadToImgBB = async (file) => {
         const formData = new FormData();
-        formData.append("key", "8451f34223c6e62555eec9187d855f8f"); 
+        formData.append("key", "8451f34223c6e62555eec9187d855f8f");
         formData.append("image", file);
 
         const res = await fetch("https://api.imgbb.com/1/upload", {
@@ -413,6 +450,14 @@ export default function Students() {
         stu => stu._id === selectedStudent?.previousStudentId
     );
 
+    const predefinedOptions = {
+        gender: ["Male", "Female"],
+        category: ["General", "OBC", "SC", "ST", "EWS"],
+        bloodGroup: ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"],
+        FreeStud: ["Yes", "No"],
+        "Academic - status": ["Active", "Inactive"], // You can update this as per your actual statuses
+    };
+
     return (
         <div className="Students">
             <div className="SearchFilter">
@@ -469,57 +514,98 @@ export default function Students() {
                     {filteredStudents.length}
                 </div>
 
-                {/* Search Type Dropdown */}
-                <div className="searchType">
+                {/* Field Dropdown */}
+                <select
+                    className="form-select form-select-sm searchType"
+                    value={selectedField}
+                    onChange={(e) => setSelectedField(e.target.value)}
+                    style={{ width: '200px' }}
+                >
+                    <option disabled value="">Choose Filter Field</option>
+
+                    {/* Basic Fields */}
+                    <optgroup label="Basic Fields">
+                        {[
+                            "name", "nameHindi", "gender", "dob", "dobInWords", "category", "Caste",
+                            "CasteHindi", "AdmissionNo", "aadharNo", "FreeStud", "_id"
+                        ].map((field, index) => (
+                            <option key={`basic-${index}`} value={field}>{field}</option>
+                        ))}
+                    </optgroup>
+
+                    {/* Academic Fields */}
+                    <optgroup label="Academic Fields">
+                        {["academicYear", "class", "status"].map((field, index) => (
+                            <option key={`acad-${index}`} value={`Academic - ${field}`}>{field}</option>
+                        ))}
+                    </optgroup>
+
+                    {/* Additional Info Fields */}
+                    <optgroup label="Additional Info">
+                        {Array.from(new Set(
+                            students
+                                .flatMap((s) => s.additionalInfo || [])
+                                .map((info) => info.key)
+                                .filter(Boolean)
+                        )).map((key, index) => (
+                            <option key={`add-${index}`} value={`Additional - ${key}`}>{key}</option>
+                        ))}
+                    </optgroup>
+                </select>
+
+                {/* Search Value Input OR Dropdown */}
+                {predefinedOptions[selectedField] ? (
                     <select
-                        className="form-select"
-                        value={searchType}
-                        onChange={(e) => setSearchType(e.target.value)}
-                        style={{ width: '100px' }}
+                        className="form-select form-select-sm"
+                        style={{ flex: '1' }}
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
                     >
-                        <option disabled value="">Search by Field</option>
-
-                        {/* Default Fields */}
-                        <optgroup label="Basic Student Fields">
-                            {[
-                                { key: "name", label: "Name" },
-                                { key: "rollNo", label: "Roll No" },
-                                { key: "dob", label: "Date of Birth" },
-                                { key: "aadharNo", label: "Aadhar No" },
-                                { key: "gender", label: "Gender" },
-                                { key: "AdmissionNo", label: "Admission No" },
-                            ].map((field, index) => (
-                                <option key={index} value={field.key}>
-                                    {field.label}
-                                </option>
-                            ))}
-                        </optgroup>
-
-                        {/* Additional Info Fields */}
-                        <optgroup label="Additional Info Fields">
-                            {Array.from(
-                                new Set(
-                                    students
-                                        .flatMap((s) => s.additionalInfo || [])
-                                        .map((info) => info.key)
-                                )
-                            ).map((key, index) => (
-                                <option key={`add-${index}`} value={`additional_${key}`}>
-                                    {key}
-                                </option>
-                            ))}
-                        </optgroup>
+                        <option value="">Select</option>
+                        {predefinedOptions[selectedField].map((option, idx) => (
+                            <option key={idx} value={option}>
+                                {option}
+                            </option>
+                        ))}
                     </select>
-                </div>
+                ) : (
+                    <input
+                        type="text"
+                        placeholder="Filter value"
+                        className="SearchStudent"
+                        style={{ flex: '1' }}
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                    />
+                )}
 
-                {/* Search Input */}
-                <input
-                    type="text"
-                    placeholder="Search..."
-                    value={searchStudent}
-                    onChange={(e) => setSearchStudent(e.target.value)}
-                    className="SearchStudent"
-                />
+                {/* Add Filter Button */}
+                <button
+                    className="btn"
+                    type="button"
+                    onClick={() => {
+                        if (selectedField && searchText) {
+                            setFilters([...filters, { field: selectedField, value: searchText }]);
+                            setSelectedField('');
+                            setSearchText('');
+                        }
+                    }}
+                >
+                    <i className="fa-solid fa-filter me-1"></i>Add Filter
+                </button>
+
+                {/* Reset Filters */}
+                <button
+                    className="btn"
+                    type="button"
+                    onClick={() => {
+                        setSelectedField('');
+                        setSearchText('');
+                        setFilters([]);
+                    }}
+                >
+                    <i className="fa-solid fa-xmark me-1"></i>Reset
+                </button>
 
                 {/* Select All Checkbox */}
                 <div className="selectAll d-flex align-items-center">
@@ -583,6 +669,25 @@ export default function Students() {
                     <i className="fa-solid fa-download me-2 fa-sm"></i>Download
                 </button>
 
+            </div>
+
+            <div className="d-flex">
+                {filters.map((f, idx) => (
+                    <span
+                        key={idx}
+                        className="badge bg-warning text-dark d-flex align-items-center me-2"
+                        style={{ padding: '7px 10px', borderRadius: '10px', fontWeight: 'bold', width: 'fit-content' }}
+                    >
+                        {f.field}: {f.value}
+                        <button
+                            type="button"
+                            className="btn-close btn-close-sm ms-2"
+                            onClick={() =>
+                                setFilters(filters.filter((_, i) => i !== idx))
+                            }
+                        />
+                    </span>
+                ))}
             </div>
 
             {/* Student Cards */}

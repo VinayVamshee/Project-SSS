@@ -31,8 +31,6 @@ export default function Payments() {
     const [academicYears, setAcademicYears] = useState([]);
     const [selectedClass, setSelectedClass] = useState("");
     const [classes, setClasses] = useState([]);
-    const [searchStudent, setSearchStudent] = useState("");
-
     const [selectedStudent, setSelectedStudent] = useState(null);
 
     const fetchData = async () => {
@@ -99,20 +97,130 @@ export default function Payments() {
         }
     }, [selectedYear]);
 
-    // Filter students based on selected year, class, and search
-    const filteredStudents = students
-        .filter((student) =>
-            (
-                (selectedYear === "" && selectedClass === "") ||
-                student.academicYears.some((year) =>
-                    (selectedYear === "" || year.academicYear === selectedYear) &&
-                    (selectedClass === "" || year.class?.trim() === selectedClass.trim())
-                )
+    const [selectedStudents, setSelectedStudents] = useState([]);
 
-            ) &&
-            (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
-        )
-        .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || ""));
+    const handleStudentCheckboxToggle = (student) => {
+        setSelectedStudents(prev => {
+            const isSelected = prev.some(s => s._id === student._id);
+            if (isSelected) {
+                return prev.filter(s => s._id !== student._id);
+            } else {
+                return [...prev, student];
+            }
+        });
+    };
+
+    const [statusFilter, setStatusFilter] = useState("Active");
+    const [selectedField, setSelectedField] = useState("");
+    const [searchText, setSearchText] = useState("");
+    const [filters, setFilters] = useState([]);
+    const [selectAllChecked, setSelectAllChecked] = useState(false);
+
+    const handleSelectAll = () => {
+        if (selectAllChecked) {
+            setSelectedStudents([]);
+        } else {
+            setSelectedStudents(filteredStudents);
+        }
+        setSelectAllChecked(!selectAllChecked);
+    };
+
+
+    const predefinedOptions = {
+        gender: ["Male", "Female"],
+        category: ["General", "OBC", "SC", "ST", "EWS"],
+        bloodGroup: ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"],
+        FreeStud: ["Yes", "No"],
+        "Academic - status": ["Active", "Inactive"], // You can update this as per your actual statuses
+    };
+
+    // Filter students based on selected year, class, and search
+    const filteredStudents = students.filter((student) => {
+        // ✅ Year + Class match in the same academicYear object
+        const yearAndClassMatch =
+            (selectedYear === "" && selectedClass === "") ||
+            student.academicYears?.some(
+                (year) =>
+                    (selectedYear === "" || year.academicYear === selectedYear) &&
+                    (selectedClass === "" || String(year.class) === String(selectedClass))
+            );
+
+        // ✅ Status match in selectedYear only
+        const statusMatch =
+            statusFilter === "" ||
+            student.academicYears?.some(
+                (year) =>
+                    year.academicYear === selectedYear && year.status === statusFilter
+            );
+
+        if (!yearAndClassMatch || !statusMatch) return false;
+
+        // ✅ Extra filters (like caste, gender, etc.)
+        for (const { field, value } of filters) {
+            let fieldValue = null;
+
+            if (field.startsWith("Additional - ")) {
+                const key = field.split(" - ")[1];
+                const infoObj = student.additionalInfo?.find(
+                    (info) => info.key === key
+                );
+                fieldValue = infoObj?.value;
+
+            } else if (field.startsWith("Academic - ")) {
+                const subField = field.split(" - ")[1];
+
+                const selectedYearObj = student.academicYears?.find(
+                    (year) => year.academicYear === selectedYear
+                );
+                fieldValue = selectedYearObj?.[subField];
+
+            } else {
+                fieldValue = student[field];
+            }
+
+            if (!fieldValue) return false;
+
+            // Handle date range
+            if (typeof value === "string" && value.includes(" to ")) {
+                const [fromStr, toStr] = value.split(" to ");
+                const fromDate = new Date(fromStr);
+                const toDate = new Date(toStr);
+                const actualDate = new Date(fieldValue);
+
+                if (
+                    isNaN(fromDate.getTime()) ||
+                    isNaN(toDate.getTime()) ||
+                    isNaN(actualDate.getTime()) ||
+                    actualDate < fromDate ||
+                    actualDate > toDate
+                ) {
+                    return false;
+                }
+            } else {
+                // Normal string match
+                if (typeof fieldValue === "string") {
+                    const val = value.toLowerCase();
+                    const actual = fieldValue.toLowerCase();
+
+                    // Use exact match for known discrete fields
+                    const exactMatchFields = ["gender", "status", "caste", "religion", "bloodGroup"];
+
+                    const isExactField = field.startsWith("Academic - ")
+                        ? exactMatchFields.includes(field.split(" - ")[1])
+                        : exactMatchFields.includes(field);
+
+                    if (isExactField) {
+                        if (actual !== val) return false;
+                    } else {
+                        if (!actual.includes(val)) return false;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }).sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || "", undefined, { numeric: true }));
+
 
     const handleGeneratePdf = (studentFees, payment, student, selectedYear, paidFees, latestMaster) => {
         if (!studentFees || !student || !selectedYear) {
@@ -135,7 +243,6 @@ export default function Payments() {
 
         generatePdf(selectedFees, payment, student, selectedYear, paidFees, latestMaster);
     };
-
 
     const handleDownloadExcel = (student, feesData, selectedYear) => {
         if (!student || !selectedYear) {
@@ -217,6 +324,59 @@ export default function Payments() {
         const fileName = `${student.name}_Fees_${selectedYear}.xlsx`;
         XLSX.writeFile(workbook, fileName);
     };
+
+    const handleBulkDownload = () => {
+        if (!selectedYear || selectedStudents.length === 0) {
+            alert("Please select academic year and students.");
+            return;
+        }
+
+        const allRows = [];
+
+        selectedStudents.forEach((student) => {
+            const studentClass = student.academicYears.find(
+                (year) => year.academicYear === selectedYear
+            )?.class || "N/A";
+
+            const studentFees = feesData.find(fee => fee.studentId === student._id);
+            const academicYearFees = studentFees?.academicYears.find(
+                year => year.academicYear === selectedYear
+            );
+
+            const payments = academicYearFees?.payments || [];
+
+            payments.forEach((payment, index) => {
+                allRows.push({
+                    "Student Name": student.name,
+                    "Admission No": student.AdmissionNo || "",
+                    "Class": studentClass,
+                    "Receipt No": `${payment.receiptBookName} - ${payment.receiptNumber}`,
+                    "Date": new Date(payment.date).toLocaleDateString('en-GB'),
+                    "Amount Paid": payment.amount || 0,
+                    "Payment Method": payment.paymentMethod || "",
+                    "Payment By": payment.paymentBy || "",
+
+                    // Fee breakdown
+                    "Tuition Fee": payment.tuition_fee || 0,
+                    "Exam Fee": payment.exam_fee || 0,
+                    "Development Fee": payment.development_fee || 0,
+                    "Admission Fee": payment.admission_fees || 0,
+                    "Late Fee": payment.late_fee || 0,
+                    "School Activity": payment.school_activity || 0,
+                    "School Diary": payment.school_diary || 0,
+                    "Identity Card": payment.identity_card || 0,
+                    "Progress Card": payment.progress_card || 0,
+                    "Miscellaneous": payment.miscellaneous || 0,
+                });
+            });
+        });
+
+        const worksheet = XLSX.utils.json_to_sheet(allRows);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "All Payments Flat");
+        XLSX.writeFile(workbook, `Student_Payments_Flat_${selectedYear}.xlsx`);
+    };
+
 
     const [paymentData, setPaymentData] = useState({
         academicYear: "",
@@ -412,15 +572,14 @@ export default function Payments() {
     return (
         <div className='PaymentsPage'>
             <div className="SearchFilter">
+                {/* Academic Year Filter */}
                 <div className="yearFilter">
-                    <select className="form-select form-select-sm" value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
+                    <select className="form-select form-select-sm" value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)} style={{ width: '100px' }}>
                         <option value="">Select Academic Year</option>
                         <option value="">All</option>
                         {academicYears.length > 0 ? (
                             academicYears.map((year, index) => (
-                                <option key={index} value={year.year}>
-                                    {year.year}
-                                </option>
+                                <option key={index} value={year.year}>{year.year}</option>
                             ))
                         ) : (
                             <option disabled>No Academic Years Available</option>
@@ -428,15 +587,14 @@ export default function Payments() {
                     </select>
                 </div>
 
+                {/* Class Filter */}
                 <div className="classFilter">
-                    <select className="form-select form-select-sm" value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)}>
+                    <select className="form-select form-select-sm" value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)} style={{ width: '100px' }}>
                         <option value="">Select Class</option>
                         <option value="">All</option>
                         {classes.length > 0 ? (
                             classes.map((cls) => (
-                                <option key={cls.class} value={cls.class}>
-                                    {cls.class}
-                                </option>
+                                <option key={cls._id} value={cls.class}>{cls.class}</option>
                             ))
                         ) : (
                             <option disabled>No Classes Available</option>
@@ -444,11 +602,147 @@ export default function Payments() {
                     </select>
                 </div>
 
-                <input type="text" placeholder="Search Student..." value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} className="SearchStudent" />
+                {/* Status Filter */}
+                <div className="statusFilter">
+                    <select className="form-select form-select-sm" value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)} style={{ width: '100px' }}>
+                        <option value="">All Statuses</option>
+                        <option value="Active">Active</option>
+                        <option value="Passed">Passed</option>
+                        <option value="Dropped">Dropped</option>
+                        <option value="TC-Issued">TC-Issued</option>
+                        <option value="Failed">Failed</option>
+                    </select>
+                </div>
+
+                {/* Filtered Count */}
+                <div className="filteredCount d-flex align-items-center btn fw-bold text-secondary border shadow" style={{ backgroundColor: 'white' }}>
+                    {filteredStudents.length}
+                </div>
+
+                {/* Field Dropdown */}
+                <select
+                    className="form-select form-select-sm searchType"
+                    value={selectedField}
+                    onChange={(e) => setSelectedField(e.target.value)}
+                    style={{ width: '200px' }}
+                >
+                    <option disabled value="">Choose Filter Field</option>
+
+                    {/* Basic Fields */}
+                    <optgroup label="Basic Fields">
+                        {[
+                            "name", "nameHindi", "gender", "dob", "dobInWords", "category", "Caste",
+                            "CasteHindi", "AdmissionNo", "aadharNo", "FreeStud", "_id"
+                        ].map((field, index) => (
+                            <option key={`basic-${index}`} value={field}>{field}</option>
+                        ))}
+                    </optgroup>
+
+                    {/* Academic Fields */}
+                    <optgroup label="Academic Fields">
+                        {["academicYear", "class", "status"].map((field, index) => (
+                            <option key={`acad-${index}`} value={`Academic - ${field}`}>{field}</option>
+                        ))}
+                    </optgroup>
+
+                    {/* Additional Info Fields */}
+                    <optgroup label="Additional Info">
+                        {Array.from(new Set(
+                            students
+                                .flatMap((s) => s.additionalInfo || [])
+                                .map((info) => info.key)
+                                .filter(Boolean)
+                        )).map((key, index) => (
+                            <option key={`add-${index}`} value={`Additional - ${key}`}>{key}</option>
+                        ))}
+                    </optgroup>
+                </select>
+
+                {/* Search Value Input OR Dropdown */}
+                {predefinedOptions[selectedField] ? (
+                    <select
+                        className="form-select form-select-sm"
+                        style={{ flex: '1' }}
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                    >
+                        <option value="">Select</option>
+                        {predefinedOptions[selectedField].map((option, idx) => (
+                            <option key={idx} value={option}>{option}</option>
+                        ))}
+                    </select>
+                ) : (
+                    <input
+                        type="text"
+                        placeholder="Filter value"
+                        className="SearchStudent"
+                        style={{ flex: '1' }}
+                        value={searchText}
+                        onChange={(e) => setSearchText(e.target.value)}
+                    />
+                )}
+
+                {/* Add Filter Button */}
+                <button
+                    className="btn"
+                    type="button"
+                    onClick={() => {
+                        if (selectedField && searchText) {
+                            setFilters([...filters, { field: selectedField, value: searchText }]);
+                            setSelectedField('');
+                            setSearchText('');
+                        }
+                    }}
+                >
+                    <i className="fa-solid fa-filter me-1"></i>Add Filter
+                </button>
+
+                {/* Reset Filters Button */}
+                <button
+                    className="btn"
+                    type="button"
+                    onClick={() => {
+                        setSelectedField('');
+                        setSearchText('');
+                        setFilters([]);
+                    }}
+                >
+                    <i className="fa-solid fa-xmark me-1"></i>Reset
+                </button>
+
+                {/* Select All Checkbox */}
+                <div className="selectAll d-flex align-items-center">
+                    <input type="checkbox" checked={selectAllChecked} onChange={handleSelectAll} />
+                    <label className="ms-1">Select All</label>
+                </div>
+
+                <button className="btn btn-success ms-2" onClick={handleBulkDownload}>
+                    <i className="fa-solid fa-file-excel me-2"></i>Download All Fee Sheets
+                </button>
+
                 <button className="btn btn-save" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFeeStructure">
                     <i className="fa-solid fa-money-check-dollar fa-lg me-2"></i>Fee Structure
                 </button>
 
+            </div>
+
+            <div className="d-flex">
+                {filters.map((f, idx) => (
+                    <span
+                        key={idx}
+                        className="badge bg-warning text-dark d-flex align-items-center me-2"
+                        style={{ padding: '7px 10px', borderRadius: '10px', fontWeight: 'bold', width: 'fit-content' }}
+                    >
+                        {f.field}: {f.value}
+                        <button
+                            type="button"
+                            className="btn-close btn-close-sm ms-2"
+                            onClick={() =>
+                                setFilters(filters.filter((_, i) => i !== idx))
+                            }
+                        />
+                    </span>
+                ))}
             </div>
 
             <div className="collapse" id="collapseFeeStructure">
@@ -642,6 +936,12 @@ export default function Payments() {
                         <div key={element._id}>
 
                             <div className="Payment" key={idx} style={{ animationDelay: `${idx * 0.15}s` }}>
+                                <input
+                                    type="checkbox"
+                                    className=""
+                                    checked={selectedStudents.some(s => s._id === element._id)}
+                                    onChange={() => handleStudentCheckboxToggle(element)}
+                                />
                                 <div className="Name">
                                     <img src={element.image || boy} alt="..." />
                                     <strong>{element.name}</strong>
