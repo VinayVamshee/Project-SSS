@@ -411,7 +411,7 @@ export default function OverView() {
                             <thead >
                                 <tr>
                                     <th>Class</th>
-                                    <th>Fee Progress</th>
+                                    <th>Fee Progress [ Paid Fees / ( Class Fees - Concession ) ]</th>
                                 </tr>
                             </thead>
                             <tbody>
