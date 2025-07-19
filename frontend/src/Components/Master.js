@@ -7,7 +7,16 @@ export default function Master() {
 
     useEffect(() => {
         const token = localStorage.getItem("token");
-        if (!token) navigate("/login");
+        const userType = localStorage.getItem("userType");
+
+        if (!token) {
+            navigate("/login");
+            return;
+        }
+
+        if (userType !== "admin") {
+            navigate("/");
+        }
     }, [navigate]);
 
     const [form, setForm] = useState({

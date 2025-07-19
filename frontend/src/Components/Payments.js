@@ -721,7 +721,7 @@ export default function Payments() {
                     <label className="ms-1">Select All</label>
                 </div>
 
-                <button className="btn btn-success ms-2" onClick={handleBulkDownload} diabled={!canEdit}>
+                <button className="btn btn-success ms-2" onClick={handleBulkDownload} disabled={!canEdit}>
                     <i className="fa-solid fa-file-excel me-2"></i>Download All Fee Sheets
                 </button>
 

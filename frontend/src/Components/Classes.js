@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 export default function Classes() {
 
     const navigate = useNavigate();
+    const [uploading, setUploading] = useState(false);
     const [canEdit, setCanEdit] = useState(false);
     const [canNoDeleteEdit, setCanNoDeleteEdit] = useState(false);
 
@@ -77,7 +78,6 @@ export default function Classes() {
         setFilteredSubjects(resolvedSubjects);
     };
 
-
     const handleSubjectsClick = () => {
         setSelectedClass(null);
         setShowAllSubjects(true);
@@ -85,6 +85,8 @@ export default function Classes() {
 
     const handleAddNewSubject = async (e) => {
         e.preventDefault();
+        setUploading(true); // Start uploading
+
         try {
             const response = await axios.post("https://sss-server-eosin.vercel.app/AddNewSubject", { subjectName });
             const newSubject = response.data.subject;
@@ -100,6 +102,8 @@ export default function Classes() {
         } catch (error) {
             console.error("Error adding subject:", error);
             showMessage("Error adding subject. Please try again.");
+        } finally {
+            setUploading(false); // Stop uploading
         }
     };
 
@@ -107,12 +111,17 @@ export default function Classes() {
         const confirmDelete = window.confirm("Are you sure you want to delete this subject?");
         if (!confirmDelete) return;
 
+        setUploading(true); // Start uploading
+
         try {
             await axios.delete(`https://sss-server-eosin.vercel.app/deleteSubject/${subjectId}`);
             setSubjects(subjects.filter((subject) => subject._id !== subjectId));
-            showMessage("Subject Deleted")
+            showMessage("Subject deleted successfully!");
         } catch (error) {
             console.error("Error deleting subject:", error);
+            showMessage("Failed to delete subject.");
+        } finally {
+            setUploading(false); // Stop uploading
         }
     };
 
@@ -138,6 +147,8 @@ export default function Classes() {
             return;
         }
 
+        setUploading(true); // Start loading
+
         try {
             await axios.post("https://sss-server-eosin.vercel.app/ClassSubjectLink", {
                 classId: selectedClass,
@@ -145,11 +156,12 @@ export default function Classes() {
             });
 
             await fetchClassesAndSubjects();
-            showMessage("Subject and Class Linked Successfully")
-
+            showMessage("Subject and Class linked successfully!");
         } catch (error) {
             console.error("Add subject error:", error.response?.data || error);
             showMessage(error.response?.data?.message || "Error adding subjects. Please try again.");
+        } finally {
+            setUploading(false); // Stop loading
         }
     };
 
@@ -199,23 +211,30 @@ export default function Classes() {
 
     const handleSubmitExam = async (e) => {
         e.preventDefault();
+
         if (!selectedClass) {
             showMessage("Please select a class before adding exams.");
             return;
         }
+
+        setUploading(true); // Start loading
+
         try {
             await axios.post('https://sss-server-eosin.vercel.app/addExams', {
-                classId: selectedClass, // Use selectedClass instead of examData.selectedClass
+                classId: selectedClass,
                 numExams: examData.numExams,
                 examNames: examData.examNames,
             });
+
             fetchExamsData(); // Refresh the exams list
+            showMessage("Exams added successfully!");
         } catch (err) {
-            console.log(err);
-            showMessage('Error while saving exam data');
+            console.error(err);
+            showMessage("Error while saving exam data");
+        } finally {
+            setUploading(false); // Stop loading
         }
     };
-
 
     // const handleClassSelection = async (className) => {
     //     try {
@@ -240,6 +259,7 @@ export default function Classes() {
         setSelectedChapterSubject(subject);
         setChapterMessage("");
         setNewChapter("");
+        setUploading(true); // Start loading
 
         try {
             const res = await axios.get("https://sss-server-eosin.vercel.app/chapters");
@@ -254,12 +274,16 @@ export default function Classes() {
         } catch (err) {
             console.error("Error fetching chapters:", err);
             setChapterList([]);
+        } finally {
+            setUploading(false); // Stop loading
         }
     };
 
     const [className, setClassName] = useState('');
     const handleAddNewClass = async (e) => {
         e.preventDefault();
+        setUploading(true); // Start loading
+
         try {
             await axios.post('https://sss-server-eosin.vercel.app/AddNewClass', {
                 className,
@@ -269,18 +293,24 @@ export default function Classes() {
             setClassName('');
         } catch (error) {
             showMessage('Error adding class. Please try again.');
+            console.error(error);
+        } finally {
+            setUploading(false); // Stop loading
         }
     };
-
     // Delete Classes
     const deleteClass = async (classId) => {
+        setUploading(true); // Start loading
+
         try {
-            // Send request to delete class
             await axios.delete(`https://sss-server-eosin.vercel.app/deleteClass/${classId}`);
-            // Remove the deleted class from the state
             setClasses(classes.filter(cls => cls._id !== classId));
+            showMessage("Class deleted successfully!");
         } catch (error) {
             console.error('Error deleting class:', error);
+            showMessage("Error deleting class. Please try again.");
+        } finally {
+            setUploading(false); // Stop loading
         }
     };
 
@@ -302,20 +332,24 @@ export default function Classes() {
     const handleSaveSubject = async (id) => {
         if (!editedSubjectName.trim()) return;
 
+        setUploading(true); // Start loading
+
         try {
             await axios.put(`https://sss-server-eosin.vercel.app/updateSubject/${id}`, {
                 name: editedSubjectName.trim(),
             });
 
-            // Update subject in local state
             const updatedSubjects = subjects.map((s) =>
                 s._id === id ? { ...s, name: editedSubjectName.trim() } : s
             );
             setSubjects(updatedSubjects);
             setEditSubjectId(null);
+            showMessage("Subject updated successfully!");
         } catch (error) {
             console.error("Error updating subject:", error);
             showMessage("Update failed || Error");
+        } finally {
+            setUploading(false); // Stop loading
         }
     };
 
@@ -429,9 +463,22 @@ export default function Classes() {
 
                                 {/* Button + Message */}
                                 <div className="d-flex justify-content-between align-items-center mt-3">
-                                    <button type="submit" className="btn btn-success btn-sm">
-                                        <i className="fa-solid fa-plus me-1"></i>
-                                        Link Selected Subjects
+                                    <button
+                                        type="submit"
+                                        className="btn btn-success btn-sm"
+                                        disabled={!(canEdit || canNoDeleteEdit) ||uploading}
+                                    >
+                                        {uploading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                Linking...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fa-solid fa-plus me-1"></i>
+                                                Link Selected Subjects
+                                            </>
+                                        )}
                                     </button>
                                     {message && <span className="text-info small">{message}</span>}
                                 </div>
@@ -590,7 +637,7 @@ export default function Classes() {
                                         <div className="modal-header w-100">
                                             <h5 className="modal-title" id="addExamModalLabel">
                                                 <i className="fa-solid fa-pen-to-square me-2"></i>
-                                                Add Exams to <strong>{selectedClass}</strong>
+                                                Add Exams to {classes.find(cls => cls._id === selectedClass)?.class || "Unknown"}
                                             </h5>
                                             <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                                         </div>
@@ -640,8 +687,21 @@ export default function Classes() {
 
                                         <div className="modal-footer w-100">
                                             <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" className="btn btn-primary" disabled={!canEdit}>
-                                                <i className="fa-solid fa-check me-2"></i>Save Exams
+                                            <button
+                                                type="submit"
+                                                className="btn btn-primary"
+                                                disabled={!canEdit || uploading}
+                                            >
+                                                {uploading ? (
+                                                    <>
+                                                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                        Saving...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <i className="fa-solid fa-check me-2"></i>Save Exams
+                                                    </>
+                                                )}
                                             </button>
                                         </div>
                                     </form>
@@ -668,7 +728,24 @@ export default function Classes() {
                                     onChange={(e) => setSubjectName(e.target.value)}
                                     required
                                 />
-                                <button type="submit" className="btn btn-success btn-sm">Add Subject</button>
+                                <button
+                                    type="submit"
+                                    className="btn btn-success btn-sm"
+                                    disabled={!canEdit || uploading}
+                                >
+                                    {uploading ? (
+                                        <>
+                                            <span
+                                                className="spinner-border spinner-border-sm me-2"
+                                                role="status"
+                                                aria-hidden="true"
+                                            ></span>
+                                            Adding...
+                                        </>
+                                    ) : (
+                                        "Add Subject"
+                                    )}
+                                </button>
                             </form>
 
                             {message && <p className="text-success">{message}</p>}
@@ -704,8 +781,20 @@ export default function Classes() {
                                                         <button
                                                             className="btn btn-success btn-sm"
                                                             onClick={() => handleSaveSubject(subject._id)}
+                                                            disabled={uploading}
                                                         >
-                                                            Save
+                                                            {uploading ? (
+                                                                <>
+                                                                    <span
+                                                                        className="spinner-border spinner-border-sm me-2"
+                                                                        role="status"
+                                                                        aria-hidden="true"
+                                                                    ></span>
+                                                                    Saving...
+                                                                </>
+                                                            ) : (
+                                                                "Save"
+                                                            )}
                                                         </button>
                                                         <button
                                                             className="btn btn-secondary btn-sm"
@@ -729,9 +818,20 @@ export default function Classes() {
                                                         <button
                                                             className="btn btn-outline-danger btn-sm"
                                                             onClick={() => handleDeleteSubject(subject._id)}
-                                                            disabled={!canEdit}
+                                                            disabled={!canEdit || uploading}
                                                         >
-                                                            Delete
+                                                            {uploading ? (
+                                                                <>
+                                                                    <span
+                                                                        className="spinner-border spinner-border-sm me-2"
+                                                                        role="status"
+                                                                        aria-hidden="true"
+                                                                    ></span>
+                                                                    Deleting...
+                                                                </>
+                                                            ) : (
+                                                                "Delete"
+                                                            )}
                                                         </button>
                                                     </>
                                                 )}
@@ -768,6 +868,7 @@ export default function Classes() {
                                     e.preventDefault();
                                     if (!newChapter.trim()) return;
 
+                                    setUploading(true);
                                     try {
                                         await axios.post("https://sss-server-eosin.vercel.app/chapters", {
                                             classId: selectedClass,
@@ -783,6 +884,8 @@ export default function Classes() {
                                     } catch (err) {
                                         console.error(err);
                                         setChapterMessage("Failed to add chapter.");
+                                    } finally {
+                                        setUploading(false);
                                     }
                                 }}
                             >
@@ -795,7 +898,20 @@ export default function Classes() {
                                         onChange={(e) => setNewChapter(e.target.value)}
                                         required
                                     />
-                                    <button type="submit" className="btn btn-success">Add</button>
+                                    <button type="submit" className="btn btn-success" disabled={!(canEdit || canNoDeleteEdit) || uploading}>
+                                        {uploading ? (
+                                            <>
+                                                <span
+                                                    className="spinner-border spinner-border-sm me-2"
+                                                    role="status"
+                                                    aria-hidden="true"
+                                                ></span>
+                                                Adding...
+                                            </>
+                                        ) : (
+                                            "Add"
+                                        )}
+                                    </button>
                                 </div>
                             </form>
 
@@ -834,27 +950,42 @@ export default function Classes() {
                                                             <button
                                                                 className="btn btn-success btn-sm"
                                                                 onClick={async () => {
+                                                                    if (uploading) return; // Prevent double click
+                                                                    setUploading(true);
+
                                                                     try {
                                                                         if (!ch?._id) {
                                                                             console.error("❌ Chapter ID missing!", ch);
-                                                                            return showMessage("Chapter cannot be edited because ID is missing. || Error");
+                                                                            showMessage("Chapter cannot be edited because ID is missing. || Error");
+                                                                            return;
                                                                         }
 
                                                                         await axios.put(
                                                                             `https://sss-server-eosin.vercel.app/chapters/${selectedClass?._id || selectedClass}/${selectedChapterSubject._id}/${ch._id}`,
                                                                             { newName: editChapterName }
                                                                         );
+
                                                                         await fetchChapters();
                                                                         setEditChapterId(null);
                                                                         setEditChapterName("");
-                                                                        showMessage("Chapter Name updated!")
+                                                                        showMessage("Chapter Name updated!");
                                                                     } catch (err) {
                                                                         console.error("❌ Update failed:", err);
-                                                                        showMessage("Chapter Name Error!")
+                                                                        showMessage("Chapter Name Error!");
+                                                                    } finally {
+                                                                        setUploading(false);
                                                                     }
                                                                 }}
+                                                                disabled={uploading}
                                                             >
-                                                                Save
+                                                                {uploading ? (
+                                                                    <>
+                                                                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                                        Saving...
+                                                                    </>
+                                                                ) : (
+                                                                    "Save"
+                                                                )}
                                                             </button>
 
                                                             <button
@@ -883,9 +1014,11 @@ export default function Classes() {
                                                             <button
                                                                 className="btn btn-outline-danger btn-sm"
                                                                 onClick={async () => {
+                                                                    if (uploading) return; // Prevent multiple clicks
                                                                     const confirmDelete = window.confirm(`Are you sure you want to delete "${ch.name}"?`);
                                                                     if (!confirmDelete) return;
 
+                                                                    setUploading(true);
                                                                     try {
                                                                         await axios.delete(
                                                                             `https://sss-server-eosin.vercel.app/chapters/${selectedClass}/${selectedChapterSubject._id}/${ch._id}`
@@ -893,14 +1026,23 @@ export default function Classes() {
 
                                                                         const updated = chapterList.filter((c) => c._id !== ch._id);
                                                                         setChapterList(updated);
-                                                                        showMessage("Chapter Deleted!")
+                                                                        showMessage("Chapter Deleted!");
                                                                     } catch (err) {
                                                                         console.error("Failed to delete chapter:", err);
+                                                                    } finally {
+                                                                        setUploading(false);
                                                                     }
                                                                 }}
-                                                                disabled={!canEdit}
+                                                                disabled={!canEdit || uploading}
                                                             >
-                                                                Delete
+                                                                {uploading ? (
+                                                                    <>
+                                                                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                                        Deleting...
+                                                                    </>
+                                                                ) : (
+                                                                    "Delete"
+                                                                )}
                                                             </button>
                                                         </>
                                                     )}
@@ -946,7 +1088,16 @@ export default function Classes() {
                                     <input type="text" className="form-control" id="className" value={className} onChange={(e) => setClassName(e.target.value)} required />
                                 </div>
                                 {message && <p className="text-center">{message}</p>}
-                                <button type="submit" className="btn btn-success w-100">Save</button>
+                                <button type="submit" className="btn btn-success w-100" disabled={!canEdit || uploading}>
+                                    {uploading ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                            Saving...
+                                        </>
+                                    ) : (
+                                        "Save"
+                                    )}
+                                </button>
                             </form>
                             <hr />
                             <div className="list-group">
@@ -956,10 +1107,26 @@ export default function Classes() {
                                             <span>{classItem.class}</span>
                                             <button
                                                 className="btn btn-outline-danger btn-sm"
-                                                onClick={() => deleteClass(classItem._id)}
+                                                onClick={async () => {
+                                                    setUploading(true);
+                                                    try {
+                                                        await deleteClass(classItem._id);
+                                                    } catch (err) {
+                                                        console.error(err);
+                                                    } finally {
+                                                        setUploading(false);
+                                                    }
+                                                }}
                                                 disabled
                                             >
-                                                Delete
+                                                {uploading ? (
+                                                    <>
+                                                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                                        Deleting...
+                                                    </>
+                                                ) : (
+                                                    "Delete"
+                                                )}
                                             </button>
                                         </div>
                                     ))
