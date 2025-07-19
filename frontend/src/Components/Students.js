@@ -52,6 +52,16 @@ export default function Students() {
     const [classes, setClasses] = useState([]);
     const [selectedStudents, setSelectedStudents] = useState([]);
     const [selectAllChecked, setSelectAllChecked] = useState(false);
+    const [personalInfoList, setpersonalInfoList] = useState([]);
+
+    const fetchPersonalInformationList = async () => {
+        try {
+            const response = await axios.get('https://sss-server-eosin.vercel.app/GetPersonalInformationList');
+            setpersonalInfoList(response.data.data || []); // Default to an empty array if no data is returned
+        } catch (error) {
+            console.error('Error fetching personal information list:', error);
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -82,6 +92,7 @@ export default function Students() {
         };
 
         fetchData();
+        fetchPersonalInformationList();
     }, []);
 
     const [statusFilter, setStatusFilter] = useState("Active");
@@ -877,32 +888,39 @@ export default function Students() {
                                             </div>
 
                                             {/* Additional Information */}
-                                            {selectedStudent.additionalInfo?.length > 0 && (
-                                                <>
-                                                    <hr />
-                                                    <div className="row">
-                                                        {selectedStudent.additionalInfo.map((info, index) => (
-                                                            <div className="col-md-6 mb-2 p-2" key={index}>
-                                                                <strong>{info.key}:</strong>
-                                                                {isEditMode ? (
-                                                                    <input
-                                                                        className="form-control mt-1"
-                                                                        value={editStudentData.additionalInfo?.find(i => i.key === info.key)?.value || ""}
-                                                                        onChange={(e) => {
-                                                                            const newAdditional = [...editStudentData.additionalInfo];
-                                                                            const idx = newAdditional.findIndex(i => i.key === info.key);
-                                                                            if (idx > -1) newAdditional[idx].value = e.target.value;
-                                                                            setEditStudentData(prev => ({ ...prev, additionalInfo: newAdditional }));
-                                                                        }}
-                                                                    />
-                                                                ) : (
-                                                                    info.value
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                </>
-                                            )}
+                                            <hr />
+<div className="row">
+    {personalInfoList
+        .filter(info => info.sno && info._id)
+        .sort((a, b) => parseInt(a.sno) - parseInt(b.sno))
+        .map((info, index) => {
+            const existingValue = editStudentData?.additionalInfo?.find(i => i.key === info.name)?.value || "";
+            return (
+                <div className="col-md-6 mb-2 p-2" key={index}>
+                    <strong>{info.name}:</strong>
+                    {isEditMode ? (
+                        <input
+                            className="form-control mt-1"
+                            value={existingValue}
+                            onChange={(e) => {
+                                const updated = [...(editStudentData.additionalInfo || [])];
+                                const idx = updated.findIndex(i => i.key === info.name);
+                                if (idx > -1) {
+                                    updated[idx].value = e.target.value;
+                                } else {
+                                    updated.push({ key: info.name, value: e.target.value });
+                                }
+                                setEditStudentData(prev => ({ ...prev, additionalInfo: updated }));
+                            }}
+                        />
+                    ) : (
+                        selectedStudent.additionalInfo?.find(i => i.key === info.name)?.value || ""
+                    )}
+                </div>
+            );
+        })}
+</div>
+
                                         </div>
 
                                         {/* Right: Image */}
