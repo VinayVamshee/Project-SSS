@@ -466,7 +466,7 @@ export default function Classes() {
                                     <button
                                         type="submit"
                                         className="btn btn-success btn-sm"
-                                        disabled={!(canEdit || canNoDeleteEdit) ||uploading}
+                                        disabled={!(canEdit || canNoDeleteEdit) || uploading}
                                     >
                                         {uploading ? (
                                             <>
