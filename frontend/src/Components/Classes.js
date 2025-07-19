@@ -6,6 +6,7 @@ export default function Classes() {
 
     const navigate = useNavigate();
     const [canEdit, setCanEdit] = useState(false);
+    const [canNoDeleteEdit, setCanNoDeleteEdit] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -17,9 +18,12 @@ export default function Classes() {
             if (storedUserType === "admin") {
                 setCanEdit(true);
             }
+
+            if (storedUserType === "qp-editor") {
+                setCanNoDeleteEdit(true);
+            }
         }
     }, [navigate]);
-
 
     const [classes, setClasses] = useState([]);
     const [subjects, setSubjects] = useState([]);
@@ -33,7 +37,6 @@ export default function Classes() {
         setMessage(msg);
         setTimeout(() => setMessage(""), 5000);
     };
-
 
     const fetchClassesAndSubjects = async () => {
         try {
@@ -312,7 +315,7 @@ export default function Classes() {
             setEditSubjectId(null);
         } catch (error) {
             console.error("Error updating subject:", error);
-            alert(error.response?.data?.message || "Update failed");
+            showMessage("Update failed || Error");
         }
     };
 
@@ -637,7 +640,7 @@ export default function Classes() {
 
                                         <div className="modal-footer w-100">
                                             <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                                            <button type="submit" className="btn btn-primary">
+                                            <button type="submit" className="btn btn-primary" disabled={!canEdit}>
                                                 <i className="fa-solid fa-check me-2"></i>Save Exams
                                             </button>
                                         </div>
@@ -719,7 +722,7 @@ export default function Classes() {
                                                                 setEditSubjectId(subject._id);
                                                                 setEditedSubjectName(subject.name);
                                                             }}
-                                                            disabled={!canEdit}
+                                                            disabled={!(canEdit || canNoDeleteEdit)}
                                                         >
                                                             Edit
                                                         </button>
@@ -834,7 +837,7 @@ export default function Classes() {
                                                                     try {
                                                                         if (!ch?._id) {
                                                                             console.error("❌ Chapter ID missing!", ch);
-                                                                            return alert("Chapter cannot be edited because ID is missing.");
+                                                                            return showMessage("Chapter cannot be edited because ID is missing. || Error");
                                                                         }
 
                                                                         await axios.put(
@@ -872,7 +875,7 @@ export default function Classes() {
                                                                     setEditChapterId(ch._id);
                                                                     setEditChapterName(ch.name);
                                                                 }}
-                                                                disabled={!canEdit}
+                                                                disabled={!(canEdit || canNoDeleteEdit)}
                                                             >
                                                                 Edit
                                                             </button>
@@ -954,7 +957,7 @@ export default function Classes() {
                                             <button
                                                 className="btn btn-outline-danger btn-sm"
                                                 onClick={() => deleteClass(classItem._id)}
-                                                disabled={!canEdit}
+                                                disabled
                                             >
                                                 Delete
                                             </button>
@@ -974,19 +977,19 @@ export default function Classes() {
 
             {message && (
                 <div
-                    className="position-fixed"
+                    className="position-fixed fade-in"
                     style={{
                         bottom: "20px",
                         right: "20px",
                         zIndex: 9999,
                         backgroundColor:
                             message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
-                                ? "#f8d7da" // Light red
+                                ? "#f8d7da"
                                 : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
-                                    ? "#d1e7dd" // Light green
+                                    ? "#d1e7dd"
                                     : message.toLowerCase().includes("please")
-                                        ? "#fff3cd" // Light yellow
-                                        : "#e2e3e5", // Neutral grey fallback
+                                        ? "#fff3cd"
+                                        : "#e2e3e5",
                         color:
                             message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
                                 ? "#842029"
@@ -995,19 +998,32 @@ export default function Classes() {
                                     : message.toLowerCase().includes("please")
                                         ? "#664d03"
                                         : "#41464b",
-                        padding: "12px 18px",
+                        padding: "12px 18px 18px",
                         borderRadius: "8px",
                         boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
                         fontWeight: "500",
                         maxWidth: "300px",
-                        transition: "opacity 0.3s ease",
+                        overflow: "hidden",
                     }}
                 >
                     {message}
+
+                    <div
+                        className="progress-bar-animate mt-2"
+                        style={{
+                            height: "4px",
+                            backgroundColor:
+                                message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                    ? "#842029"
+                                    : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                        ? "#0f5132"
+                                        : message.toLowerCase().includes("please")
+                                            ? "#664d03"
+                                            : "#41464b",
+                        }}
+                    />
                 </div>
             )}
-
-
 
         </div>
     );

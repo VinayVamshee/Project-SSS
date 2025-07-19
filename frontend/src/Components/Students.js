@@ -25,6 +25,11 @@ export default function Students() {
         }
     }, [navigate]);
 
+    const [message, setMessage] = useState("");
+    const showMessage = (msg) => {
+        setMessage(msg);
+        setTimeout(() => setMessage(""), 5000);
+    };
 
     // useEffect(() => {
     //     const checkAuth = async () => {
@@ -43,6 +48,8 @@ export default function Students() {
 
     //     checkAuth();
     // }, [navigate]);
+
+    const [uploading, setUploading] = useState(false);
 
     const [students, setStudents] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
@@ -222,14 +229,16 @@ export default function Students() {
 
     const handlePassStudents = async () => {
         if (!passToSelectedYear || !passToSelectedClass) {
-            alert("Please select an academic year and class before proceeding.");
+            showMessage("Please select an academic year and class before proceeding.");
             return;
         }
 
         if (selectedStudents.length === 0) {
-            alert("No students selected to pass.");
+            showMessage("No students selected to pass.");
             return;
         }
+
+        setUploading(true); // Start loading
 
         try {
             const response = await axios.post("https://sss-server-eosin.vercel.app/pass-students-to", {
@@ -239,16 +248,18 @@ export default function Students() {
             });
 
             if (response.status === 200) {
-                alert("Students updated successfully!");
-                setSelectedStudents([]); // Clear selected students
-                setPassToSelectedYear(""); // Reset year
-                setPassToSelectedClass(""); // Reset class
+                showMessage("✅ Students updated successfully!");
+                setSelectedStudents([]);
+                setPassToSelectedYear("");
+                setPassToSelectedClass("");
             } else {
-                alert("Failed to update students.");
+                showMessage("❌ Failed to update students.");
             }
         } catch (error) {
             console.error("Error passing students:", error);
-            alert("An error occurred while updating students.");
+            showMessage("⚠️ An error occurred while updating students.");
+        } finally {
+            setUploading(false); // Stop loading
         }
     };
 
@@ -259,17 +270,18 @@ export default function Students() {
         setIsReAdmissionMode(specialClasses.includes(passToSelectedClass));
     }, [passToSelectedClass]);
 
-
     const handleReAdmission = async () => {
         if (!passToSelectedYear || !passToSelectedClass) {
-            alert("Please select an academic year and class before proceeding.");
+            showMessage("Please select an academic year and class before proceeding.");
             return;
         }
 
         if (selectedStudents.length === 0) {
-            alert("No students selected for re-admission.");
+            showMessage("No students selected for re-admission.");
             return;
         }
+
+        setUploading(true); // Start loading
 
         try {
             const reAdmissionList = students.filter(student =>
@@ -277,17 +289,17 @@ export default function Students() {
             );
 
             for (const student of reAdmissionList) {
-                // ✅ Step 1: Mark current academic year as "Passed"
+                // Step 1: Mark current academic year as "Passed"
                 await axios.put(`https://sss-server-eosin.vercel.app/updateAcademicYearStatus/${student._id}`, {
                     status: "Passed"
                 });
 
-                // ✅ Step 2: Create new student with old _id and AdmissionNo saved
+                // Step 2: Prepare new student data
                 const newStudent = {
                     ...student,
                     AdmissionNo: "Re-Admission",
-                    previousStudentId: student._id,        // 👈 Save original _id
-                    oldAdmissionNo: student.AdmissionNo,   // 👈 Save original admission number
+                    previousStudentId: student._id,
+                    oldAdmissionNo: student.AdmissionNo,
                     academicYears: [
                         {
                             academicYear: passToSelectedYear,
@@ -297,7 +309,6 @@ export default function Students() {
                     ]
                 };
 
-                // ✅ Clean up fields not needed for the new entry
                 delete newStudent._id;
                 delete newStudent.createdAt;
                 delete newStudent.updatedAt;
@@ -306,7 +317,7 @@ export default function Students() {
                 await axios.post("https://sss-server-eosin.vercel.app/addStudent", newStudent);
             }
 
-            alert("Re-admission completed successfully!");
+            showMessage("✅ Re-admission completed successfully!");
             setSelectedStudents([]);
             setPassToSelectedYear("");
             setPassToSelectedClass("");
@@ -314,7 +325,9 @@ export default function Students() {
 
         } catch (error) {
             console.error("Re-admission error:", error);
-            alert("An error occurred during re-admission.");
+            showMessage("❌ An error occurred during re-admission.");
+        } finally {
+            setUploading(false); // End loading
         }
     };
 
@@ -322,9 +335,11 @@ export default function Students() {
 
     const handleDropStudents = async () => {
         if (selectedStudents.length === 0 || !selectedYear || !dropStatus) {
-            alert("Please select students, academic year, and drop status.");
+            showMessage("Please select students, academic year, and drop status.");
             return;
         }
+
+        setUploading(true); // Start loading
 
         try {
             const response = await axios.post("https://sss-server-eosin.vercel.app/drop-academic-year", {
@@ -334,13 +349,17 @@ export default function Students() {
             });
 
             if (response.status === 200) {
-                alert(`Students marked as ${dropStatus} successfully.`);
-                setDropStatus(""); // reset
+                showMessage(`✅ Students marked as ${dropStatus} successfully.`);
+                setDropStatus("");
                 setSelectedStudents([]);
+            } else {
+                showMessage("Failed to update students.");
             }
         } catch (error) {
             console.error("❌ Error updating student status:", error);
-            alert("Failed to update students.");
+            showMessage("An error occurred while updating students.");
+        } finally {
+            setUploading(false); // End loading
         }
     };
 
@@ -380,16 +399,23 @@ export default function Students() {
         formData.append("key", "8451f34223c6e62555eec9187d855f8f");
         formData.append("image", file);
 
-        const res = await fetch("https://api.imgbb.com/1/upload", {
-            method: "POST",
-            body: formData,
-        });
+        try {
+            const res = await fetch("https://api.imgbb.com/1/upload", {
+                method: "POST",
+                body: formData,
+            });
 
-        const data = await res.json();
-        if (data.success) {
-            return data.data.display_url || data.data.url;
-        } else {
-            throw new Error("Image upload failed");
+            const data = await res.json();
+
+            if (data.success && (data.data.display_url || data.data.url)) {
+                return data.data.display_url || data.data.url;
+            } else {
+                console.error("❌ Upload failed response:", data);
+                throw new Error("Image upload failed");
+            }
+        } catch (error) {
+            console.error("❌ Error uploading image:", error);
+            throw new Error("Image upload error");
         }
     };
 
@@ -445,7 +471,7 @@ export default function Students() {
             });
 
         if (selectedData.length === 0) {
-            alert("Please select at least one student.");
+            showMessage("Please select at least one student.");
             return;
         }
 
@@ -889,37 +915,37 @@ export default function Students() {
 
                                             {/* Additional Information */}
                                             <hr />
-<div className="row">
-    {personalInfoList
-        .filter(info => info.sno && info._id)
-        .sort((a, b) => parseInt(a.sno) - parseInt(b.sno))
-        .map((info, index) => {
-            const existingValue = editStudentData?.additionalInfo?.find(i => i.key === info.name)?.value || "";
-            return (
-                <div className="col-md-6 mb-2 p-2" key={index}>
-                    <strong>{info.name}:</strong>
-                    {isEditMode ? (
-                        <input
-                            className="form-control mt-1"
-                            value={existingValue}
-                            onChange={(e) => {
-                                const updated = [...(editStudentData.additionalInfo || [])];
-                                const idx = updated.findIndex(i => i.key === info.name);
-                                if (idx > -1) {
-                                    updated[idx].value = e.target.value;
-                                } else {
-                                    updated.push({ key: info.name, value: e.target.value });
-                                }
-                                setEditStudentData(prev => ({ ...prev, additionalInfo: updated }));
-                            }}
-                        />
-                    ) : (
-                        selectedStudent.additionalInfo?.find(i => i.key === info.name)?.value || ""
-                    )}
-                </div>
-            );
-        })}
-</div>
+                                            <div className="row">
+                                                {personalInfoList
+                                                    .filter(info => info.sno && info._id)
+                                                    .sort((a, b) => parseInt(a.sno) - parseInt(b.sno))
+                                                    .map((info, index) => {
+                                                        const existingValue = editStudentData?.additionalInfo?.find(i => i.key === info.name)?.value || "";
+                                                        return (
+                                                            <div className="col-md-6 mb-2 p-2" key={index}>
+                                                                <strong>{info.name}:</strong>
+                                                                {isEditMode ? (
+                                                                    <input
+                                                                        className="form-control mt-1"
+                                                                        value={existingValue}
+                                                                        onChange={(e) => {
+                                                                            const updated = [...(editStudentData.additionalInfo || [])];
+                                                                            const idx = updated.findIndex(i => i.key === info.name);
+                                                                            if (idx > -1) {
+                                                                                updated[idx].value = e.target.value;
+                                                                            } else {
+                                                                                updated.push({ key: info.name, value: e.target.value });
+                                                                            }
+                                                                            setEditStudentData(prev => ({ ...prev, additionalInfo: updated }));
+                                                                        }}
+                                                                    />
+                                                                ) : (
+                                                                    selectedStudent.additionalInfo?.find(i => i.key === info.name)?.value || ""
+                                                                )}
+                                                            </div>
+                                                        );
+                                                    })}
+                                            </div>
 
                                         </div>
 
@@ -943,7 +969,7 @@ export default function Students() {
                                                                 const imageUrl = await uploadToImgBB(file);
                                                                 setEditStudentData((prev) => ({ ...prev, image: imageUrl }));
                                                             } catch (err) {
-                                                                alert("Image upload failed");
+                                                                showMessage("Image upload failed");
                                                                 console.error(err);
                                                             }
                                                         }
@@ -1044,22 +1070,34 @@ export default function Students() {
 
                                     <div className="modal-footer">
                                         {isEditMode && (
-                                            <button className="btn btn-success" onClick={async () => {
-                                                try {
-                                                    const response = await axios.put(`https://sss-server-eosin.vercel.app/updateStudent/${selectedStudent._id}`, editStudentData);
-                                                    if (response.status === 200) {
-                                                        alert("Student updated successfully!");
-                                                        setIsEditMode(false);
-                                                        setSelectedStudent(response.data.data); // update modal view
-                                                        const updatedList = students.map(s => s._id === selectedStudent._id ? response.data.data : s);
-                                                        setStudents(updatedList); // update main list
+                                            <button
+                                                className="btn btn-success"
+                                                disabled={uploading}
+                                                onClick={async () => {
+                                                    try {
+                                                        setUploading(true);
+                                                        const response = await axios.put(
+                                                            `https://sss-server-eosin.vercel.app/updateStudent/${selectedStudent._id}`,
+                                                            editStudentData
+                                                        );
+                                                        if (response.status === 200) {
+                                                            showMessage("Student updated successfully!");
+                                                            setIsEditMode(false);
+                                                            setSelectedStudent(response.data.data);
+                                                            const updatedList = students.map(s =>
+                                                                s._id === selectedStudent._id ? response.data.data : s
+                                                            );
+                                                            setStudents(updatedList);
+                                                        }
+                                                    } catch (err) {
+                                                        showMessage("Failed to update student");
+                                                        console.error(err);
+                                                    } finally {
+                                                        setUploading(false);
                                                     }
-                                                } catch (err) {
-                                                    alert("Failed to update student");
-                                                    console.error(err);
-                                                }
-                                            }}>
-                                                Save Changes
+                                                }}
+                                            >
+                                                {uploading ? "Editing..." : "Save Changes"}
                                             </button>
                                         )}
 
@@ -1308,19 +1346,32 @@ export default function Students() {
                                 type="button"
                                 className="btn btn-primary"
                                 onClick={async () => {
+                                    setUploading(true);
                                     const selectedStudentData = students.filter((student) =>
                                         selectedStudents.includes(student._id)
                                     );
 
-                                    if (isReAdmissionMode) {
-                                        await handleReAdmission(selectedStudentData);
-                                    } else {
-                                        await handlePassStudents();
+                                    try {
+                                        if (isReAdmissionMode) {
+                                            await handleReAdmission(selectedStudentData);
+                                        } else {
+                                            await handlePassStudents();
+                                        }
+                                    } catch (err) {
+                                        console.error(err);
+                                    } finally {
+                                        setUploading(false);
                                     }
                                 }}
-                                disabled={!canEdit}
+                                disabled={!canEdit || uploading}
                             >
-                                {isReAdmissionMode ? "Re-Admission Students" : "Pass Students"}
+                                {uploading
+                                    ? isReAdmissionMode
+                                        ? "Re-Admitting..."
+                                        : "Passing..."
+                                    : isReAdmissionMode
+                                        ? "Re-Admission Students"
+                                        : "Pass Students"}
                             </button>
                         </div>
                     </div>
@@ -1385,8 +1436,22 @@ export default function Students() {
 
                         <div className="modal-footer">
                             <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" className="btn btn-danger" onClick={handleDropStudents} disabled={!canEdit}>
-                                Drop Selected Students
+                            <button
+                                type="button"
+                                className="btn btn-danger"
+                                onClick={async () => {
+                                    setUploading(true);
+                                    try {
+                                        await handleDropStudents();
+                                    } catch (err) {
+                                        console.error(err);
+                                    } finally {
+                                        setUploading(false);
+                                    }
+                                }}
+                                disabled={!canEdit || uploading}
+                            >
+                                {uploading ? "Dropping..." : "Drop Selected Students"}
                             </button>
                         </div>
                     </div>
@@ -1532,6 +1597,56 @@ export default function Students() {
                     latestMaster={latestMaster}
                 />
             </div>
+
+            {message && (
+                <div
+                    className="position-fixed fade-in"
+                    style={{
+                        bottom: "20px",
+                        right: "20px",
+                        zIndex: 9999,
+                        backgroundColor:
+                            message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                ? "#f8d7da"
+                                : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                    ? "#d1e7dd"
+                                    : message.toLowerCase().includes("please")
+                                        ? "#fff3cd"
+                                        : "#e2e3e5",
+                        color:
+                            message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                ? "#842029"
+                                : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                    ? "#0f5132"
+                                    : message.toLowerCase().includes("please")
+                                        ? "#664d03"
+                                        : "#41464b",
+                        padding: "12px 18px 18px",
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                        fontWeight: "500",
+                        maxWidth: "300px",
+                        overflow: "hidden",
+                    }}
+                >
+                    {message}
+
+                    <div
+                        className="progress-bar-animate mt-2"
+                        style={{
+                            height: "4px",
+                            backgroundColor:
+                                message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                    ? "#842029"
+                                    : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                        ? "#0f5132"
+                                        : message.toLowerCase().includes("please")
+                                            ? "#664d03"
+                                            : "#41464b",
+                        }}
+                    />
+                </div>
+            )}
 
         </div>
     );

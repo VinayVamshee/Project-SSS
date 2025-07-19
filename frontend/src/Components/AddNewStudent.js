@@ -199,7 +199,7 @@ export default function AddNewStudent() {
         <div className="AddNewStudent">
 
             <p style={{ margin: '0px' }}>
-                <button className="btn btn-save btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#AdditionalInformationCollapse" aria-expanded="false" aria-controls="AdditionalInformationCollapse">
+                <button className="btn btn-save btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#AdditionalInformationCollapse" aria-expanded="false" aria-controls="AdditionalInformationCollapse" disabled>
                     Add Additional Information
                 </button>
             </p>
@@ -209,11 +209,11 @@ export default function AddNewStudent() {
                         <form onSubmit={handleAddAdditionalPersonalInformation}>
                             <div className="mb-3">
                                 <label htmlFor="sno" className="form-label">S.No</label>
-                                <input type="text" className="form-control" id="sno" placeholder="Enter S.No" value={personalInfo.sno} onChange={e => setPersonalInfo(p => ({ ...p, sno: e.target.value }))}  />
+                                <input type="text" className="form-control" id="sno" placeholder="Enter S.No" value={personalInfo.sno} onChange={e => setPersonalInfo(p => ({ ...p, sno: e.target.value }))} />
                             </div>
                             <div className="mb-3">
                                 <label htmlFor="name" className="form-label">Name</label>
-                                <input type="text" className="form-control" id="name" placeholder='Enter the Additional Personal Information You Want to Take ' value={personalInfo.personalInformationList_name} onChange={e => setPersonalInfo(p => ({ ...p, personalInformationList_name: e.target.value }))}  />
+                                <input type="text" className="form-control" id="name" placeholder='Enter the Additional Personal Information You Want to Take ' value={personalInfo.personalInformationList_name} onChange={e => setPersonalInfo(p => ({ ...p, personalInformationList_name: e.target.value }))} />
                             </div>
                             <button type="submit" className="btn btn-success btn-sm ">Save</button>
                         </form>
@@ -292,7 +292,7 @@ export default function AddNewStudent() {
                             id="dob"
                             value={student.dob}
                             onChange={(e) => setStudent((prev) => ({ ...prev, dob: e.target.value }))}
-                            
+
                         />
                     </div>
 
@@ -357,7 +357,7 @@ export default function AddNewStudent() {
                             className="form-control"
                             value={student.AdmissionNo}
                             onChange={(e) => setStudent((prev) => ({ ...prev, AdmissionNo: e.target.value }))}
-                            
+
                         />
                     </div>
 
@@ -369,7 +369,7 @@ export default function AddNewStudent() {
                             className="form-control"
                             value={student.Caste}
                             onChange={(e) => setStudent((prev) => ({ ...prev, Caste: e.target.value }))}
-                            
+
                         />
                     </div>
 
@@ -436,7 +436,7 @@ export default function AddNewStudent() {
                                             newAcademicYears[index].academicYear = e.target.value;
                                             setStudent((prev) => ({ ...prev, academicYears: newAcademicYears }));
                                         }}
-                                        
+
                                     >
                                         <option value="">Select Academic Year</option>
                                         {academicYears.map((year) => (
@@ -455,7 +455,7 @@ export default function AddNewStudent() {
                                             newAcademicYears[index].class = e.target.value;
                                             setStudent((prev) => ({ ...prev, academicYears: newAcademicYears }));
                                         }}
-                                        
+
                                     >
                                         <option value="">Select Class</option>
                                         {classes.map((cls) => (

@@ -12,6 +12,12 @@ export default function QuestionManager() {
         documentTitle: "QuestionPaper",
     });
 
+    const [message, setMessage] = useState("");
+    const showMessage = (msg) => {
+        setMessage(msg);
+        setTimeout(() => setMessage(""), 5000);
+    };
+
     const navigate = useNavigate();
     const [classes, setClasses] = useState([]);
     const [subjects, setSubjects] = useState([]);
@@ -240,7 +246,7 @@ export default function QuestionManager() {
 
         setQuestions(res.data);
         fetchQuestions();
-        alert("Question Added Successfully")
+        showMessage("Question Added Successfully")
 
         // Reset new question state
         setNewQuestion({
@@ -296,10 +302,10 @@ export default function QuestionManager() {
 
             setQuestions(res.data.questions);
             fetchQuestions();
-            alert('✅ Question deleted successfully.');
+            showMessage('✅ Question deleted successfully.');
         } catch (error) {
             console.error('❌ Error deleting question:', error);
-            alert('❌ Failed to delete the question. Please try again.');
+            showMessage('❌ Failed to delete the question. Please try again.');
         }
     };
 
@@ -332,10 +338,10 @@ export default function QuestionManager() {
                 examTitle: '',
                 instructions: ['']
             });
-            alert('Saved successfully ✅');
+            showMessage('Saved successfully ✅');
         } catch (error) {
             console.error('Error saving template:', error);
-            alert('Failed to save. Please try again.');
+            showMessage('Failed to save. Please try again.');
         }
     };
 
@@ -357,15 +363,17 @@ export default function QuestionManager() {
             await axios.delete(`https://sss-server-eosin.vercel.app/delete-template/${id}`);
             const res = await axios.get('https://sss-server-eosin.vercel.app/get-all-templates');
             setTemplates(res.data);
+            showMessage("Template Deleted")
         } catch (error) {
             console.error("Error deleting template:", error);
-            alert("Failed to delete template.");
+            showMessage("Failed to delete template.");
         }
     };
 
     const handleEditTemplate = (template) => {
         setNewTemplate({
             schoolName: template.schoolName || '',
+            logo: template.logo || '',
             address: template.address || '',
             examTitle: template.examTitle || '',
             date: template.date || '',
@@ -433,7 +441,7 @@ export default function QuestionManager() {
 
     const handleEditSubmit = async () => {
         if (editQuestionIndex === null || editQuestionIndex === undefined) {
-            alert("Edit index not set.");
+            showMessage("Edit index not set.");
             return;
         }
 
@@ -448,10 +456,10 @@ export default function QuestionManager() {
 
             setQuestions(res.data.questions);
             fetchQuestions();
-            alert('Question Updated Successfully')
+            showMessage('Question Updated Successfully')
         } catch (err) {
             console.error(err);
-            alert("Failed to update question.");
+            showMessage("Failed to update question.");
         }
     };
 
@@ -956,7 +964,7 @@ export default function QuestionManager() {
                 </div> */}
 
                 {/* Buttons */}
-                <button className="btn" data-bs-toggle="modal" data-bs-target="#addQuestionModal">
+                <button className="btn" data-bs-toggle="modal" data-bs-target="#addQuestionModal" disabled={!canEdit}>
                     <i className="fas fa-plus me-2"></i>Add Question
                 </button>
                 <button className="btn" type="button" data-bs-toggle="collapse" data-bs-target="#addInstructionCollapse" aria-expanded="false" aria-controls="addInstructionCollapse" disabled={!canEdit}>
@@ -1561,7 +1569,7 @@ export default function QuestionManager() {
                                             const url = await uploadToImgBB(file);
                                             setNewTemplate(t => ({ ...t, logo: url }));
                                         } catch (err) {
-                                            alert("❌ Logo upload failed.");
+                                            showMessage("❌ Logo upload failed.");
                                             console.error(err);
                                         }
                                     }
@@ -1620,45 +1628,54 @@ export default function QuestionManager() {
                     </div>
                     {/* List of Saved Instruction Templates */}
                     {templates.length > 0 && (
-                        <div className="mt-4">
-                            <h5 className="mb-3 text-primary">Saved Instruction Templates</h5>
-                            {templates.map((template, idx) => (
-                                <div key={template._id} className="card mb-3 shadow-sm p-3 border-start border-4 border-primary">
-                                    <div className="d-flex justify-content-between align-items-center mb-2">
-                                        <h6 className="mb-0 fw-bold text-secondary">Template {idx + 1}</h6>
-                                        <div className="btn-group btn-group-sm">
-                                            <button className="btn btn-primary" onClick={() => handleEditTemplate(template)}>
-                                                <i className="fas fa-edit me-1"></i>Edit
-                                            </button>
-                                            <button className="btn btn-danger" onClick={() => handleDeleteTemplate(template._id)}>
-                                                <i className="fas fa-trash-alt me-1"></i>Delete
-                                            </button>
+                        <div className="mt-4 p-2">
+                            <h5 className="mb-4 text-primary">📁 Saved Instruction Templates</h5>
+                            <div className="row row-cols-1 row-cols-md-2 g-4">
+                                {templates.map((template, idx) => (
+                                    <div key={template._id} className="col">
+                                        <div className="card shadow-sm rounded-4 p-3 bg-light border-0">
+                                            <div className="d-flex justify-content-between align-items-start mb-3">
+                                                <div>
+                                                    <h6 className="mb-1 text-secondary fw-bold">Template {idx + 1}</h6>
+                                                    <small className="text-muted">{template.examTitle}</small>
+                                                </div>
+                                                <div className="btn-group btn-group-sm">
+                                                    <button className="btn btn-outline-primary" onClick={() => handleEditTemplate(template)} disabled={!canEdit}>
+                                                        <i className="fas fa-edit me-1"></i>Edit
+                                                    </button>
+                                                    <button className="btn btn-outline-danger" onClick={() => handleDeleteTemplate(template._id)} disabled={!canEdit}>
+                                                        <i className="fas fa-trash-alt me-1"></i>Delete
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-white p-3 rounded-3 shadow-sm">
+                                                <p className="mb-2"><strong>🏫 School:</strong> {template.schoolName}</p>
+                                                <p className="mb-2"><strong>📍 Address:</strong> {template.address}</p>
+
+                                                {(template.date || template.time || template.maxMarks) && (
+                                                    <div className="text-muted small mb-3">
+                                                        {template.date && <div><strong>📅 Date:</strong> {template.date}</div>}
+                                                        {template.time && <div><strong>⏰ Time:</strong> {template.time}</div>}
+                                                        {template.maxMarks && <div><strong>🧮 Max Marks:</strong> {template.maxMarks}</div>}
+                                                    </div>
+                                                )}
+
+                                                <p className="fw-semibold mb-2">📌 Instructions:</p>
+                                                <div className="d-flex flex-column gap-1">
+                                                    {template.instructions.map((inst, i) => (
+                                                        <div key={i} className="px-3 py-2 bg-light border rounded text-dark">
+                                                            {inst}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
-
-                                    <p><strong>🏫 School:</strong> {template.schoolName}</p>
-                                    <p><strong>📍 Address:</strong> {template.address}</p>
-                                    <p><strong>📝 Exam Title:</strong> {template.examTitle}</p>
-
-                                    {(template.date || template.time || template.maxMarks) && (
-                                        <p className="mb-1 text-muted">
-                                            {template.date && <span><strong>📅 Date:</strong> {template.date} </span>}
-                                            {template.time && <span className="ms-3"><strong>⏰ Time:</strong> {template.time} </span>}
-                                            {template.maxMarks && <span className="ms-3"><strong>🧮 Max Marks:</strong> {template.maxMarks}</span>}
-                                        </p>
-                                    )}
-
-                                    <p className="mb-1"><strong>📌 Instructions:</strong></p>
-                                    <ul className="mb-0 ps-3">
-                                        {template.instructions.map((inst, i) => (
-                                            <li key={i}>{inst}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            ))}
+                                ))}
+                            </div>
                         </div>
                     )}
-
 
                 </div>
             </div>
@@ -2055,6 +2072,56 @@ export default function QuestionManager() {
                     selectedSubject={filteredSubjects.find(s => s._id === selectedSubject)?.name || ''}
                 />
             </div>
+
+            {message && (
+                <div
+                    className="position-fixed fade-in"
+                    style={{
+                        bottom: "20px",
+                        right: "20px",
+                        zIndex: 9999,
+                        backgroundColor:
+                            message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                ? "#f8d7da"
+                                : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                    ? "#d1e7dd"
+                                    : message.toLowerCase().includes("please")
+                                        ? "#fff3cd"
+                                        : "#e2e3e5",
+                        color:
+                            message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                ? "#842029"
+                                : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                    ? "#0f5132"
+                                    : message.toLowerCase().includes("please")
+                                        ? "#664d03"
+                                        : "#41464b",
+                        padding: "12px 18px 18px",
+                        borderRadius: "8px",
+                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                        fontWeight: "500",
+                        maxWidth: "300px",
+                        overflow: "hidden",
+                    }}
+                >
+                    {message}
+
+                    <div
+                        className="progress-bar-animate mt-2"
+                        style={{
+                            height: "4px",
+                            backgroundColor:
+                                message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                    ? "#842029"
+                                    : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                        ? "#0f5132"
+                                        : message.toLowerCase().includes("please")
+                                            ? "#664d03"
+                                            : "#41464b",
+                        }}
+                    />
+                </div>
+            )}
 
         </div>
     );

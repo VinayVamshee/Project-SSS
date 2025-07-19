@@ -10,7 +10,7 @@ export default function Payments() {
 
     const navigate = useNavigate();
     const [canEdit, setCanEdit] = useState(false);
-
+    const [canNoDeleteEdit, setCanNoDeleteEdit] = useState(false);
     useEffect(() => {
         const token = localStorage.getItem('token');
         const userType = localStorage.getItem('userType');
@@ -20,8 +20,13 @@ export default function Payments() {
             return;
         }
 
-        const canEdit = userType === 'admin' || userType === 'payments';
-        setCanEdit(canEdit); // Optional: if you're managing with state
+        if (userType === 'admin') {
+            setCanEdit(true);
+        }
+
+        if (userType === 'payments') {
+            setCanNoDeleteEdit(true);
+        }
     }, [navigate]);
 
     const [students, setStudents] = useState([]);
@@ -716,7 +721,7 @@ export default function Payments() {
                     <label className="ms-1">Select All</label>
                 </div>
 
-                <button className="btn btn-success ms-2" onClick={handleBulkDownload}>
+                <button className="btn btn-success ms-2" onClick={handleBulkDownload} diabled={!canEdit}>
                     <i className="fa-solid fa-file-excel me-2"></i>Download All Fee Sheets
                 </button>
 
@@ -960,7 +965,7 @@ export default function Payments() {
                                         ₹{paidFees} / ₹{totalFees}
                                     </span>
                                 </div>
-                                <button type="button" className="btn btn-paymentHistory" onClick={() => handleDownloadExcel(element, feesData, selectedYear)} disabled={!canEdit}> <i className="fa-solid fa-file-arrow-down me-2"></i>Download History </button>
+                                <button type="button" className="btn btn-paymentHistory" onClick={() => handleDownloadExcel(element, feesData, selectedYear)} disabled={!canEdit}> <i className="fa-solid fa-file-arrow-down me-2" disabled={!canEdit}></i>Download History </button>
                                 <button className="btn btn-paymentHistory" type="button" data-bs-toggle="collapse" data-bs-target={`#HistoryCollapse-${element._id}`} aria-expanded="false" aria-controls={`HistoryCollapse-${element._id}`}><i className="fa-solid fa-clock-rotate-left me-1"></i> History<i className="fa-solid fa-caret-down ms-2"></i></button>
                                 <button type="button" className="btn btn-paymentHistory" data-bs-toggle="modal" data-bs-target="#addPaymentModal" onClick={() => handleOpenPaymentModal(element)} disabled={!canEdit}>
                                     <i className="fa-solid fa-credit-card me-1"></i> Add Payment
@@ -1218,7 +1223,7 @@ export default function Payments() {
 
                         <div className="modal-footer">
                             <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" className="btn btn-primary" onClick={submitPayment}>Save Payment</button>
+                            <button type="button" className="btn btn-primary" onClick={submitPayment} disabled={!canEdit || !canNoDeleteEdit}>Save Payment</button>
                         </div>
                     </div>
                 </div>
