@@ -85,7 +85,6 @@ const IdentityCardPage = forwardRef(
                                     />
                                 </div>
 
-
                                 <div className="student-information">
                                     <div>
                                         <strong style={{ color: "blue", marginRight: "20px" }}>
