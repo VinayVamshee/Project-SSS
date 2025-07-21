@@ -32,24 +32,6 @@ export default function Students() {
         setTimeout(() => setMessage(""), 5000);
     };
 
-    // useEffect(() => {
-    //     const checkAuth = async () => {
-    //         const token = localStorage.getItem('token');
-    //         if (!token) return navigate('/login');
-
-    //         try {
-    //             await axios.get('https://sss-server-eosin.vercel.app/verifyToken', {
-    //                 headers: { Authorization: `Bearer ${token}` }
-    //             });
-    //         } catch (err) {
-    //             localStorage.removeItem('token');
-    //             navigate('/login');
-    //         }
-    //     };
-
-    //     checkAuth();
-    // }, [navigate]);
-
     const [uploading, setUploading] = useState(false);
 
     const [students, setStudents] = useState([]);
