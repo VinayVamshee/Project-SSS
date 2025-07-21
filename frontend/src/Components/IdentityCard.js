@@ -3,9 +3,9 @@ import principalSignature from "./Images/Prinicipal Signature.png"
 
 const IdentityCardPage = forwardRef(
     ({ selectedStudents, students, selectedYear, latestMaster }, ref) => {
-        const filteredStudents = students.filter((s) =>
-            selectedStudents.includes(s._id)
-        );
+        const filteredStudents = students
+            .filter((s) => selectedStudents.includes(s._id))
+            .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || "", undefined, { numeric: true }));
 
         const getValue = (student, key) =>
             student.additionalInfo?.find((info) => info.key === key)?.value || "";
@@ -70,7 +70,7 @@ const IdentityCardPage = forwardRef(
                                     </h5>
                                     <div style={{ marginTop: '-2px' }}>{latestMaster?.address || "School Address"}</div>
                                     <div style={{ marginTop: '-5px' }}>(www.vamsheetechnoschool.com)</div>
-                                    <div style={{ marginTop: '-2px' }} className="w-100 bg-dark text-light my-1 fw-bold">
+                                    <div style={{ marginTop: '-2px' }} className="w-100 fw-bold">
                                         IDENTITY CARD: {selectedYear || "YYYY-YY"}
                                     </div>
                                 </div>
@@ -92,17 +92,20 @@ const IdentityCardPage = forwardRef(
                                         </strong>
                                         {student.name}
                                     </div>
-                                    <div>
-                                        <strong style={{ color: "blue", marginRight: "18px" }}>
-                                            Adm No:
-                                        </strong>
-                                        {student.AdmissionNo}
-                                    </div>
-                                    <div>
-                                        <strong style={{ color: "blue", marginRight: "30px" }}>
-                                            Class:
-                                        </strong>
-                                        {className}
+                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+                                        <div style={{ whiteSpace: 'nowrap', marginRight: '5px' }}>
+                                            <strong style={{ color: "blue", marginRight: "18px" }}>
+                                                Adm No:
+                                            </strong>
+                                            {student.AdmissionNo}
+                                        </div>
+
+                                        <div>
+                                            <strong style={{ color: "blue", marginRight: "8px" }}>
+                                                Class:
+                                            </strong>
+                                            {className}
+                                        </div>
                                     </div>
                                     <div>
                                         <strong style={{ color: "blue", marginRight: "31px" }}>

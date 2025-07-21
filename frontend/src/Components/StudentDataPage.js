@@ -2,11 +2,14 @@ import React, { forwardRef } from "react";
 
 const StudentDataPage = forwardRef(
   ({ selectedStudents, selectedFields, students, selectedYear, latestMaster }, ref) => {
-    const filteredStudents = students.filter((s) =>
-      selectedStudents.includes(s._id)
-    );
+    const filteredStudents = students
+      .filter((s) => selectedStudents.includes(s._id))
+      .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || "", undefined, { numeric: true }));
 
     const getFieldValue = (student, field) => {
+      if (field === "dob") {
+        return formatDate(student.dob); // Apply date formatting here
+      }
       if (field === "academicYear" || field === "class") {
         const yearEntry = student.academicYears.find(
           (y) => y.academicYear === selectedYear
@@ -27,6 +30,17 @@ const StudentDataPage = forwardRef(
       } else {
         return student[field] || "N/A";
       }
+    };
+
+    const formatDate = (dateInput) => {
+      if (!dateInput) return "";
+
+      const date = new Date(dateInput);
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
+      const year = date.getFullYear();
+
+      return `${day}-${month}-${year}`;
     };
 
     return (

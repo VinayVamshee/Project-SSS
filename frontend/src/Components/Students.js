@@ -416,10 +416,16 @@ export default function Students() {
 
     const [selectedFields, setSelectedFields] = useState(["name", "dob", "academicYear", "class"]);
     const printRef = useRef(null);
+    const identityRef = useRef(null);
 
     const handlePrint = useReactToPrint({
         contentRef: printRef,
         documentTitle: "Student_Data",
+    });
+
+    const handleIdentityPrint = useReactToPrint({
+        contentRef: identityRef,
+        documentTitle: "Identity_Cards",
     });
 
     const toggleField = (field) => {
@@ -430,7 +436,7 @@ export default function Students() {
 
     const handleDownloadExcel = () => {
         const selectedData = students
-            .filter((student) => selectedStudents.includes(student._id))
+            .filter((student) => selectedStudents.includes(student._id)).sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || "", undefined, { numeric: true }))
             .map((student) => {
                 const row = {};
 
@@ -657,7 +663,7 @@ export default function Students() {
                             </button>
                         </li>
                         <li>
-                            <button className="dropdown-item" onClick={handlePrint}><i class="fa-regular fa-id-card me-1"></i> Create ID Card</button>
+                            <button className="dropdown-item" onClick={handleIdentityPrint}><i class="fa-regular fa-id-card me-1"></i> Create ID Card</button>
                         </li>
                     </ul>
                 </div>
@@ -1586,7 +1592,7 @@ export default function Students() {
 
             <div style={{ display: 'none' }}>
                 <IdentityCard
-                    ref={printRef}
+                    ref={identityRef}
                     selectedStudents={selectedStudents}
                     students={students}
                     selectedYear={selectedYear}
