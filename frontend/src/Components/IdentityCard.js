@@ -68,8 +68,8 @@ const IdentityCardPage = forwardRef(
                                     <h5 style={{ marginBottom: "0px", fontWeight: 'bold', color: 'blue' }}>
                                         {latestMaster?.name || "SCHOOL NAME"}
                                     </h5>
-                                    <div style={{ marginTop: '-5px' }}>(www.vamsheetechnoschool.com)</div>
                                     <div style={{ marginTop: '-2px' }}>{latestMaster?.address || "School Address"}</div>
+                                    <div style={{ marginTop: '-5px' }}>(www.vamsheetechnoschool.com)</div>
                                     <div style={{ marginTop: '-2px' }} className="w-100 bg-dark text-light my-1 fw-bold">
                                         IDENTITY CARD: {selectedYear || "YYYY-YY"}
                                     </div>
