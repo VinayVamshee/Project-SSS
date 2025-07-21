@@ -1194,3 +1194,140 @@
         width: 0%;
     }
 }
+
+.IdentityCard-Page {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 50px;
+    justify-content: space-between;
+
+    font-family: 'Times New Roman', Times, serif;
+}
+
+.IdentityCard {
+    position: relative;
+    width: 53.98mm;
+    height: 85.6mm;
+    border: 1px solid #888;
+    box-sizing: border-box;
+    font-family: 'Times New Roman', Times, serif;
+    text-align: center;
+    padding-top: 7px;
+
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    align-items: center;
+
+    background-image: url('./Images/Last Year Card.jpg');
+    background-repeat: no-repeat;
+    background-position: top center;
+    background-size: cover;
+}
+
+.IdentityCard h5 {
+    font-size: 15px;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+.IdentityCard .school-info div {
+    font-size: 10px;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+.principal-signature {
+    position: absolute;
+    bottom: 11px;
+    right: 0px;
+    font-size: 9px;
+    font-weight: bold;
+    text-align: right;
+
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.principal-signature div {
+    font-size: 7px;
+}
+
+.principal-signature img {
+    width: 45px;
+    height: 22px;
+    transform: rotate(22deg);
+}
+
+.IdentityCard .contact {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 8px;
+    position: absolute;
+    bottom: 0px;
+    left: 0px;
+    right: 0px;
+}
+
+.IdentityCard .school-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0px;
+}
+
+.IdentityCard .student-id-image {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    object-fit: contain;
+    margin-bottom: 0px;
+}
+
+.IdentityCard .logo {
+    width: 50px;
+    margin-right: 0px;
+}
+
+.IdentityCard .student-information {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+
+    justify-content: center;
+    align-items: flex-start;
+
+    width: 100%;
+    padding: 5px;
+    margin-left: 10px;
+}
+
+.IdentityCard .student-information div {
+    text-align: start;
+    display: flex;
+    width: 100%;
+
+    font-size: 9px;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+.IdentityCard .student-information div strong {
+    font-size: 9px;
+    font-family: 'Times New Roman', Times, serif;
+}
+
+@media print {
+    button {
+        display: none;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+    }
+
+    .IdentityCard-Page {
+        page-break-after: always;
+    }
+
+    .IdentityCard {
+        break-inside: avoid;
+    }
+}

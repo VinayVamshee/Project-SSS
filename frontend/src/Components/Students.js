@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
 import { useReactToPrint } from "react-to-print";
 import StudentDataPage from "./StudentDataPage";
+import IdentityCard from "./IdentityCard";
 
 export default function Students() {
 
@@ -672,6 +673,9 @@ export default function Students() {
                             >
                                 <i className="fa-solid fa-user-xmark me-2 fa-sm"></i>Drop Student
                             </button>
+                        </li>
+                        <li>
+                            <button className="dropdown-item" onClick={handlePrint}><i class="fa-regular fa-id-card me-1"></i> Create ID Card</button>
                         </li>
                     </ul>
                 </div>
@@ -1592,6 +1596,16 @@ export default function Students() {
                     ref={printRef}
                     selectedStudents={selectedStudents}
                     selectedFields={selectedFields}
+                    students={students}
+                    selectedYear={selectedYear}
+                    latestMaster={latestMaster}
+                />
+            </div>
+
+            <div style={{ display: 'none' }}>
+                <IdentityCard
+                    ref={printRef}
+                    selectedStudents={selectedStudents}
                     students={students}
                     selectedYear={selectedYear}
                     latestMaster={latestMaster}
