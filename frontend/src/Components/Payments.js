@@ -1223,7 +1223,7 @@ export default function Payments() {
 
                         <div className="modal-footer">
                             <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" className="btn btn-primary" onClick={submitPayment} disabled={!canEdit || !canNoDeleteEdit}>Save Payment</button>
+                            <button type="button" className="btn btn-primary" onClick={submitPayment} disabled={!(canEdit || canNoDeleteEdit)}>Save Payment</button>
                         </div>
                     </div>
                 </div>
