@@ -103,8 +103,11 @@ const PrintQuestionPaper = forwardRef(
           )}
 
           {q.subQuestions?.length > 0 && (
-            <div className="mt-3" style={{ paddingLeft: '30px', }}>
-              {q.subQuestions.map((subQ, subIdx) => renderQuestionWithSub(subQ, subIdx, level + 1))}
+            <div className="mt-3" style={{ paddingLeft: '30px' }}>
+              {q.subQuestions
+                .filter(sub => selectedQuestions.includes(sub.questionId)) // ✅ only selected sub-questions will render
+                .map((subQ, subIdx) => renderQuestionWithSub(subQ, subIdx, level + 1))
+              }
             </div>
           )}
         </div>
