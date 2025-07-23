@@ -65,17 +65,17 @@ const IdentityCardPage = forwardRef(
                         return (
                             <div key={index} className="IdentityCard" style={{ fontSize: "8px" }}>
                                 <div className="school-info w-100">
-                                    <h5 style={{ marginBottom: "0px", fontWeight: 'bold', color: 'blue' }}>
+                                    <h5 style={{ marginBottom: "0px", fontWeight: 'bolder', color: 'blue' }}>
                                         {latestMaster?.name || "SCHOOL NAME"}
                                     </h5>
                                     <div style={{ marginTop: '-2px' }}>{latestMaster?.address || "School Address"}</div>
                                     <div style={{ marginTop: '-5px' }}>(www.vamsheetechnoschool.com)</div>
-                                    <div style={{ marginTop: '-2px' }} className="w-100 fw-bold">
+                                    <div style={{ marginTop: '-4px' }} className="w-100 fw-bold">
                                         IDENTITY CARD: {selectedYear || "YYYY-YY"}
                                     </div>
                                 </div>
 
-                                <div className="" style={{ textAlign: 'start', width: '100%' }}>
+                                <div className="" style={{ textAlign: 'start', width: '100%', marginTop: '-2px' }}>
 
                                     <img className="logo ms-1" src="https://i.ibb.co/cKvYrpsm/Screenshot-2023-10-21-085200.jpg" alt="..." />
                                     <img
@@ -92,20 +92,17 @@ const IdentityCardPage = forwardRef(
                                         </strong>
                                         {student.name}
                                     </div>
-                                    <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-                                        <div style={{ whiteSpace: 'nowrap', marginRight: '5px' }}>
-                                            <strong style={{ color: "blue", marginRight: "18px" }}>
-                                                Adm No:
-                                            </strong>
-                                            {student.AdmissionNo}
-                                        </div>
-
-                                        <div>
-                                            <strong style={{ color: "blue", marginRight: "8px" }}>
-                                                Class:
-                                            </strong>
-                                            {className}
-                                        </div>
+                                    <div>
+                                        <strong style={{ color: "blue", marginRight: "17px" }}>
+                                            Adm No:
+                                        </strong>
+                                        {student.AdmissionNo}
+                                    </div>
+                                    <div>
+                                        <strong style={{ color: "blue", marginRight: "30px" }}>
+                                            Class:
+                                        </strong>
+                                        {className}
                                     </div>
                                     <div>
                                         <strong style={{ color: "blue", marginRight: "31px" }}>
@@ -120,19 +117,19 @@ const IdentityCardPage = forwardRef(
                                         {fatherName}
                                     </div>
                                     <div>
-                                        <strong style={{ color: "blue", marginRight: "21px" }}>
+                                        <strong style={{ color: "blue", marginRight: "20px" }}>
                                             Mother:
                                         </strong>
                                         {motherName}
                                     </div>
                                     <div>
-                                        <strong style={{ color: "blue", marginRight: "23px" }}>
+                                        <strong style={{ color: "blue", marginRight: "22px" }}>
                                             Mobile:
                                         </strong>
                                         {phone}
                                     </div>
                                     <div>
-                                        <strong style={{ color: "blue", marginRight: "10px" }}>Address:</strong>
+                                        <strong style={{ color: "blue", marginRight: "7px" }}>Address:</strong>
                                         {address}
                                     </div>
                                 </div>

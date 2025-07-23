@@ -1237,11 +1237,11 @@
 
 .principal-signature {
     position: absolute;
-    bottom: 11px;
-    right: 0px;
+    bottom: 15px;
+    left: 0px;
     font-size: 9px;
     font-weight: bold;
-    text-align: right;
+    text-align: left;
 
     display: flex;
     flex-direction: column;
@@ -1253,18 +1253,21 @@
 }
 
 .principal-signature img {
-    width: 45px;
-    height: 22px;
+    width: 50px;
+    height: 28px;
     transform: rotate(22deg);
+    margin-bottom: -5px;
 }
 
 .IdentityCard .contact {
     font-family: 'Times New Roman', Times, serif;
     font-size: 8px;
+    font-weight: bold;
     position: absolute;
     bottom: 0px;
     left: 0px;
     right: 0px;
+    padding: 1px;
 }
 
 .IdentityCard .school-info {
@@ -1275,7 +1278,7 @@
 
 .IdentityCard .student-id-image {
     width: 80px;
-    height: 80px;
+    height: 90px;
     border-radius: 50%;
     object-fit: contain;
     margin-bottom: 0px;
@@ -1297,6 +1300,7 @@
     width: 100%;
     padding: 5px;
     margin-left: 10px;
+    margin-top: -7px;
 }
 
 .IdentityCard .student-information div {
