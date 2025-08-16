@@ -81,7 +81,7 @@ const DefaultStudentPDF = forwardRef(
                     <p>{latestMaster?.phoneNo || "Phone"} | {latestMaster?.email || "Email"}</p>
                 </div>
 
-                <h5>Student Data (Default Fields)</h5>
+                <h5>Student Data</h5>
 
                 <div className="custom-scroll-table">
                     <table className="table table-bordered">
