@@ -476,6 +476,93 @@ export default function Students() {
         XLSX.writeFile(workbook, "Student_Data.xlsx");
     };
 
+    const handleDownloadSummaryExcel = () => {
+        if (!students.length || !selectedYear) return;
+
+        // Only include students active in the selected year
+        const activeStudents = students.filter(s =>
+            s.academicYears.some(y => y.academicYear === selectedYear && y.status === "Active")
+        );
+
+        // Debug: log students with missing/invalid gender or category
+        activeStudents.forEach(s => {
+            if (!["Male", "Female"].includes(s.gender)) {
+                console.log("Invalid gender:", s.name, s.gender);
+            }
+            if (!["SC", "ST", "OBC", "General"].includes(s.category)) {
+                console.log("Invalid category:", s.name, s.category);
+            }
+        });
+
+        // Unique classes for selected year
+        const classList = Array.from(
+            new Set(
+                activeStudents.flatMap(s =>
+                    s.academicYears
+                        .filter(y => y.academicYear === selectedYear && y.status === "Active")
+                        .map(y => y.class)
+                )
+            )
+        ).sort();
+
+        const categories = ["SC", "ST", "OBC", "General", "Other"]; // Added Other for unexpected categories
+        const summaryData = [];
+
+        classList.forEach(cls => {
+            const row = { Class: cls };
+
+            categories.forEach(cat => {
+                const males = activeStudents.filter(
+                    s =>
+                        s.gender === "Male" &&
+                        (cat === "Other" ? !["SC", "ST", "OBC", "General"].includes(s.category) : s.category === cat) &&
+                        s.academicYears.some(y => y.academicYear === selectedYear && y.class === cls && y.status === "Active")
+                ).length;
+
+                const females = activeStudents.filter(
+                    s =>
+                        s.gender === "Female" &&
+                        (cat === "Other" ? !["SC", "ST", "OBC", "General"].includes(s.category) : s.category === cat) &&
+                        s.academicYears.some(y => y.academicYear === selectedYear && y.class === cls && y.status === "Active")
+                ).length;
+
+                row[`${cat} M`] = males;
+                row[`${cat} F`] = females;
+                row[`${cat} Total`] = males + females;
+            });
+
+            // Total per class
+            row["Total M"] = categories.reduce((sum, c) => sum + row[`${c} M`], 0);
+            row["Total F"] = categories.reduce((sum, c) => sum + row[`${c} F`], 0);
+            row["Total"] = row["Total M"] + row["Total F"];
+
+            summaryData.push(row);
+        });
+
+        // Grand Total
+        const grandTotal = { Class: "Grand Total" };
+        categories.forEach(c => {
+            grandTotal[`${c} M`] = summaryData.reduce((sum, r) => sum + r[`${c} M`], 0);
+            grandTotal[`${c} F`] = summaryData.reduce((sum, r) => sum + r[`${c} F`], 0);
+            grandTotal[`${c} Total`] = summaryData.reduce((sum, r) => sum + r[`${c} Total`], 0);
+        });
+        grandTotal["Total M"] = summaryData.reduce((sum, r) => sum + r["Total M"], 0);
+        grandTotal["Total F"] = summaryData.reduce((sum, r) => sum + r["Total F"], 0);
+        grandTotal["Total"] = summaryData.reduce((sum, r) => sum + r["Total"], 0);
+
+        summaryData.push(grandTotal);
+
+        // Create worksheet
+        const worksheet = XLSX.utils.json_to_sheet(summaryData, { origin: 1 });
+
+        // Add top header row
+        XLSX.utils.sheet_add_aoa(worksheet, [[`Student Summary: ${selectedYear}`]], { origin: "A1" });
+
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Student Summary");
+        XLSX.writeFile(workbook, `Student_Summary_${selectedYear}.xlsx`);
+    };
+
     // Get previous student object from already fetched students
     const previousStudentData = students.find(
         stu => stu._id === selectedStudent?.previousStudentId
@@ -1573,6 +1660,9 @@ export default function Students() {
                         <div className="modal-footer">
                             <button className="btn btn-success" onClick={handleDownloadExcel} data-bs-dismiss="modal" disabled={!canEdit}>
                                 Download Excel
+                            </button>
+                            <button className="btn btn-primary" onClick={handleDownloadSummaryExcel}>
+                                Download Student Summary
                             </button>
                             <button className="btn btn-primary" onClick={handlePrint} disabled={!canEdit}>
                                 Download PDF
