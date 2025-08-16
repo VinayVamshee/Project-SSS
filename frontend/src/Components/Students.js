@@ -1661,7 +1661,7 @@ export default function Students() {
                             <button className="btn btn-success" onClick={handleDownloadExcel} data-bs-dismiss="modal" disabled={!canEdit}>
                                 Download Excel
                             </button>
-                            <button className="btn btn-primary" onClick={handleDownloadSummaryExcel}>
+                            <button className="btn btn-success" onClick={handleDownloadSummaryExcel}>
                                 Download Student Summary
                             </button>
                             <button className="btn btn-primary" onClick={handlePrint} disabled={!canEdit}>
