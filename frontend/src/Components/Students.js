@@ -6,6 +6,7 @@ import * as XLSX from "xlsx";
 import { useReactToPrint } from "react-to-print";
 import StudentDataPage from "./StudentDataPage";
 import IdentityCard from "./IdentityCard";
+import DefaultStudentPDF from "./DefaultStudentPDF";
 
 export default function Students() {
 
@@ -205,7 +206,6 @@ export default function Students() {
             setSelectAllChecked(false);
         }
     }, [selectedStudents, filteredStudents]);
-
 
     const [passToSelectedYear, setPassToSelectedYear] = useState("");
     const [passToSelectedClass, setPassToSelectedClass] = useState("");
@@ -417,6 +417,7 @@ export default function Students() {
     const [selectedFields, setSelectedFields] = useState(["name", "dob", "academicYear", "class"]);
     const printRef = useRef(null);
     const identityRef = useRef(null);
+    const defaultPDF = useRef(null);
 
     const handlePrint = useReactToPrint({
         contentRef: printRef,
@@ -426,6 +427,11 @@ export default function Students() {
     const handleIdentityPrint = useReactToPrint({
         contentRef: identityRef,
         documentTitle: "Identity_Cards",
+    });
+
+    const handleDeafultPDFPrint = useReactToPrint({
+        contentRef: defaultPDF,
+        documentTitle: "Student_Data",
     });
 
     const toggleField = (field) => {
@@ -1571,6 +1577,57 @@ export default function Students() {
                             <button className="btn btn-primary" onClick={handlePrint} disabled={!canEdit}>
                                 Download PDF
                             </button>
+                            <button
+                                className="btn btn-info"
+                                onClick={() => {
+                                    // Send all possible fields (basic + additional)
+                                    const allFields = [
+                                        "name",
+                                        "nameHindi",
+                                        "dob",
+                                        "dobInWords",
+                                        "gender",
+                                        "aadharNo",
+                                        "bloodGroup",
+                                        "category",
+                                        "AdmissionNo",
+                                        "Caste",
+                                        "CasteHindi",
+                                        "FreeStud",
+                                        "academicYear",
+                                        "class",
+                                        "status",
+                                        "ADate",
+                                        "AClass",
+                                        "StudentID",
+                                        "fatherName",
+                                        "motherName",
+                                        "fatherPhone",
+                                        "address",
+                                        "RollNo",
+                                        "permanentAddress",
+                                        "admissionDate",
+                                        // Add all additionalInfo keys dynamically
+                                        ...Array.from(
+                                            new Set(
+                                                students.flatMap((s) => s.additionalInfo || []).map((info) => `additional_${info.key}`)
+                                            )
+                                        )
+                                    ];
+
+                                    // Set selected fields to everything
+                                    setSelectedFields(allFields);
+
+                                    // Trigger print using the default PDF ref
+                                    setTimeout(() => {
+                                        handleDeafultPDFPrint();
+                                    }, 100);
+                                }}
+                                disabled={!canEdit}
+                            >
+                                Download Default PDF
+                            </button>
+
                             <button className="btn btn-secondary" data-bs-dismiss="modal">
                                 Cancel
                             </button>
@@ -1594,6 +1651,16 @@ export default function Students() {
                 <IdentityCard
                     ref={identityRef}
                     selectedStudents={selectedStudents}
+                    students={students}
+                    selectedYear={selectedYear}
+                    latestMaster={latestMaster}
+                />
+            </div>
+
+            <div style={{ display: "none" }}>
+                <DefaultStudentPDF
+                    ref={defaultPDF}
+                    selectedStudents={selectedStudents} // already filtered
                     students={students}
                     selectedYear={selectedYear}
                     latestMaster={latestMaster}

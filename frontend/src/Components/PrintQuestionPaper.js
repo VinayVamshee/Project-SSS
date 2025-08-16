@@ -32,27 +32,45 @@ const PrintQuestionPaper = forwardRef(
 
       return (
         <div key={q.questionId || `${idx}-${level}`} className="mb-4" style={{ marginLeft: level * 32 }}>
-          <div className="d-flex justify-content-between" style={{ fontWeight: 'bold', marginBottom: '6px' }}>
-            <span>{qNumber}. {q.questionText}</span>
-            {q.questionMarks && <span>({q.questionMarks} Marks)</span>}
-          </div>
-          {q.questionImage && (
-            <div style={{ marginBottom: '12px' }}>
-              <img
-                src={q.questionImage}
-                alt="Question"
-                style={{
-                  maxHeight: isFullWidth ? '400px' : '100px',
-                  width: isFullWidth ? '100%' : 'auto',
-                  objectFit: 'contain',
-                  marginTop: '4px',
-                  display: 'block',       // ⬅️ Forces block display
-                  paddingLeft: '30px',          // ⬅️ Ensures left-aligned
-                  marginRight: 'auto'     // ⬅️ Prevents centering
-                }}
-              />
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: '40px 1fr 85px', // left col for QNo, middle for text, right for marks
+              columnGap: '8px',
+              alignItems: 'start',
+              marginBottom: '6px',
+            }}
+          >
+            {/* Question number */}
+            <div style={{ whiteSpace: 'nowrap', fontWeight: 'bold', }}>{qNumber}.</div>
+
+            {/* Question text wraps only here */}
+            <div style={{ textAlign: "justify" }}>{q.questionText}
+              {q.questionImage && (
+                <div style={{ marginBottom: '12px', gridColumn: '3 / 4' }}>
+                  <img
+                    src={q.questionImage}
+                    alt="Question"
+                    style={{
+                      maxHeight: isFullWidth ? '400px' : '120px',
+                      width: isFullWidth ? '100%' : 'auto',
+                      objectFit: 'contain',
+                      marginTop: '4px',
+                      display: 'block'
+                    }}
+                  />
+                </div>
+              )}
             </div>
-          )}
+
+            {/* Marks aligned to right, no wrapping under text */}
+            {q.questionMarks && (
+              <div style={{ textAlign: 'right', whiteSpace: 'nowrap', fontWeight: 'bold', }}>
+                ({q.questionMarks} Marks)
+              </div>
+            )}
+          </div>
+
           {q.questionType === 'MCQ' && (
             <div className="d-flex flex-wrap mt-2" style={{ gap: '12px', paddingLeft: '30px', }}>
               {q.options.map((opt, i) => (
@@ -119,7 +137,7 @@ const PrintQuestionPaper = forwardRef(
         ref={ref}
         className="print-container"
         style={{
-          padding: '48px',
+          padding: '30px 20px',
           fontFamily: '"Times New Roman", Times, serif',
           fontSize: '16px',
           lineHeight: '1.6'

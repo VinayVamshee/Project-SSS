@@ -34,7 +34,7 @@ export default function Payments() {
     const [classFeesData, setClassFeesData] = useState([]);
     const [selectedYear, setSelectedYear] = useState("");
     const [academicYears, setAcademicYears] = useState([]);
-    const [selectedClass, setSelectedClass] = useState("");
+    const [selectedClass, setSelectedClass] = useState("Class-1");
     const [classes, setClasses] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
 
@@ -130,7 +130,6 @@ export default function Payments() {
         setSelectAllChecked(!selectAllChecked);
     };
 
-
     const predefinedOptions = {
         gender: ["Male", "Female"],
         category: ["General", "OBC", "SC", "ST", "EWS"],
@@ -139,92 +138,163 @@ export default function Payments() {
         "Academic - status": ["Active", "Inactive"], // You can update this as per your actual statuses
     };
 
+    // eslint-disable-next-line
+    const [receiptSearch, setReceiptSearch] = useState("");
+    const [receiptSortOrder, setReceiptSortOrder] = useState("desc"); // "desc" = latest first, "asc" = oldest first
+
+    const normalize = (v) => String(v ?? "").toLowerCase().replace(/\s+/g, "");
+    const keyMatch = (book, num, needle) => {
+        const combo = `${book}-${num}`;
+        return (
+            normalize(num).includes(normalize(needle)) ||
+            normalize(combo).includes(normalize(needle))
+        );
+    };
+
+    const getPaymentsFor = (studentId, yearFilter) => {
+        const rec = (feesData || []).find((f) => f.studentId === studentId);
+        if (!rec) return [];
+        const yrs = rec.academicYears || [];
+        const pickedYears = yearFilter ? yrs.filter((y) => y.academicYear === yearFilter) : yrs;
+        return pickedYears.flatMap((y) => y.payments || []);
+    };
+
     // Filter students based on selected year, class, and search
-    const filteredStudents = students.filter((student) => {
-        // ✅ Year + Class match in the same academicYear object
-        const yearAndClassMatch =
-            (selectedYear === "" && selectedClass === "") ||
-            student.academicYears?.some(
-                (year) =>
-                    (selectedYear === "" || year.academicYear === selectedYear) &&
-                    (selectedClass === "" || String(year.class) === String(selectedClass))
-            );
-
-        // ✅ Status match in selectedYear only
-        const statusMatch =
-            statusFilter === "" ||
-            student.academicYears?.some(
-                (year) =>
-                    year.academicYear === selectedYear && year.status === statusFilter
-            );
-
-        if (!yearAndClassMatch || !statusMatch) return false;
-
-        // ✅ Extra filters (like caste, gender, etc.)
-        for (const { field, value } of filters) {
-            let fieldValue = null;
-
-            if (field.startsWith("Additional - ")) {
-                const key = field.split(" - ")[1];
-                const infoObj = student.additionalInfo?.find(
-                    (info) => info.key === key
+    const filteredStudents = students
+        .filter((student) => {
+            // ✅ Year + Class match in the same academicYear object
+            const yearAndClassMatch =
+                (selectedYear === "" && selectedClass === "") ||
+                student.academicYears?.some(
+                    (year) =>
+                        (selectedYear === "" || year.academicYear === selectedYear) &&
+                        (selectedClass === "" || String(year.class) === String(selectedClass))
                 );
-                fieldValue = infoObj?.value;
 
-            } else if (field.startsWith("Academic - ")) {
-                const subField = field.split(" - ")[1];
-
-                const selectedYearObj = student.academicYears?.find(
-                    (year) => year.academicYear === selectedYear
+            // ✅ Status match in selectedYear only
+            const statusMatch =
+                statusFilter === "" ||
+                student.academicYears?.some(
+                    (year) => year.academicYear === selectedYear && year.status === statusFilter
                 );
-                fieldValue = selectedYearObj?.[subField];
 
-            } else {
-                fieldValue = student[field];
+            if (!yearAndClassMatch || !statusMatch) return false;
+
+            // ✅ Receipt filter (if user typed receipt number/book in search)
+            if (receiptSearch?.trim()) {
+                const payments = getPaymentsFor(student._id, selectedYear || null);
+                const hasReceipt = payments.some((p) =>
+                    keyMatch(p.receiptBookName, p.receiptNumber, receiptSearch)
+                );
+                if (!hasReceipt) return false;
             }
 
-            if (!fieldValue) return false;
+            // ✅ Extra filters (caste, gender, academic fields, etc.)
+            for (const { field, value } of filters) {
+                let fieldValue = null;
 
-            // Handle date range
-            if (typeof value === "string" && value.includes(" to ")) {
-                const [fromStr, toStr] = value.split(" to ");
-                const fromDate = new Date(fromStr);
-                const toDate = new Date(toStr);
-                const actualDate = new Date(fieldValue);
+                if (field.startsWith("Additional - ")) {
+                    const key = field.split(" - ")[1];
+                    const infoObj = student.additionalInfo?.find((info) => info.key === key);
+                    fieldValue = infoObj?.value;
 
-                if (
-                    isNaN(fromDate.getTime()) ||
-                    isNaN(toDate.getTime()) ||
-                    isNaN(actualDate.getTime()) ||
-                    actualDate < fromDate ||
-                    actualDate > toDate
-                ) {
-                    return false;
+                } else if (field.startsWith("Academic - ")) {
+                    const subField = field.split(" - ")[1];
+                    const selectedYearObj = student.academicYears?.find(
+                        (year) => year.academicYear === selectedYear
+                    );
+                    fieldValue = selectedYearObj?.[subField];
+
+                } else if (field.startsWith("Receipt - ")) {
+                    const payments = getPaymentsFor(student._id, selectedYear || null);
+
+                    if (field === "Receipt - Number") {
+                        const found = payments.some((p) =>
+                            String(p.receiptNumber).includes(String(value))
+                        );
+                        if (!found) return false;
+                    }
+
+                    if (field === "Receipt - Book+Number") {
+                        const found = payments.some((p) =>
+                            `${p.receiptBookName}-${p.receiptNumber}`
+                                .toLowerCase()
+                                .includes(String(value).toLowerCase())
+                        );
+                        if (!found) return false;
+                    }
+
+                    continue; // ✅ skip normal checks for receipt filters
+                } else {
+                    fieldValue = student[field];
                 }
-            } else {
-                // Normal string match
-                if (typeof fieldValue === "string") {
+
+                if (!fieldValue) return false;
+
+                // Date range support
+                if (typeof value === "string" && value.includes(" to ")) {
+                    const [fromStr, toStr] = value.split(" to ");
+                    const fromDate = new Date(fromStr);
+                    const toDate = new Date(toStr);
+                    const actualDate = new Date(fieldValue);
+
+                    if (
+                        isNaN(fromDate.getTime()) ||
+                        isNaN(toDate.getTime()) ||
+                        isNaN(actualDate.getTime()) ||
+                        actualDate < fromDate ||
+                        actualDate > toDate
+                    ) {
+                        return false;
+                    }
+                } else if (typeof fieldValue === "string") {
+                    // Normal string match
                     const val = value.toLowerCase();
                     const actual = fieldValue.toLowerCase();
 
-                    // Use exact match for known discrete fields
                     const exactMatchFields = ["gender", "status", "caste", "religion", "bloodGroup"];
-
                     const isExactField = field.startsWith("Academic - ")
                         ? exactMatchFields.includes(field.split(" - ")[1])
                         : exactMatchFields.includes(field);
 
-                    if (isExactField) {
-                        if (actual !== val) return false;
-                    } else {
-                        if (!actual.includes(val)) return false;
-                    }
+                    if (isExactField ? actual !== val : !actual.includes(val)) return false;
                 }
             }
-        }
 
-        return true;
-    }).sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || "", undefined, { numeric: true }));
+            return true;
+        })
+        // ✅ Sort by latest/oldest receipt (from feesData → payments)
+        .sort((a, b) => {
+            const paymentsA = getPaymentsFor(a._id, selectedYear || null);
+            const paymentsB = getPaymentsFor(b._id, selectedYear || null);
+
+            const timesA = paymentsA.map((p) => new Date(p.date).getTime()).filter((t) => Number.isFinite(t));
+            const timesB = paymentsB.map((p) => new Date(p.date).getTime()).filter((t) => Number.isFinite(t));
+
+            const keyA = timesA.length ? (receiptSortOrder === "asc" ? Math.min(...timesA) : Math.max(...timesA)) : null;
+            const keyB = timesB.length ? (receiptSortOrder === "asc" ? Math.min(...timesB) : Math.max(...timesB)) : null;
+
+            // Push students without receipts to bottom
+            if (keyA === null && keyB === null) {
+                // Final fallback to AdmissionNo for stability
+                return (a.AdmissionNo || "").localeCompare(b.AdmissionNo || "", undefined, { numeric: true });
+            }
+            if (keyA === null) return 1;
+            if (keyB === null) return -1;
+
+            if (keyA !== keyB) return receiptSortOrder === "asc" ? keyA - keyB : keyB - keyA;
+
+            // Tie-breaker by receipt number (max/min)
+            const numsA = paymentsA.map((p) => Number(p.receiptNumber) || 0);
+            const numsB = paymentsB.map((p) => Number(p.receiptNumber) || 0);
+            const numA = numsA.length ? (receiptSortOrder === "asc" ? Math.min(...numsA) : Math.max(...numsA)) : 0;
+            const numB = numsB.length ? (receiptSortOrder === "asc" ? Math.min(...numsB) : Math.max(...numsB)) : 0;
+
+            if (numA !== numB) return receiptSortOrder === "asc" ? numA - numB : numB - numA;
+
+            // Last fallback
+            return (a.AdmissionNo || "").localeCompare(b.AdmissionNo || "", undefined, { numeric: true });
+        });
 
 
     const handleGeneratePdf = (studentFees, payment, student, selectedYear, paidFees, latestMaster) => {
@@ -619,6 +689,17 @@ export default function Payments() {
                     </select>
                 </div>
 
+                 {/* Sort by Receipt */}
+                <select
+                    className="form-select form-select-sm"
+                    style={{ width: "160px" }}
+                    value={receiptSortOrder}
+                    onChange={(e) => setReceiptSortOrder(e.target.value)}
+                >
+                    <option value="desc">Latest</option>
+                    <option value="asc">Oldest</option>
+                </select>
+
                 {/* Filtered Count */}
                 <div className="filteredCount d-flex align-items-center btn fw-bold text-secondary border shadow" style={{ backgroundColor: 'white' }}>
                     {filteredStudents.length}
@@ -641,6 +722,12 @@ export default function Payments() {
                         ].map((field, index) => (
                             <option key={`basic-${index}`} value={field}>{field}</option>
                         ))}
+                    </optgroup>
+
+                    {/* Receipt Fields */}
+                    <optgroup label="Receipt Fields">
+                        <option value="Receipt - Number">Receipt Number</option>
+                        {/* <option value="Receipt - Book+Number">Book + Receipt Number</option> */}
                     </optgroup>
 
                     {/* Academic Fields */}

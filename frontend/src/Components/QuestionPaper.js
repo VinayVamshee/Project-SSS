@@ -3,6 +3,7 @@ import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 import PrintQuestionPaper from './PrintQuestionPaper';
+import DownloadQuestionBank from './DownloadQuestionBank';
 
 export default function QuestionManager() {
     const printRef = useRef(null);
@@ -412,7 +413,7 @@ export default function QuestionManager() {
         })
         // Apply filters: search, type, marks
         .filter(q => {
-            const textMatch = q.questionText.toLowerCase().includes(searchText.toLowerCase());
+            const textMatch = q.questionText.toLowerCase().includes(searchText.toLowerCase()) || (q.questionId && q.questionId.includes(searchText));
             const marksMatch = filterMarks === '' || q.questionMarks === filterMarks;
 
             const typeMatch =
@@ -663,22 +664,22 @@ export default function QuestionManager() {
         );
     };
 
-    // const getAllQuestionIds = (questions) => {
-    //     const ids = [];
+    const getAllQuestionIds = (questions) => {
+        const ids = [];
 
-    //     const collectIds = (list) => {
-    //         list.forEach(q => {
-    //             if (q.questionId) ids.push(q.questionId);
-    //             if (q.subQuestions?.length > 0) {
-    //                 collectIds(q.subQuestions);
-    //             }
-    //         });
-    //     };
+        const collectIds = (list) => {
+            list.forEach(q => {
+                if (q.questionId) ids.push(q.questionId);
+                if (q.subQuestions?.length > 0) {
+                    collectIds(q.subQuestions);
+                }
+            });
+        };
 
-    //     collectIds(questions);
-    //     console.log('All Question IDs:', ids);
-    //     return ids;
-    // };
+        collectIds(questions);
+        console.log('All Question IDs:', ids);
+        return ids;
+    };
 
     // Place this function at the top of your component file
 
@@ -897,6 +898,13 @@ export default function QuestionManager() {
     const [questionPaperSections, setQuestionPaperSections] = useState([]);
     const [activeSectionIndex, setActiveSectionIndex] = useState(null);
 
+    const printRefFiltered = useRef(null);
+
+    const handleDownloadFiltered = useReactToPrint({
+        contentRef: printRefFiltered,
+        documentTitle: "Filtered_Question_Bank",
+    });
+
     return (
         <div className="QuestionPaper py-2">
             <div className="d-flex align-items-center">
@@ -939,30 +947,6 @@ export default function QuestionManager() {
                     </select>
                 </div>
 
-                {/* Select All */}
-                {/* <div className=" selectAll">
-                    <input
-                        type="checkbox"
-                        checked={
-                            selectedQuestions.length > 0 &&
-                            selectedQuestions.length === getAllQuestionIds(questions).length
-                        }
-                        onChange={(e) => {
-                            const allIds = getAllQuestionIds(questions);
-                            console.log('Select All Clicked:', e.target.checked);
-                            if (e.target.checked) {
-                                setSelectedQuestions(allIds);
-                            } else {
-                                setSelectedQuestions([]);
-                            }
-                        }}
-                    />
-
-                    <label className="" htmlFor="selectAllCheckbox">
-                        Select All
-                    </label>
-                </div> */}
-
                 {/* Buttons */}
                 <button className="btn" data-bs-toggle="modal" data-bs-target="#addQuestionModal" disabled={!canEdit}>
                     <i className="fas fa-plus me-2"></i>Add Question
@@ -972,6 +956,10 @@ export default function QuestionManager() {
                 </button>
                 <button className="btn" data-bs-toggle="modal" data-bs-target="#createQuestionPaperModal" >
                     ➕ Create Question Paper
+                </button>
+                <button className="btn" onClick={() => handleDownloadFiltered()}>
+                    <i className="fa-solid fa-download me-2"></i>
+                    Download Filtered Questions
                 </button>
                 {/* <button className="btn" data-bs-toggle="modal" data-bs-target="#selectInstructionsModal">
                     <i className="fas fa-sliders-h me-2"></i>Select Instructions & Download
@@ -1050,6 +1038,30 @@ export default function QuestionManager() {
                                         ➕ Add Section
                                     </button>
                                 </div>
+
+                                {/* Select All */}
+                                <div className="selectAll px-2 ms-2" style={{ width: 'fit-content' }}>
+                                    <input
+                                        type="checkbox"
+                                        checked={
+                                            selectedQuestions.length > 0 &&
+                                            selectedQuestions.length === getAllQuestionIds(questions).length
+                                        }
+                                        onChange={(e) => {
+                                            const allIds = getAllQuestionIds(questions);
+                                            console.log('Select All Clicked:', e.target.checked);
+                                            if (e.target.checked) {
+                                                setSelectedQuestions(allIds);
+                                            } else {
+                                                setSelectedQuestions([]);
+                                            }
+                                        }}
+                                    />
+
+                                    <label className="" htmlFor="selectAllCheckbox">
+                                        Select All
+                                    </label>
+                                </div>
                             </div>
 
                             {/* STEP 3: Filter + Question List */}
@@ -1061,12 +1073,12 @@ export default function QuestionManager() {
                                         <span className="badge bg-secondary ms-2">{filteredAndSortedQuestions.length}</span>
                                     </h6>
 
-                                    <div className="row mb-3 SearchFilter">
+                                    <div className="row mb-3 ">
                                         <div className="col-md-4">
                                             <input
                                                 type="text"
                                                 className="form-control SearchStudent border"
-                                                placeholder="Search question text..."
+                                                placeholder="Search question text or ID..."
                                                 value={searchText}
                                                 onChange={(e) => setSearchText(e.target.value)}
                                             />
@@ -1080,7 +1092,7 @@ export default function QuestionManager() {
                                                 <option value="sub-question">Sub-Questions</option>
                                             </select>
                                         </div>
-                                        <div className="col-md-2">
+                                        <div className="col-md-1">
                                             <input
                                                 type="number"
                                                 className="form-control SearchStudent border"
@@ -1095,6 +1107,7 @@ export default function QuestionManager() {
                                                 <option value="asc">Sort: Low to High</option>
                                             </select>
                                         </div>
+
                                     </div>
 
                                     <div className="questions-list">
@@ -1680,7 +1693,6 @@ export default function QuestionManager() {
                 </div>
             </div>
 
-
             <div className="modal fade" id="selectInstructionsModal" tabIndex="-1">
                 <div className="modal-dialog modal-xl modal-dialog-scrollable">
                     <div className="modal-content border border-2">
@@ -2070,6 +2082,17 @@ export default function QuestionManager() {
                     instructions={selectedInstructions}
                     selectedClass={classes.find(c => c._id === selectedClass)?.class || ''}
                     selectedSubject={filteredSubjects.find(s => s._id === selectedSubject)?.name || ''}
+                />
+            </div>
+
+            {/* Hidden printable component */}
+            <div className="d-none">
+                <DownloadQuestionBank
+                    ref={printRefFiltered}
+                    questions={filteredAndSortedQuestions}
+                    selectedClass={classes.find(c => c._id === selectedClass)?.class || ""}
+                    selectedSubject={filteredSubjects.find(s => s._id === selectedSubject)?.name || ""}
+                    selectedChapter={chapterList.find(ch => ch._id === selectedChapter)?.name || ""}
                 />
             </div>
 
