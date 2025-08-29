@@ -109,7 +109,8 @@ export default function QuestionManager() {
     };
 
     // Allow full access if QP Editor or Admin
-    const canEdit = userType === 'qp-editor' || userType === 'admin';
+    const canEdit = userType === "admin";         // Only Admin can edit everything
+    const canQpEdit = userType === "qp-editor";  // Only QP Editor can edit QPs
 
     const uploadToImgBB = async (file) => {
         const formData = new FormData();
@@ -704,7 +705,7 @@ export default function QuestionManager() {
                         data-bs-toggle="modal"
                         data-bs-target="#editQuestionModal"
                         onClick={() => openEditModal(q, i)}
-                        disabled={!canEdit}
+                       disabled={!(canEdit || canQpEdit)}
                     >
                         <i className="fas fa-edit"></i>
                     </button>
@@ -948,16 +949,16 @@ export default function QuestionManager() {
                 </div>
 
                 {/* Buttons */}
-                <button className="btn" data-bs-toggle="modal" data-bs-target="#addQuestionModal" disabled={!canEdit}>
+                <button className="btn" data-bs-toggle="modal" data-bs-target="#addQuestionModal" disabled={!(canEdit || canQpEdit)}>
                     <i className="fas fa-plus me-2"></i>Add Question
                 </button>
-                <button className="btn" type="button" data-bs-toggle="collapse" data-bs-target="#addInstructionCollapse" aria-expanded="false" aria-controls="addInstructionCollapse" disabled={!canEdit}>
+                <button className="btn" type="button" data-bs-toggle="collapse" data-bs-target="#addInstructionCollapse" aria-expanded="false" aria-controls="addInstructionCollapse" disabled={!(canEdit || canQpEdit)}>
                     <i className="fas fa-book me-2"></i>Add Instruction Template
                 </button>
                 <button className="btn" data-bs-toggle="modal" data-bs-target="#createQuestionPaperModal" >
                     ➕ Create Question Paper
                 </button>
-                <button className="btn" onClick={() => handleDownloadFiltered()} disabled={!canEdit}>
+                <button className="btn" onClick={() => handleDownloadFiltered()} disabled={!(canEdit || canQpEdit)}>
                     <i className="fa-solid fa-download me-2"></i>
                     Download Question Bank
                 </button>
@@ -1653,7 +1654,7 @@ export default function QuestionManager() {
                                                     <small className="text-muted">{template.examTitle}</small>
                                                 </div>
                                                 <div className="btn-group btn-group-sm">
-                                                    <button className="btn btn-outline-primary" onClick={() => handleEditTemplate(template)} disabled={!canEdit}>
+                                                    <button className="btn btn-outline-primary" onClick={() => handleEditTemplate(template)} disabled={!(canEdit || canQpEdit)}>
                                                         <i className="fas fa-edit me-1"></i>Edit
                                                     </button>
                                                     <button className="btn btn-outline-danger" onClick={() => handleDeleteTemplate(template._id)} disabled={!canEdit}>
@@ -1870,7 +1871,7 @@ export default function QuestionManager() {
 
                         <div className="modal-footer bg-light border-top">
                             <button className="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                            <button className="btn btn-primary" onClick={handlePrint} disabled={!canEdit}>
+                            <button className="btn btn-primary" onClick={handlePrint} disabled={!(canEdit || canQpEdit)}>
                                 <i className="fas fa-download me-1"></i>Download
                             </button>
                         </div>
