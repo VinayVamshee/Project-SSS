@@ -957,7 +957,7 @@ export default function QuestionManager() {
                 <button className="btn" data-bs-toggle="modal" data-bs-target="#createQuestionPaperModal" >
                     ➕ Create Question Paper
                 </button>
-                <button className="btn" onClick={() => handleDownloadFiltered()}>
+                <button className="btn" onClick={() => handleDownloadFiltered()} disabled={!canEdit}>
                     <i className="fa-solid fa-download me-2"></i>
                     Download Question Bank
                 </button>
