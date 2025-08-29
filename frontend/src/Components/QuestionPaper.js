@@ -959,7 +959,7 @@ export default function QuestionManager() {
                 </button>
                 <button className="btn" onClick={() => handleDownloadFiltered()}>
                     <i className="fa-solid fa-download me-2"></i>
-                    Download Filtered Questions
+                    Download Question Bank
                 </button>
                 {/* <button className="btn" data-bs-toggle="modal" data-bs-target="#selectInstructionsModal">
                     <i className="fas fa-sliders-h me-2"></i>Select Instructions & Download

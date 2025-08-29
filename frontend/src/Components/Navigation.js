@@ -52,9 +52,24 @@ export default function Navigation() {
         localStorage.setItem("theme", theme);
     }, [theme]);
 
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        if (token) {
+            try {
+                const decoded = jwtDecode(token);
+                setLoggedInUser(decoded.username);
+            } catch (e) {
+                console.error("Invalid token", e);
+                setLoggedInUser("");
+            }
+        }
+    }, []);
+
     const toggleSidebar = () => {
         setIsCollapsed(prev => !prev);
     };
+
+    const [loggedInUser, setLoggedInUser] = useState(localStorage.getItem("username") || "");
 
     const handleLogin = async (e) => {
         e.preventDefault();
@@ -165,45 +180,48 @@ export default function Navigation() {
                 </div>
 
                 {!isCollapsed && (
-                    <div className="d-flex my-5">
-                        {localStorage.getItem("token") ? (
-                            <>
-                                {/* Show Register only if admin */}
-                                {localStorage.getItem("userType") === "admin" && (
-                                    <button
-                                        type="button"
-                                        className="btn btn-save mx-2"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#RegisterModal"
-                                    >
-                                        Register
-                                    </button>
-                                )}
+                    <div>
+                        <div className="d-flex mt-5">
+                            {localStorage.getItem("token") ? (
+                                <>
+                                    {/* Show Register only if admin */}
+                                    {localStorage.getItem("userType") === "admin" && (
+                                        <button
+                                            type="button"
+                                            className="btn btn-save mx-2"
+                                            data-bs-toggle="modal"
+                                            data-bs-target="#RegisterModal"
+                                        >
+                                            Register
+                                        </button>
+                                    )}
 
-                                {/* Always show logout if logged in */}
+                                    {/* Always show logout if logged in */}
+                                    <button
+                                        className="btn btn-danger btn-sm mx-2"
+                                        onClick={() => {
+                                            localStorage.removeItem("token");
+                                            localStorage.removeItem("userType");
+                                            localStorage.removeItem("username");
+                                            window.location.href = "/login";
+                                        }}
+                                    >
+                                        Logout
+                                    </button>
+                                </>
+                            ) : (
+                                // Show login if not logged in
                                 <button
-                                    className="btn btn-danger btn-sm mx-2"
-                                    onClick={() => {
-                                        localStorage.removeItem("token");
-                                        localStorage.removeItem("userType");
-                                        localStorage.removeItem("username");
-                                        window.location.href = "/login";
-                                    }}
+                                    type="button"
+                                    className="btn btn-save mx-2"
+                                    data-bs-toggle="modal"
+                                    data-bs-target="#LoginModal"
                                 >
-                                    Logout
+                                    Login
                                 </button>
-                            </>
-                        ) : (
-                            // Show login if not logged in
-                            <button
-                                type="button"
-                                className="btn btn-save mx-2"
-                                data-bs-toggle="modal"
-                                data-bs-target="#LoginModal"
-                            >
-                                Login
-                            </button>
-                        )}
+                            )}
+                        </div>
+                        <div className="d-flex justify-content-center btn btn-info mt-3"> {loggedInUser}</div>
                     </div>
                 )}
 

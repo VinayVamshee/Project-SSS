@@ -92,10 +92,15 @@ const PrintQuestionPaper = forwardRef(
           )}
 
           {q.questionType === 'Match' && (
-            <div className="mt-3 d-flex flex-column gap-2" style={{ paddingLeft: '30px', }}>
+            <div className="mt-3 d-flex flex-column gap-2" style={{ paddingLeft: '30px' }}>
               {q.pairs.map((pair, i) => (
-                <div key={i} className="d-flex justify-content-between align-items-center">
-                  <div className="d-flex align-items-center" style={{ width: '45%' }}>
+                <div
+                  key={i}
+                  className="d-flex justify-content-center align-items-center"
+                  style={{ gap: '150px' }} // <-- fixed gap between columns
+                >
+                  {/* Left Side */}
+                  <div className="d-flex align-items-center" style={{ width: 'auto' }}>
                     {pair.leftImage && (
                       <img
                         src={pair.leftImage}
@@ -105,7 +110,9 @@ const PrintQuestionPaper = forwardRef(
                     )}
                     <span>{pair.leftText}</span>
                   </div>
-                  <div className="d-flex align-items-center justify-content-end" style={{ width: '45%' }}>
+
+                  {/* Right Side */}
+                  <div className="d-flex align-items-center" style={{ width: 'auto' }}>
                     <span>{pair.rightText}</span>
                     {pair.rightImage && (
                       <img
