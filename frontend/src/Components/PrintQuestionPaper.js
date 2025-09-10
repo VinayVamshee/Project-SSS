@@ -31,18 +31,18 @@ const PrintQuestionPaper = forwardRef(
       const isFullWidth = !!fullWidthImagesMap[q.questionId]; // ✅ image width check
 
       return (
-        <div key={q.questionId || `${idx}-${level}`} className="mb-4" style={{ marginLeft: level * 32 }}>
+        <div key={q.questionId || `${idx}-${level}`} className="mb-4" style={{ marginLeft: level * 32, lineHeight: isMain ? "1.3" : "1.3" }}>
           <div
             style={{
               display: 'grid',
-              gridTemplateColumns: '40px 1fr 85px', // left col for QNo, middle for text, right for marks
+              gridTemplateColumns: `${isMain ? "45px" : "30px"} 1fr 60px`,  // left col for QNo, middle for text, right for marks
               columnGap: '8px',
               alignItems: 'start',
               marginBottom: '6px',
             }}
           >
             {/* Question number */}
-            <div style={{ whiteSpace: 'nowrap', fontWeight: 'bold', }}>{qNumber}.</div>
+            <div style={{ whiteSpace: 'nowrap', fontWeight: 'bold', }}>{qNumber} {isMain ? '.' : null} </div>
 
             {/* Question text wraps only here */}
             <div style={{ textAlign: "justify" }}>{q.questionText}
@@ -92,15 +92,19 @@ const PrintQuestionPaper = forwardRef(
           )}
 
           {q.questionType === 'Match' && (
-            <div className="mt-3 d-flex flex-column gap-2" style={{ paddingLeft: '30px' }}>
+            <div
+              className="mt-3"
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr", // two equal columns
+                gap: "12px 40px", // row gap 12px, column gap 40px
+                paddingLeft: isMain ? "70px" : "50px", // align with question text
+              }}
+            >
               {q.pairs.map((pair, i) => (
-                <div
-                  key={i}
-                  className="d-flex justify-content-center align-items-center"
-                  style={{ gap: '150px' }} // <-- fixed gap between columns
-                >
+                <React.Fragment key={i}>
                   {/* Left Side */}
-                  <div className="d-flex align-items-center" style={{ width: 'auto' }}>
+                  <div className="d-flex align-items-center" style={{ textAlign: "left" }}>
                     {pair.leftImage && (
                       <img
                         src={pair.leftImage}
@@ -112,7 +116,7 @@ const PrintQuestionPaper = forwardRef(
                   </div>
 
                   {/* Right Side */}
-                  <div className="d-flex align-items-center" style={{ width: 'auto' }}>
+                  <div className="d-flex align-items-center" style={{ textAlign: "left" }}>
                     <span>{pair.rightText}</span>
                     {pair.rightImage && (
                       <img
@@ -122,10 +126,11 @@ const PrintQuestionPaper = forwardRef(
                       />
                     )}
                   </div>
-                </div>
+                </React.Fragment>
               ))}
             </div>
           )}
+
 
           {q.subQuestions?.length > 0 && (
             <div className="mt-3" style={{ paddingLeft: '30px' }}>
@@ -157,30 +162,34 @@ const PrintQuestionPaper = forwardRef(
               <img
                 src={schoolLogo}
                 alt="School Logo"
-                style={{ height: '35px', width: '35px', objectFit: 'contain', borderRadius: '50%' }}
+                style={{ height: '70px', width: '70px', objectFit: 'cover', borderRadius: '50%', overflow: 'hidden' }}
               />
             )}
-            {schoolName && <h3 className="mb-0">{schoolName}</h3>}
+            {schoolName && <h3 className="mb-0" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{schoolName}</h3>}
           </div>
 
-          {address && <p className="mb-1">{address}</p>}
-          {examTitle && <p className="mb-1"><strong>{examTitle}</strong></p>}
+          {address && <p className="mb-1"><strong style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '17px', marginTop: '-50px' }}>{address}</strong></p>}
+          {examTitle && <p className="mb-1"><strong style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '17px', marginTop: '-50px' }}>{examTitle}</strong></p>}
 
-          <div className="d-flex justify-content-between mb-2" style={{ borderBottom: '0.5px solid grey' }}>
+          {/* 🔹 Line 1 → Name, Date, Roll No */}
+          <div
+            className="d-flex justify-content-between mb-1"
+            style={{ borderBottom: '0.5px solid grey', paddingBottom: '4px' }}
+          >
             <span><strong>Name:</strong></span>
-            <span style={{ marginRight: '150px' }}><strong>Roll No:</strong></span>
+            <span style={{ marginLeft: '100px' }}><strong>Date:</strong> {examDate}</span>
+            <span style={{ marginRight: '100px' }}><strong>Roll No:</strong></span>
           </div>
-        </div>
 
-        {/* Date & Subject */}
-        <div className="d-flex justify-content-between mb-2">
-          <span><strong>Date:</strong> {examDate}</span>
-          <span><strong>Time:</strong> {examTime}</span>
-        </div>
-        <div className="d-flex justify-content-between mb-1" style={{ borderBottom: '0.5px solid grey' }}>
-          <span><strong>Class:</strong> {selectedClass}</span>
-          <span><strong>Subject:</strong> {selectedSubject}</span>
-          <span><strong>Max Marks:</strong> {maxMarks}</span>
+          {/* 🔹 Line 2 → Class, Subject, Max Marks */}
+          <div
+            className="d-flex justify-content-between mb-2"
+            style={{ borderBottom: '0.5px solid grey', paddingBottom: '4px' }}
+          >
+            <span><strong>Class:</strong> {selectedClass}</span>
+            <span><strong>Subject:</strong> {selectedSubject}</span>
+            <span><strong>Max Marks:</strong> {maxMarks}</span>
+          </div>
         </div>
 
         {/* Instructions */}

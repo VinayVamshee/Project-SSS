@@ -10,6 +10,127 @@ const DownloadQuestionBank = forwardRef(
     },
     ref
   ) => {
+    // helper for sub-question numbering
+    const getSubLabel = (index) => {
+      const roman = ["(i)", "(ii)", "(iii)", "(iv)", "(v)", "(vi)", "(vii)", "(viii)", "(ix)", "(x)"];
+      return roman[index] || `(${index + 1})`;
+    };
+
+    // recursive renderer (main + sub-questions)
+    const renderQuestionWithSub = (q, idx, level = 0) => {
+      const isMain = level === 0;
+      const qNumber = isMain ? `Q${idx + 1}` : getSubLabel(idx);
+
+      return (
+        <div key={q.questionId || q._id || `${idx}-${level}`} style={{ marginBottom: "18px", marginLeft: level * 30, lineHeight: isMain ? "1.5" : "1", }}>
+          {/* Question Row */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: `${isMain ? "45px" : "30px"} 1fr 60px`,
+              columnGap: "6px",
+              alignItems: "start",
+              marginBottom: "6px",
+            }}
+          >
+            {/* Question number */}
+            <div style={{ fontWeight: "bold", whiteSpace: "nowrap" }}>{qNumber} {isMain ? '.' : null}</div>
+
+            {/* Text + Image */}
+            <div style={{ textAlign: "justify" }}>
+              {q.questionText}
+              {q.questionImage && (
+                <div style={{ marginTop: "6px" }}>
+                  <img
+                    src={q.questionImage}
+                    alt="question"
+                    style={{ maxHeight: "160px", width: "auto", objectFit: "contain" }}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Marks */}
+            {q.questionMarks && (
+              <div style={{ textAlign: "right", fontWeight: "bold", whiteSpace: "nowrap" }}>
+                ({q.questionMarks})
+              </div>
+            )}
+          </div>
+
+          {/* MCQs */}
+          {q.questionType === "MCQ" && q.options?.length > 0 && (
+            <div style={{ paddingLeft: "40px", display: "flex", flexWrap: "wrap", gap: "12px" }}>
+              {q.options.map((opt, i) => (
+                <div key={i} style={{ display: "flex", alignItems: "center", width: "calc(50% - 12px)" }}>
+                  <div style={{ fontWeight: "bold", marginRight: "6px" }}>({String.fromCharCode(65 + i)})</div>
+                  {opt.imageUrl && (
+                    <img
+                      src={opt.imageUrl}
+                      alt={`Option-${i}`}
+                      style={{ height: "50px", width: "auto", objectFit: "contain", marginRight: "6px" }}
+                    />
+                  )}
+                  <div>{opt.text}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Match the Following */}
+          {/* Match the Following */}
+          {q.questionType === "Match" && q.pairs?.length > 0 && (
+            <div
+              style={{
+                marginTop: "10px",
+                paddingLeft: isMain ? "45px" : "30px", // align with question text
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr", // two equal columns
+                columnGap: "60px",
+                rowGap: "10px",
+              }}
+            >
+              {q.pairs.map((pair, i) => (
+                <React.Fragment key={i}>
+                  {/* Left Side */}
+                  <div style={{ display: "flex", alignItems: "center", textAlign: "left" }}>
+                    {pair.leftImage && (
+                      <img
+                        src={pair.leftImage}
+                        alt="Left"
+                        style={{ height: "40px", width: "auto", objectFit: "contain", marginRight: "6px" }}
+                      />
+                    )}
+                    <span>{pair.leftText}</span>
+                  </div>
+
+                  {/* Right Side */}
+                  <div style={{ display: "flex", alignItems: "center", textAlign: "left" }}>
+                    <span>{pair.rightText}</span>
+                    {pair.rightImage && (
+                      <img
+                        src={pair.rightImage}
+                        alt="Right"
+                        style={{ height: "40px", width: "auto", objectFit: "contain", marginLeft: "6px" }}
+                      />
+                    )}
+                  </div>
+                </React.Fragment>
+              ))}
+            </div>
+          )}
+
+
+          {/* Sub-questions */}
+          {q.subQuestions?.length > 0 && (
+            <div style={{ marginTop: "10px", paddingLeft: "35px" }}>
+              {q.subQuestions.map((subQ, subIdx) => renderQuestionWithSub(subQ, subIdx, level + 1))}
+            </div>
+          )}
+        </div>
+      );
+    };
+
     return (
       <div
         ref={ref}
@@ -31,152 +152,8 @@ const DownloadQuestionBank = forwardRef(
           <hr />
         </div>
 
-        {/* Questions */}
-        {questions.map((q, i) => (
-          <div
-            key={q._id || q.questionId || i}
-            style={{ marginBottom: "15px" }}
-          >
-            {/* Question row */}
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "35px 80px 1fr 60px",
-                columnGap: "4px",
-                alignItems: "start",
-              }}
-            >
-              {/* Question number */}
-              <div style={{ whiteSpace: "nowrap", fontWeight: "bold" }}>
-                Q{i + 1}.
-              </div>
-
-              {/* Question ID */}
-              <div style={{ fontStyle: "italic", color: "#555" }}>
-                {q.questionId || "-"}
-              </div>
-
-              {/* Question text + image */}
-              <div style={{ textAlign: "justify" }}>
-                {q.questionText}
-
-                {q.questionImage && (
-                  <div style={{ marginTop: "6px" }}>
-                    <img
-                      src={q.questionImage}
-                      alt="question"
-                      style={{
-                        height: "150px",
-                        width: "auto",
-                        objectFit: "contain",
-                      }}
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Marks */}
-              {q.questionMarks && (
-                <div
-                  style={{
-                    textAlign: "right",
-                    whiteSpace: "nowrap",
-                    fontWeight: "bold",
-                  }}
-                >
-                  ({q.questionMarks})
-                </div>
-              )}
-            </div>
-
-            {/* MCQ Options */}
-            {q.questionType === "MCQ" && q.options && (
-              <div
-                className="d-flex flex-wrap mt-2"
-                style={{ gap: "12px", paddingLeft: "40px" }}
-              >
-                {q.options.map((opt, idx) => (
-                  <div
-                    key={idx}
-                    style={{
-                      width: "calc(50% - 12px)",
-                      display: "flex",
-                      alignItems: "center",
-                      marginBottom: "8px",
-                    }}
-                  >
-                    <div style={{ fontWeight: "bold", marginRight: "6px" }}>
-                      ({String.fromCharCode(65 + idx)})
-                    </div>
-                    {opt.imageUrl && (
-                      <img
-                        src={opt.imageUrl}
-                        alt={`Option-${idx}`}
-                        style={{
-                          height: "60px",
-                          width: "auto",
-                          objectFit: "contain",
-                          marginRight: "8px",
-                        }}
-                      />
-                    )}
-                    <div>{opt.text}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Match the Following */}
-            {q.questionType === "Match" && q.pairs && (
-              <div
-                className="mt-2 d-flex flex-column gap-2"
-                style={{ paddingLeft: "40px" }}
-              >
-                {q.pairs.map((pair, idx) => (
-                  <div
-                    key={idx}
-                    className="d-flex justify-content-start align-items-center"
-                    style={{ gap: "80px" }}
-                  >
-                    {/* Left side */}
-                    <div className="d-flex align-items-center">
-                      {pair.leftImage && (
-                        <img
-                          src={pair.leftImage}
-                          alt="Left"
-                          style={{
-                            height: "60px",
-                            width: "auto",
-                            objectFit: "contain",
-                            marginRight: "6px",
-                          }}
-                        />
-                      )}
-                      <span>{pair.leftText}</span>
-                    </div>
-
-                    {/* Right side */}
-                    <div className="d-flex align-items-center">
-                      <span>{pair.rightText}</span>
-                      {pair.rightImage && (
-                        <img
-                          src={pair.rightImage}
-                          alt="Right"
-                          style={{
-                            height: "60px",
-                            width: "auto",
-                            objectFit: "contain",
-                            marginLeft: "6px",
-                          }}
-                        />
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        ))}
+        {/* Render Questions */}
+        {questions.map((q, i) => renderQuestionWithSub(q, i))}
       </div>
     );
   }
