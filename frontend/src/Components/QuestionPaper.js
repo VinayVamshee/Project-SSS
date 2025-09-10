@@ -221,45 +221,50 @@ export default function QuestionManager() {
         setNewQuestion(q => ({ ...q, pairs }));
     };
 
+    const [questionUploading, setQuestionUploading] = useState(false);
+
     const handleAddQuestion = async () => {
-        // Recursive cleaner for subQuestions
-        const cleanSubQuestions = (subQs) => {
-            return subQs
-                .filter(sq => sq.questionText?.trim() && sq.questionType?.trim()) // remove blank ones
-                .map(sq => ({
-                    ...sq,
-                    subQuestions: cleanSubQuestions(sq.subQuestions || [])
-                }));
-        };
+        setQuestionUploading(true);
+        try {
+            const cleanSubQuestions = (subQs) =>
+                subQs
+                    .filter(sq => sq.questionText?.trim() && sq.questionType?.trim())
+                    .map(sq => ({
+                        ...sq,
+                        subQuestions: cleanSubQuestions(sq.subQuestions || [])
+                    }));
 
-        // Final cleaned question with chapter
-        const cleanedQuestion = {
-            ...newQuestion,
-            subQuestions: cleanSubQuestions(newQuestion.subQuestions || [])
-        };
+            const cleanedQuestion = {
+                ...newQuestion,
+                subQuestions: cleanSubQuestions(newQuestion.subQuestions || [])
+            };
 
-        // Send to backend
-        const res = await axios.post('https://sss-server-eosin.vercel.app/questions', {
-            class: selectedClass,
-            subject: selectedSubject,
-            chapter: selectedChapter || null,
-            question: cleanedQuestion
-        });
+            const res = await axios.post('https://sss-server-eosin.vercel.app/questions', {
+                class: selectedClass,
+                subject: selectedSubject,
+                chapter: selectedChapter || null,
+                question: cleanedQuestion
+            });
 
-        setQuestions(res.data);
-        fetchQuestions();
-        showMessage("Question Added Successfully")
+            setQuestions(res.data);
+            fetchQuestions();
+            showMessage("Question Added Successfully");
 
-        // Reset new question state
-        setNewQuestion({
-            questionText: '',
-            questionImage: '',
-            questionType: '',
-            questionMarks: '',
-            options: [],
-            pairs: [],
-            subQuestions: [],
-        });
+            setNewQuestion({
+                questionText: '',
+                questionImage: '',
+                questionType: '',
+                questionMarks: '',
+                options: [],
+                pairs: [],
+                subQuestions: [],
+            });
+        } catch (err) {
+            console.error(err);
+            showMessage("Failed to add question");
+        } finally {
+            setQuestionUploading(false);
+        }
     };
 
     const addSubQuestion = () => {
@@ -1557,11 +1562,14 @@ export default function QuestionManager() {
                                 Cancel
                             </button>
                             <button
+                                type="button"
                                 className="btn btn-success"
                                 onClick={handleAddQuestion}
+                                disabled={questionUploading}
                             >
-                                <i className="fas fa-save me-2"></i>Save
+                                <i className="fas fa-save me-2"></i> {questionUploading ? 'Saving...' : 'Save'}
                             </button>
+
                         </div>
 
                     </div>
