@@ -78,7 +78,6 @@ const DownloadQuestionBank = forwardRef(
           )}
 
           {/* Match the Following */}
-          {/* Match the Following */}
           {q.questionType === "Match" && q.pairs?.length > 0 && (
             <div
               style={{

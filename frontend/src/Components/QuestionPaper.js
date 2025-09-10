@@ -705,7 +705,7 @@ export default function QuestionManager() {
                         data-bs-toggle="modal"
                         data-bs-target="#editQuestionModal"
                         onClick={() => openEditModal(q, i)}
-                       disabled={!(canEdit || canQpEdit)}
+                        disabled={!(canEdit || canQpEdit)}
                     >
                         <i className="fas fa-edit"></i>
                     </button>
@@ -1176,12 +1176,14 @@ export default function QuestionManager() {
                             <div className="row align-items-start g-2 mb-3" style={{ borderBottom: '0.5px solid gray', paddingBottom: '10px' }}>
                                 {/* Question Text */}
                                 <div className="col-md-6">
-                                    <input
+                                    <textarea
                                         className="form-control shadow-sm"
                                         placeholder="Enter question text"
                                         value={newQuestion.questionText}
                                         title={newQuestion.questionText}
                                         onChange={e => setNewQuestion(q => ({ ...q, questionText: e.target.value }))}
+                                        rows={3} // default height
+                                        style={{ resize: "vertical", whiteSpace: "pre-wrap" }} // allow wrapping
                                     />
                                 </div>
 
