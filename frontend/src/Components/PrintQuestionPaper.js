@@ -162,14 +162,14 @@ const PrintQuestionPaper = forwardRef(
               <img
                 src={schoolLogo}
                 alt="School Logo"
-                style={{ height: '70px', width: '70px', objectFit: 'cover', borderRadius: '50%', overflow: 'hidden' }}
+                style={{ height: '60px', width: '60px', objectFit: 'cover', borderRadius: '50%', overflow: 'hidden' }}
               />
             )}
             {schoolName && <h3 className="mb-0" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{schoolName}</h3>}
           </div>
 
-          {address && <p className="mb-1"><strong style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '17px', marginTop: '-50px' }}>{address}</strong></p>}
-          {examTitle && <p className="mb-1"><strong style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '17px', marginTop: '-50px' }}>{examTitle}</strong></p>}
+          {address && <p className="mb-1" style={{marginTop:'-10px'}}><strong style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '20px' }}>{address}</strong></p>}
+          {examTitle && <p className="mb-1" style={{marginTop:'-10px'}}><strong style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '20px' }}>{examTitle}</strong></p>}
 
           {/* 🔹 Line 1 → Name, Date, Roll No */}
           <div
