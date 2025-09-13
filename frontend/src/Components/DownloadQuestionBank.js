@@ -27,14 +27,15 @@ const DownloadQuestionBank = forwardRef(
           <div
             style={{
               display: "grid",
-              gridTemplateColumns: `${isMain ? "45px" : "30px"} 1fr 60px`,
+              gridTemplateColumns: `${isMain ? "45px" : "30px"} 80px 1fr 60px`,
               columnGap: "6px",
               alignItems: "start",
               marginBottom: "6px",
             }}
           >
             {/* Question number */}
-            <div style={{ fontWeight: "bold", whiteSpace: "nowrap" }}>{qNumber} {isMain ? '.' : null}</div>
+            <div style={{ fontWeight: "bold", whiteSpace: "nowrap" }}>{qNumber} {isMain ? '.' : null} </div>
+            <div>{q.questionId}</div>
 
             {/* Text + Image */}
             <div style={{ textAlign: "justify" }}>
