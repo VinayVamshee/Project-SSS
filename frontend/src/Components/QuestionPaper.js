@@ -782,7 +782,7 @@ export default function QuestionManager() {
                         )}
                         {level === 0 ? `Q${i + 1}.` : `${toRoman(i)}.`}
                     </strong>
-                    <span>
+                    <span style={{whiteSpace:'pre-wrap'}}>
                         <span className="text-muted">[ {q.questionId} ]</span> {q.questionText}
                     </span>
                 </h6>

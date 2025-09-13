@@ -38,7 +38,7 @@ const DownloadQuestionBank = forwardRef(
             <div>{q.questionId}</div>
 
             {/* Text + Image */}
-            <div style={{ textAlign: "justify" }}>
+            <div style={{ textAlign: "justify", whiteSpace: 'pre-wrap' }}>
               {q.questionText}
               {q.questionImage && (
                 <div style={{ marginTop: "6px" }}>
