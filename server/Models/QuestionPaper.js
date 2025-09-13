@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const optionSchema = new mongoose.Schema({
   text: { type: String },
   imageUrl: { type: String },
-}, { _id: false });
+}, { _id: true });
 
 // Pair schema for 'Match the Following'
 const pairItemSchema = new mongoose.Schema({
@@ -12,11 +12,11 @@ const pairItemSchema = new mongoose.Schema({
   leftImage: { type: String },
   rightText: { type: String },
   rightImage: { type: String },
-}, { _id: false });
+}, { _id: true });
 
 // Reusable question schema for main & sub-questions
 const baseQuestionSchema = new mongoose.Schema({
-  questionId: { type: String, unique: true },
+  questionId: { type: String, required: true },
   questionText: { type: String, required: true },
   questionImage: { type: String },
   questionType: { type: String, required: true }, // e.g., MCQ, Match, Fill, Sub
@@ -24,7 +24,7 @@ const baseQuestionSchema = new mongoose.Schema({
   options: [optionSchema],
   pairs: [pairItemSchema],
   subQuestions: [this], // 🔁 recursive nesting (will be overridden below)
-}, { _id: false }); // prevent auto _id for nested schemas
+}, { _id: true });
 
 // Override subQuestions manually to allow recursion
 baseQuestionSchema.add({

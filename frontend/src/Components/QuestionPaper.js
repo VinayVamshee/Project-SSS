@@ -293,7 +293,7 @@ export default function QuestionManager() {
         }));
     };
 
-    const handleDelete = async (questionId) => {
+    const handleDelete = async (mongoId, questionId) => {
         const confirmDelete = window.confirm('Are you sure you want to delete this question?');
         if (!confirmDelete) return;
 
@@ -303,7 +303,8 @@ export default function QuestionManager() {
                     class: selectedClass,
                     subject: selectedSubject,
                     chapter: selectedChapter,
-                    questionId: questionId,
+                    questionId, // fallback
+                    mongoId,    // precise match
                 },
             });
 
@@ -315,6 +316,7 @@ export default function QuestionManager() {
             showMessage('❌ Failed to delete the question. Please try again.');
         }
     };
+
 
     const [selectedQuestions, setSelectedQuestions] = useState([]);
     const [templates, setTemplates] = useState([]);
@@ -716,7 +718,7 @@ export default function QuestionManager() {
                     </button>
                     <button
                         className="btn btn-sm btn-danger mb-2"
-                        onClick={() => handleDelete(q.questionId)}
+                        onClick={() => handleDelete(q._id, q.questionId)}
                         disabled={!canEdit}
                     >
                         <i className="fas fa-trash-alt"></i>

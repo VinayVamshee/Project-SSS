@@ -1181,6 +1181,40 @@ app.get('/questions', async (req, res) => {
     }
 });
 
+app.get('/questions/duplicates', async (req, res) => {
+    try {
+        const duplicates = await QuestionPaper.aggregate([
+            { $unwind: "$questions" }, // flatten top-level questions
+            { $project: {
+                question: "$questions",
+                paperId: "$_id",
+                class: 1,
+                subject: 1,
+                chapter: 1
+            }},
+            { $group: {
+                _id: "$question.questionId",
+                count: { $sum: 1 },
+                docs: { $push: "$$ROOT" } // include paper info
+            }},
+            { $match: { count: { $gt: 1 } } }
+        ]);
+
+        // Optional: populate class/subject names if they are ObjectIds
+        const populated = await QuestionPaper.populate(duplicates, [
+            { path: 'docs.class', select: 'name' },
+            { path: 'docs.subject', select: 'name' },
+            { path: 'docs.chapter', select: 'name' }
+        ]);
+
+        res.json(populated);
+    } catch (err) {
+        console.error("Duplicate check error:", err);
+        res.status(500).json({ message: err.message });
+    }
+});
+
+
 // Helper to get next question ID
 async function getNextQuestionId() {
     const counter = await Counter.findOneAndUpdate(
@@ -1240,29 +1274,22 @@ app.post('/questions', async (req, res) => {
     }
 });
 
-// DELETE a question by index (from a specific chapter if provided)
+// DELETE a question (by questionId or _id)
 app.delete('/questions', async (req, res) => {
-    const { class: classId, subject: subjectId, chapter: chapterId, questionId } = req.body;
+    const { class: classId, subject: subjectId, chapter: chapterId, questionId, mongoId } = req.body;
 
-    if (!classId || !subjectId || !questionId) {
+    if (!classId || !subjectId || (!questionId && !mongoId)) {
         return res.status(400).json({ message: 'Missing required fields' });
     }
 
     try {
-        const filter = {
-            class: classId,
-            subject: subjectId,
-        };
+        const filter = { class: classId, subject: subjectId };
 
-        // Convert to ObjectId only if chapterId exists
         if (chapterId) {
             const safeChapterId = new mongoose.Types.ObjectId(chapterId);
-            if (!safeChapterId) {
-                return res.status(400).json({ message: 'Invalid chapterId format' });
-            }
             filter.chapter = safeChapterId;
         } else {
-            filter.chapter = null; // match questions without any chapter
+            filter.chapter = null;
         }
 
         const paper = await QuestionPaper.findOne(filter);
@@ -1270,11 +1297,28 @@ app.delete('/questions', async (req, res) => {
             return res.status(404).json({ message: 'Question paper not found' });
         }
 
-        const initialLength = paper.questions.length;
+        let deleted = false;
 
-        paper.questions = paper.questions.filter(q => q.questionId !== questionId);
+        // recursive delete helper
+        function removeQuestion(arr) {
+            return arr.filter(q => {
+                if (
+                    (mongoId && q._id.toString() === mongoId) ||
+                    (!mongoId && questionId && q.questionId === questionId)
+                ) {
+                    deleted = true;
+                    return false;
+                }
+                if (q.subQuestions?.length > 0) {
+                    q.subQuestions = removeQuestion(q.subQuestions);
+                }
+                return true;
+            });
+        }
 
-        if (paper.questions.length === initialLength) {
+        paper.questions = removeQuestion(paper.questions);
+
+        if (!deleted) {
             return res.status(404).json({ message: 'Question not found' });
         }
 
