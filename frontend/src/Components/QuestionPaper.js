@@ -782,7 +782,7 @@ export default function QuestionManager() {
                         )}
                         {level === 0 ? `Q${i + 1}.` : `${toRoman(i)}.`}
                     </strong>
-                    <span style={{whiteSpace:'pre-wrap'}}>
+                    <span style={{ whiteSpace: 'pre-wrap' }}>
                         <span className="text-muted">[ {q.questionId} ]</span> {q.questionText}
                     </span>
                 </h6>
@@ -1189,7 +1189,7 @@ export default function QuestionManager() {
                                         value={newQuestion.questionText}
                                         title={newQuestion.questionText}
                                         onChange={e => setNewQuestion(q => ({ ...q, questionText: e.target.value }))}
-                                        rows={3} // default height
+                                        rows={1} // default height
                                         style={{ resize: "vertical", whiteSpace: "pre-wrap" }} // allow wrapping
                                     />
                                 </div>
@@ -1913,11 +1913,13 @@ export default function QuestionManager() {
                             {editQuestionData && (
                                 <>
                                     {/* Question Text + Marks + Image */}
-                                    <div className="row align-items-center mb-3" style={{ borderBottom: '0.5px solid gray', paddingBottom: '10px' }}>
+                                    <div className="row align-items-center mb-3" style={{ borderBottom: '0.5px solid gray', paddingBottom: '10px', resize: "vertical", whiteSpace: "pre-wrap" }}>
                                         <div className="col-md-6">
-                                            <input
-                                                type="text"
+                                            <textarea
                                                 className="form-control shadow-sm"
+                                                type='text'
+                                                rows={1}
+                                                title={editQuestionData.questionText}
                                                 placeholder="Enter question text"
                                                 value={editQuestionData.questionText}
                                                 onChange={(e) =>
