@@ -432,7 +432,7 @@ export default function QuestionManager() {
     const [searchText, setSearchText] = useState('');
     const [filterType, setFilterType] = useState('');
     const [filterMarks, setFilterMarks] = useState('');
-    const [sortOrder, setSortOrder] = useState('desc');
+    const [sortOrder, setSortOrder] = useState('qId');
 
     const filteredAndSortedQuestions = [...questions]
         // 1️⃣ Sort selected questions first
@@ -457,16 +457,20 @@ export default function QuestionManager() {
 
             return textMatch && marksMatch && typeMatch;
         })
-        // 3️⃣ Apply sort based on dropdown (marks if set, else questionId)
+        // 3️⃣ Apply sort based on dropdown
         .sort((a, b) => {
-            if (sortOrder) {
+            if (sortOrder === 'asc' || sortOrder === 'desc') {
+                // Sort by marks if asc or desc
                 const marksA = parseFloat(a.questionMarks || 0);
                 const marksB = parseFloat(b.questionMarks || 0);
                 return sortOrder === 'asc' ? marksA - marksB : marksB - marksA;
-            } else {
-                const idA = parseInt(a.questionId || 0, 10);
-                const idB = parseInt(b.questionId || 0, 10);
+            } else if (sortOrder === 'qId') {
+                // Sort top-level questions by questionId ascending
+                const idA = parseInt(a.questionId?.replace(/\D/g, '') || 0, 10); // extract numeric part
+                const idB = parseInt(b.questionId?.replace(/\D/g, '') || 0, 10);
                 return idA - idB;
+            } else {
+                return 0;
             }
         });
 
@@ -1162,7 +1166,7 @@ export default function QuestionManager() {
                                         </div>
                                         <div className="col-md-2">
                                             <select className="form-select" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
-                                                <option value="">--Select--</option>
+                                                <option value="qId">Sort: Question ID ( Ascending Order )</option>
                                                 <option value="desc">Sort: High to Low</option>
                                                 <option value="asc">Sort: Low to High</option>
                                             </select>
@@ -1958,7 +1962,13 @@ export default function QuestionManager() {
                             <h5 className="modal-title" id="editQuestionModalLabel">
                                 <i className="fas fa-edit me-2 text-primary"></i>Edit Question
                             </h5>
-                            <button type="button" className="btn-close" data-bs-dismiss="modal" />
+                            <button
+                                type="button"
+                                className="btn-close"
+                                data-bs-dismiss="modal"
+                                data-bs-toggle="modal"
+                                data-bs-target="#createQuestionPaperModal"
+                            />
                         </div>
 
                         <div className="modal-body question-paper-selection">
@@ -2067,7 +2077,12 @@ export default function QuestionManager() {
                         </div>
 
                         <div className="modal-footer">
-                            <button className="btn btn-secondary" data-bs-dismiss="modal">
+                            <button
+                                className="btn btn-secondary"
+                                data-bs-dismiss="modal"
+                                data-bs-toggle="modal"
+                                data-bs-target="#createQuestionPaperModal"
+                            >
                                 Cancel
                             </button>
                             <button className="btn btn-success" onClick={handleEditSubmit}>
