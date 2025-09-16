@@ -45,7 +45,7 @@ const PrintQuestionPaper = forwardRef(
             <div style={{ whiteSpace: 'nowrap', fontWeight: 'bold', }}>{qNumber} {isMain ? '.' : null} </div>
 
             {/* Question text wraps only here */}
-            <div style={{ textAlign: "justify", whiteSpace:'pre-wrap' }}>{q.questionText}
+            <div style={{ textAlign: "justify", whiteSpace: 'pre-wrap' }}>{q.questionText}
               {q.questionImage && (
                 <div style={{ marginBottom: '12px', gridColumn: '3 / 4' }}>
                   <img
@@ -145,16 +145,17 @@ const PrintQuestionPaper = forwardRef(
     };
 
     return (
-      <div
-        ref={ref}
-        className="print-container"
-        style={{
-          padding: '30px 20px',
-          fontFamily: '"Times New Roman", Times, serif',
-          fontSize: '16px',
-          lineHeight: '1.6'
-        }}
-      >
+  <div
+    ref={ref}
+    className=""
+    style={{
+      padding: '15px 40px',   // 🔹 Narrow margin around paper
+      fontFamily: '"Times New Roman", Times, serif',
+      fontSize: '16px',
+      lineHeight: '1.6'
+    }}
+  >
+
         {/* Heading */}
         <div className="mb-1 text-center">
           <div className="d-flex align-items-center justify-content-center gap-2 mb-1">
@@ -168,8 +169,8 @@ const PrintQuestionPaper = forwardRef(
             {schoolName && <h3 className="mb-0" style={{ fontFamily: '"Times New Roman", Times, serif' }}>{schoolName}</h3>}
           </div>
 
-          {address && <p className="mb-1" style={{marginTop:'-10px'}}><strong style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '20px' }}>{address}</strong></p>}
-          {examTitle && <p className="mb-1" style={{marginTop:'-10px'}}><strong style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '20px' }}>{examTitle}</strong></p>}
+          {address && <p className="mb-1" style={{ marginTop: '-10px' }}><strong style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '20px' }}>{address}</strong></p>}
+          {examTitle && <p className="mb-1" style={{ marginTop: '-10px' }}><strong style={{ fontFamily: '"Times New Roman", Times, serif', fontSize: '20px' }}>{examTitle}</strong></p>}
 
           {/* 🔹 Line 1 → Name, Date, Roll No */}
           <div

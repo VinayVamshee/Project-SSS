@@ -1185,18 +1185,22 @@ app.get('/questions/duplicates', async (req, res) => {
     try {
         const duplicates = await QuestionPaper.aggregate([
             { $unwind: "$questions" }, // flatten top-level questions
-            { $project: {
-                question: "$questions",
-                paperId: "$_id",
-                class: 1,
-                subject: 1,
-                chapter: 1
-            }},
-            { $group: {
-                _id: "$question.questionId",
-                count: { $sum: 1 },
-                docs: { $push: "$$ROOT" } // include paper info
-            }},
+            {
+                $project: {
+                    question: "$questions",
+                    paperId: "$_id",
+                    class: 1,
+                    subject: 1,
+                    chapter: 1
+                }
+            },
+            {
+                $group: {
+                    _id: "$question.questionId",
+                    count: { $sum: 1 },
+                    docs: { $push: "$$ROOT" } // include paper info
+                }
+            },
             { $match: { count: { $gt: 1 } } }
         ]);
 
@@ -1276,51 +1280,37 @@ app.post('/questions', async (req, res) => {
 
 // DELETE a question (by questionId or _id)
 app.delete('/questions', async (req, res) => {
-    const { class: classId, subject: subjectId, chapter: chapterId, questionId, mongoId } = req.body;
+    const { class: classId, subject: subjectId, chapter: chapterId, mongoId } = req.body;
 
-    if (!classId || !subjectId || (!questionId && !mongoId)) {
+    if (!classId || !subjectId || !mongoId) {
         return res.status(400).json({ message: 'Missing required fields' });
     }
 
     try {
-        const filter = { class: classId, subject: subjectId };
-
-        if (chapterId) {
-            const safeChapterId = new mongoose.Types.ObjectId(chapterId);
-            filter.chapter = safeChapterId;
-        } else {
-            filter.chapter = null;
-        }
-
+        const filter = { class: classId, subject: subjectId, chapter: chapterId || null };
         const paper = await QuestionPaper.findOne(filter);
-        if (!paper) {
-            return res.status(404).json({ message: 'Question paper not found' });
-        }
+        if (!paper) return res.status(404).json({ message: 'Question paper not found' });
 
         let deleted = false;
 
-        // recursive delete helper
-        function removeQuestion(arr) {
-            return arr.filter(q => {
-                if (
-                    (mongoId && q._id.toString() === mongoId) ||
-                    (!mongoId && questionId && q.questionId === questionId)
-                ) {
-                    deleted = true;
-                    return false;
-                }
-                if (q.subQuestions?.length > 0) {
-                    q.subQuestions = removeQuestion(q.subQuestions);
-                }
-                return true;
-            });
+        function removeById(arr) {
+            return arr
+                .map(q => {
+                    if (q._id.toString() === mongoId) {
+                        deleted = true;
+                        return null;
+                    }
+                    if (q.subQuestions?.length > 0) {
+                        q.subQuestions = removeById(q.subQuestions);
+                    }
+                    return q;
+                })
+                .filter(Boolean);
         }
 
-        paper.questions = removeQuestion(paper.questions);
+        paper.questions = removeById(paper.questions);
 
-        if (!deleted) {
-            return res.status(404).json({ message: 'Question not found' });
-        }
+        if (!deleted) return res.status(404).json({ message: 'Question not found' });
 
         await paper.save();
         return res.json({ questions: paper.questions });
@@ -1330,29 +1320,51 @@ app.delete('/questions', async (req, res) => {
     }
 });
 
-// PUT to update a specific question by index
+// PUT to update a specific question by _id or questionId
 app.put('/questions', async (req, res) => {
-    const { class: classId, subject: subjectId, chapter: chapterId, index, updatedQuestion } = req.body;
+    const { class: classId, subject: subjectId, chapter: chapterId, mongoId, updatedQuestion } = req.body;
 
-    if (index === undefined || updatedQuestion === undefined) {
-        return res.status(400).json({ error: 'Missing fields' });
+    if (!mongoId) {
+        return res.status(400).json({ error: 'Missing question identifier' });
     }
 
     try {
-        const filter = { class: classId, subject: subjectId };
-        if (chapterId) filter.chapter = chapterId;
-
+        // Find the question paper
+        const filter = { class: classId, subject: subjectId, chapter: chapterId || null };
         const paper = await QuestionPaper.findOne(filter);
-        if (!paper || index < 0 || index >= paper.questions.length) {
-            return res.status(404).json({ error: 'Question not found' });
+        if (!paper) return res.status(404).json({ error: 'Question paper not found' });
+
+        let updated = false;
+
+        // Recursive function to update by _id
+        async function updateById(arr) {
+            for (let q of arr) {
+                if (q._id.toString() === mongoId) {
+                    // Assign questionIds for any new sub-questions
+                    if (updatedQuestion.subQuestions?.length > 0) {
+                        for (const subQ of updatedQuestion.subQuestions) {
+                            // Only assign questionId if it doesn't exist
+                            if (!subQ.questionId) await assignQuestionIds(subQ);
+                        }
+                    }
+
+                    Object.assign(q, updatedQuestion); // merge new fields
+                    updated = true;
+                    return true; // stop further recursion once updated
+                }
+                if (q.subQuestions?.length > 0) await updateById(q.subQuestions);
+            }
         }
 
-        paper.questions[index] = updatedQuestion;
-        await paper.save();
+        await updateById(paper.questions);
 
+        if (!updated) return res.status(404).json({ error: 'Question not found' });
+
+        await paper.save();
         res.json({ questions: paper.questions });
     } catch (err) {
-        res.status(500).json({ message: err.message });
+        console.error('Update error:', err);
+        res.status(500).json({ message: 'Internal server error' });
     }
 });
 

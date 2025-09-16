@@ -225,31 +225,55 @@ export default function QuestionManager() {
 
     const handleAddQuestion = async () => {
         setQuestionUploading(true);
+
+        // ✅ Check if class, subject, or chapter is selected
+        if (!selectedClass || !selectedSubject || !selectedChapter) {
+            showMessage("Please select class, subject, and chapter first.");
+            setQuestionUploading(false);
+            return;
+        }
+
         try {
+            // ✅ Recursive cleaning function
             const cleanSubQuestions = (subQs) =>
                 subQs
-                    .filter(sq => sq.questionText?.trim() && sq.questionType?.trim())
-                    .map(sq => ({
+                    .filter(
+                        (sq) =>
+                            sq.questionText?.trim() &&
+                            sq.questionType?.trim() &&
+                            sq.questionMarks?.toString().trim() // ensure marks are present
+                    )
+                    .map((sq) => ({
                         ...sq,
-                        subQuestions: cleanSubQuestions(sq.subQuestions || [])
+                        subQuestions: cleanSubQuestions(sq.subQuestions || []),
                     }));
 
             const cleanedQuestion = {
                 ...newQuestion,
-                subQuestions: cleanSubQuestions(newQuestion.subQuestions || [])
+                questionMarks: newQuestion.questionMarks?.toString().trim() ? newQuestion.questionMarks : undefined,
+                questionType: newQuestion.questionType?.trim() ? newQuestion.questionType : undefined,
+                subQuestions: cleanSubQuestions(newQuestion.subQuestions || []),
             };
+
+            // ✅ Check if the main question itself has required fields
+            if (!cleanedQuestion.questionText?.trim() || !cleanedQuestion.questionType || !cleanedQuestion.questionMarks) {
+                showMessage("Question is missing required fields (text, type, or marks).");
+                setQuestionUploading(false);
+                return;
+            }
 
             const res = await axios.post('https://sss-server-eosin.vercel.app/questions', {
                 class: selectedClass,
                 subject: selectedSubject,
                 chapter: selectedChapter || null,
-                question: cleanedQuestion
+                question: cleanedQuestion,
             });
 
             setQuestions(res.data);
             fetchQuestions();
             showMessage("Question Added Successfully");
 
+            // Reset the new question
             setNewQuestion({
                 questionText: '',
                 questionImage: '',
@@ -293,7 +317,7 @@ export default function QuestionManager() {
         }));
     };
 
-    const handleDelete = async (mongoId, questionId) => {
+    const handleDelete = async (mongoId) => {
         const confirmDelete = window.confirm('Are you sure you want to delete this question?');
         if (!confirmDelete) return;
 
@@ -303,8 +327,7 @@ export default function QuestionManager() {
                     class: selectedClass,
                     subject: selectedSubject,
                     chapter: selectedChapter,
-                    questionId, // fallback
-                    mongoId,    // precise match
+                    mongoId,
                 },
             });
 
@@ -316,7 +339,6 @@ export default function QuestionManager() {
             showMessage('❌ Failed to delete the question. Please try again.');
         }
     };
-
 
     const [selectedQuestions, setSelectedQuestions] = useState([]);
     const [templates, setTemplates] = useState([]);
@@ -413,29 +435,41 @@ export default function QuestionManager() {
     const [sortOrder, setSortOrder] = useState('desc');
 
     const filteredAndSortedQuestions = [...questions]
-        // Sort selected questions first
+        // 1️⃣ Sort selected questions first
         .sort((a, b) => {
             const aSelected = selectedQuestions.includes(a._id);
             const bSelected = selectedQuestions.includes(b._id);
             return bSelected - aSelected;
         })
-        // Apply filters: search, type, marks
+        // 2️⃣ Apply filters
         .filter(q => {
-            const textMatch = q.questionText.toLowerCase().includes(searchText.toLowerCase()) || (q.questionId && q.questionId.includes(searchText));
-            const marksMatch = filterMarks === '' || q.questionMarks === filterMarks;
+            const textMatch =
+                q.questionText.toLowerCase().includes(searchText.toLowerCase()) ||
+                (q.questionId && q.questionId.toString().includes(searchText));
+
+            const marksMatch =
+                filterMarks === '' || q.questionMarks === filterMarks;
 
             const typeMatch =
-                filterType === '' || q.questionType === filterType ||
+                filterType === '' ||
+                q.questionType === filterType ||
                 (q.subQuestions && q.subQuestions.some(sub => sub.questionType === filterType));
 
             return textMatch && marksMatch && typeMatch;
         })
-        // Sort by marks (asc/desc)
+        // 3️⃣ Apply sort based on dropdown (marks if set, else questionId)
         .sort((a, b) => {
-            const marksA = parseFloat(a.questionMarks || 0);
-            const marksB = parseFloat(b.questionMarks || 0);
-            return sortOrder === 'asc' ? marksA - marksB : marksB - marksA;
+            if (sortOrder) {
+                const marksA = parseFloat(a.questionMarks || 0);
+                const marksB = parseFloat(b.questionMarks || 0);
+                return sortOrder === 'asc' ? marksA - marksB : marksB - marksA;
+            } else {
+                const idA = parseInt(a.questionId || 0, 10);
+                const idB = parseInt(b.questionId || 0, 10);
+                return idA - idB;
+            }
         });
+
 
     const [previewImageUrl, setPreviewImageUrl] = useState('');
 
@@ -443,14 +477,11 @@ export default function QuestionManager() {
 
     const openEditModal = (q, index) => {
         setEditQuestionData(q);
-        setEditQuestionIndex(index);
     };
 
-    const [editQuestionIndex, setEditQuestionIndex] = useState(null);
-
     const handleEditSubmit = async () => {
-        if (editQuestionIndex === null || editQuestionIndex === undefined) {
-            showMessage("Edit index not set.");
+        if (!editQuestionData?._id) {
+            showMessage("Question ID not found.");
             return;
         }
 
@@ -459,18 +490,19 @@ export default function QuestionManager() {
                 class: selectedClass,
                 subject: selectedSubject,
                 chapter: selectedChapter || null,
-                index: editQuestionIndex,
-                updatedQuestion: editQuestionData,
+                mongoId: editQuestionData._id, // send _id
+                updatedQuestion: editQuestionData
             });
 
             setQuestions(res.data.questions);
             fetchQuestions();
-            showMessage('Question Updated Successfully')
+            showMessage('Question Updated Successfully');
         } catch (err) {
             console.error(err);
             showMessage("Failed to update question.");
         }
     };
+
 
     const renderEditQuestionTypeFields = (editQuestionData, setEditQuestionData) => {
         const updateOption = (i, key, value) => {
@@ -685,7 +717,6 @@ export default function QuestionManager() {
         };
 
         collectIds(questions);
-        console.log('All Question IDs:', ids);
         return ids;
     };
 
@@ -700,7 +731,7 @@ export default function QuestionManager() {
 
     const renderQuestionBlock = (q, i, level = 0) => (
 
-        <div key={q.questionId || i} className={`border rounded p-1 mb-2 bg-white position-relative shadow-sm ${level > 0 ? 'ms-4' : ''}`}>
+        <div key={q._id || i} className={`border rounded p-1 mb-2 bg-white position-relative shadow-sm ${level > 0 ? 'ms-4' : ''}`}>
 
             {/* Delete Button */}
             {level === 0 && (
@@ -718,7 +749,7 @@ export default function QuestionManager() {
                     </button>
                     <button
                         className="btn btn-sm btn-danger mb-2"
-                        onClick={() => handleDelete(q._id, q.questionId)}
+                        onClick={() => handleDelete(q._id)}
                         disabled={!canEdit}
                     >
                         <i className="fas fa-trash-alt"></i>
@@ -996,6 +1027,28 @@ export default function QuestionManager() {
 
                             {/* STEP 1 & 2: Chapter + Section + Toggle */}
                             <div className="row g-3 align-items-end mb-2" style={{ borderBottom: '0.5px solid gray', paddingBottom: '10px' }}>
+
+                                {/* Class Dropdown */}
+                                <div className=" " style={{ width: 'fit-content' }}>
+                                    <label className="form-label">Select Class</label>
+                                    <select onChange={onClassChange} value={selectedClass} className="form-select shadow-sm">
+                                        <option value="">-- Select Class --</option>
+                                        {classes.map(c => (
+                                            <option key={c._id} value={c._id}>{c.class}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Subject Dropdown */}
+                                <div className=" " style={{ width: 'fit-content' }}>
+                                    <label className="form-label">Select Subject</label>
+                                    <select onChange={onSubjectChange} value={selectedSubject} className="form-select shadow-sm" disabled={!selectedClass}>
+                                        <option value="">-- Select Subject --</option>
+                                        {filteredSubjects.map(s => (
+                                            <option key={s._id} value={s._id}>{s.name}</option>
+                                        ))}
+                                    </select>
+                                </div>
                                 {/* Chapter Dropdown */}
                                 <div className=" " style={{ width: 'fit-content' }}>
                                     <label className="form-label">Select Chapter</label>
@@ -1057,7 +1110,6 @@ export default function QuestionManager() {
                                         }
                                         onChange={(e) => {
                                             const allIds = getAllQuestionIds(questions);
-                                            console.log('Select All Clicked:', e.target.checked);
                                             if (e.target.checked) {
                                                 setSelectedQuestions(allIds);
                                             } else {
@@ -1111,6 +1163,7 @@ export default function QuestionManager() {
                                         </div>
                                         <div className="col-md-2">
                                             <select className="form-select" value={sortOrder} onChange={(e) => setSortOrder(e.target.value)}>
+                                                <option value="">--Select--</option>
                                                 <option value="desc">Sort: High to Low</option>
                                                 <option value="asc">Sort: Low to High</option>
                                             </select>
