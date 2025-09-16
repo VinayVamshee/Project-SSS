@@ -131,7 +131,6 @@ const PrintQuestionPaper = forwardRef(
             </div>
           )}
 
-
           {q.subQuestions?.length > 0 && (
             <div className="mt-3" style={{ paddingLeft: '30px' }}>
               {q.subQuestions
@@ -145,16 +144,16 @@ const PrintQuestionPaper = forwardRef(
     };
 
     return (
-  <div
-    ref={ref}
-    className=""
-    style={{
-      padding: '15px 40px',   // 🔹 Narrow margin around paper
-      fontFamily: '"Times New Roman", Times, serif',
-      fontSize: '16px',
-      lineHeight: '1.6'
-    }}
-  >
+      <div
+        ref={ref}
+        className=""
+        style={{
+          padding: '15px 40px',   // 🔹 Narrow margin around paper
+          fontFamily: '"Times New Roman", Times, serif',
+          fontSize: '16px',
+          lineHeight: '1.6'
+        }}
+      >
 
         {/* Heading */}
         <div className="mb-1 text-center">

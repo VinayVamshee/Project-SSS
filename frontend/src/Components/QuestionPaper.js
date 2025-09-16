@@ -470,7 +470,6 @@ export default function QuestionManager() {
             }
         });
 
-
     const [previewImageUrl, setPreviewImageUrl] = useState('');
 
     const [editQuestionData, setEditQuestionData] = useState(null);
@@ -490,7 +489,7 @@ export default function QuestionManager() {
                 class: selectedClass,
                 subject: selectedSubject,
                 chapter: selectedChapter || null,
-                mongoId: editQuestionData._id, // send _id
+                mongoId: editQuestionData._id,
                 updatedQuestion: editQuestionData
             });
 
