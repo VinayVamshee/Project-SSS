@@ -1716,24 +1716,24 @@ export default function QuestionManager() {
                                 {templates.map((template, idx) => (
                                     <div key={template._id} className="col">
                                         <div className="card shadow-sm rounded-4 p-3 bg-light border-0">
-                                            <div className="d-flex justify-content-between align-items-start mb-3">
-                                                <div>
-                                                    <h6 className="mb-1 text-secondary fw-bold">Template {idx + 1}</h6>
-                                                    <small className="text-muted">{template.examTitle}</small>
+                                            {/* Card Body */}
+                                            <div className="bg-white p-3 rounded-3 shadow-sm position-relative">
+                                                {/* Header with text and logo */}
+                                                <div className="d-flex justify-content-between align-items-start mb-3">
+                                                    <div>
+                                                        <h6 className="mb-1 text-secondary fw-bold">Template {idx + 1}</h6>
+                                                        <p className="mb-1"><strong>🏫 School:</strong> {template.schoolName}</p>
+                                                        <p className="mb-1"><strong>📍 Address:</strong> {template.address}</p>
+                                                        <small className="text-muted">{template.examTitle}</small>
+                                                    </div>
+                                                    {template.logo && (
+                                                        <img
+                                                            src={template.logo}
+                                                            alt={`${template.schoolName} Logo`}
+                                                            style={{ maxHeight: '60px', objectFit: 'contain' }}
+                                                        />
+                                                    )}
                                                 </div>
-                                                <div className="btn-group btn-group-sm">
-                                                    <button className="btn btn-outline-primary" onClick={() => handleEditTemplate(template)} disabled={!(canEdit || canQpEdit)}>
-                                                        <i className="fas fa-edit me-1"></i>Edit
-                                                    </button>
-                                                    <button className="btn btn-outline-danger" onClick={() => handleDeleteTemplate(template._id)} disabled={!canEdit}>
-                                                        <i className="fas fa-trash-alt me-1"></i>Delete
-                                                    </button>
-                                                </div>
-                                            </div>
-
-                                            <div className="bg-white p-3 rounded-3 shadow-sm">
-                                                <p className="mb-2"><strong>🏫 School:</strong> {template.schoolName}</p>
-                                                <p className="mb-2"><strong>📍 Address:</strong> {template.address}</p>
 
                                                 {(template.date || template.time || template.maxMarks) && (
                                                     <div className="text-muted small mb-3">
@@ -1751,6 +1751,24 @@ export default function QuestionManager() {
                                                         </div>
                                                     ))}
                                                 </div>
+
+                                                {/* Edit/Delete buttons at bottom right inside card */}
+                                                <div className="d-flex justify-content-end mt-3 gap-2">
+                                                    <button
+                                                        className="btn btn-outline-primary btn-sm"
+                                                        onClick={() => handleEditTemplate(template)}
+                                                        disabled={!(canEdit || canQpEdit)}
+                                                    >
+                                                        <i className="fas fa-edit me-1"></i>Edit
+                                                    </button>
+                                                    <button
+                                                        className="btn btn-outline-danger btn-sm"
+                                                        onClick={() => handleDeleteTemplate(template._id)}
+                                                        disabled={!canEdit}
+                                                    >
+                                                        <i className="fas fa-trash-alt me-1"></i>Delete
+                                                    </button>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -1758,7 +1776,6 @@ export default function QuestionManager() {
                             </div>
                         </div>
                     )}
-
                 </div>
             </div>
 
