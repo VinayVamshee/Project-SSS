@@ -434,6 +434,8 @@ export default function QuestionManager() {
     const [filterMarks, setFilterMarks] = useState('');
     const [sortOrder, setSortOrder] = useState('qId');
 
+    const [addAnsLine, setAddAnsLine] = useState([]);
+
     const filteredAndSortedQuestions = [...questions]
         // 1️⃣ Sort selected questions first
         .sort((a, b) => {
@@ -820,6 +822,55 @@ export default function QuestionManager() {
                         <span className="text-muted">[ {q.questionId} ]</span> {q.questionText}
                     </span>
                 </h6>
+
+                 {/* ✅ Toggle for Answer Lines */}
+                    <div className="form-check form-switch ms-3">
+                        <input
+                            className="form-check-input"
+                            type="checkbox"
+                            role="switch"
+                            id={`ansLine-${q.questionId}-${i}-${level}`}
+                            checked={addAnsLine.some(a => a.QuestionId === q.questionId)}
+                            onChange={(e) => {
+                                const isChecked = e.target.checked;
+                                setAddAnsLine(prev => {
+                                    if (isChecked) {
+                                        // Add if not already there
+                                        if (!prev.some(a => a.QuestionId === q.questionId)) {
+                                            return [...prev, { QuestionId: q.questionId, lines: 3 }]; // default 3 lines (changeable)
+                                        }
+                                        return prev;
+                                    } else {
+                                        // Remove if toggled off
+                                        return prev.filter(a => a.QuestionId !== q.questionId);
+                                    }
+                                });
+                            }}
+                        />
+                        <label
+                            className="form-check-label"
+                            htmlFor={`ansLine-${q.questionId}-${i}-${level}`}
+                        >
+                        </label>
+                    </div>
+
+                    {addAnsLine.some(a => a.QuestionId === q.questionId) && (
+                        <input
+                            type="number"
+                            min="1"
+                            value={addAnsLine.find(a => a.QuestionId === q.questionId)?.lines || 3}
+                            onChange={(e) => {
+                                const value = parseInt(e.target.value, 10) || 1;
+                                setAddAnsLine(prev =>
+                                    prev.map(a =>
+                                        a.QuestionId === q.questionId ? { ...a, lines: value } : a
+                                    )
+                                );
+                            }}
+                            className="form-control ms-2 mt-1"
+                            style={{ width: "100px" }}
+                        />
+                    )}
 
                 {q.questionImage && (
                     <div className="mt-2 ms-5">
@@ -2181,6 +2232,7 @@ export default function QuestionManager() {
                     instructions={selectedInstructions}
                     selectedClass={classes.find(c => c._id === selectedClass)?.class || ''}
                     selectedSubject={filteredSubjects.find(s => s._id === selectedSubject)?.name || ''}
+                    addAnsLine={addAnsLine}
                 />
             </div>
 
