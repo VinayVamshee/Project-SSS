@@ -858,7 +858,7 @@ export default function QuestionManager() {
                     <input
                         type="number"
                         min="1"
-                        value={addAnsLine.find(a => a.QuestionId === q.questionId)?.lines || 3}
+                        value={addAnsLine.find(a => a.QuestionId === q.questionId)?.lines || 1}
                         onChange={(e) => {
                             const value = parseInt(e.target.value, 10) || 1;
                             setAddAnsLine(prev =>
