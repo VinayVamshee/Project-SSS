@@ -614,6 +614,7 @@ export default function QuestionManager() {
                         <h6 className="mt-4 mb-3">Sub-Questions</h6>
                         {editQuestionData.subQuestions?.map((subQ, index) => (
                             <div key={index} className="mb-1 p-3 border rounded-3">
+                                {/* Sub-question text, marks, image, type selector */}
                                 <div className="row align-items-center mb-3">
                                     <div className="col-md-7">
                                         <input
@@ -650,24 +651,15 @@ export default function QuestionManager() {
                                                 if (file) {
                                                     const url = await uploadToImgBB(file);
                                                     const updated = [...editQuestionData.subQuestions];
-
-                                                    updated[index] = {
-                                                        ...updated[index],
-                                                        questionImage: url,
-                                                        _id: updated[index]._id,
-                                                    };
-
-                                                    setEditQuestionData((q) => ({
-                                                        ...q,
-                                                        subQuestions: updated,
-                                                        _id: q._id,
-                                                    }));
+                                                    updated[index].questionImage = url;
+                                                    setEditQuestionData(q => ({ ...q, subQuestions: updated }));
                                                 }
                                             }}
                                         />
                                     </div>
                                 </div>
 
+                                {/* Type selector */}
                                 <select
                                     className="form-select w-auto shadow-sm mb-3"
                                     value={subQ.questionType}
@@ -682,6 +674,102 @@ export default function QuestionManager() {
                                     <option value="Descriptive">Descriptive</option>
                                     <option value="Match">Match the Following</option>
                                 </select>
+
+                                {/* 🔹 Now add logic for sub-question MCQs */}
+                                {subQ.questionType === 'MCQ' && (
+                                    <>
+                                        <button
+                                            className="btn btn-primary btn-sm mb-2"
+                                            onClick={() => {
+                                                const updated = [...editQuestionData.subQuestions];
+                                                updated[index].options.push({ text: '', imageUrl: '' });
+                                                setEditQuestionData(q => ({ ...q, subQuestions: updated }));
+                                            }}
+                                        >
+                                            <i className="fas fa-plus me-1"></i>Add Option
+                                        </button>
+
+                                        <div className="row">
+                                            {subQ.options?.map((opt, optIndex) => (
+                                                <div className="col-md-3 mb-2" key={optIndex}>
+                                                    <input
+                                                        className="form-control mb-1"
+                                                        placeholder={`Option ${String.fromCharCode(65 + optIndex)}`}
+                                                        value={opt.text}
+                                                        onChange={e => {
+                                                            const updated = [...editQuestionData.subQuestions];
+                                                            updated[index].options[optIndex].text = e.target.value;
+                                                            setEditQuestionData(q => ({ ...q, subQuestions: updated }));
+                                                        }}
+                                                    />
+                                                    <input
+                                                        type="file"
+                                                        className="form-control form-control-sm"
+                                                        onChange={async e => {
+                                                            const file = e.target.files[0];
+                                                            if (file) {
+                                                                const url = await uploadToImgBB(file);
+                                                                const updated = [...editQuestionData.subQuestions];
+                                                                updated[index].options[optIndex].imageUrl = url;
+                                                                setEditQuestionData(q => ({ ...q, subQuestions: updated }));
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </>
+                                )}
+
+                                {/* 🔹 And for sub-question Match type */}
+                                {subQ.questionType === 'Match' && (
+                                    <>
+                                        <button
+                                            className="btn btn-primary btn-sm mb-2"
+                                            onClick={() => {
+                                                const updated = [...editQuestionData.subQuestions];
+                                                updated[index].pairs.push({
+                                                    leftText: '', leftImage: '', rightText: '', rightImage: ''
+                                                });
+                                                setEditQuestionData(q => ({ ...q, subQuestions: updated }));
+                                            }}
+                                        >
+                                            <i className="fas fa-plus me-1"></i>Add Pair
+                                        </button>
+
+                                        {subQ.pairs?.map((pair, pairIndex) => (
+                                            <div className="row mb-3" key={pairIndex}>
+                                                {['left', 'right'].map(side => (
+                                                    <div className="col-md-6 mb-2" key={side}>
+                                                        <input
+                                                            className="form-control mb-1"
+                                                            placeholder={`${side} text`}
+                                                            value={pair[`${side}Text`]}
+                                                            onChange={e => {
+                                                                const updated = [...editQuestionData.subQuestions];
+                                                                updated[index].pairs[pairIndex][`${side}Text`] = e.target.value;
+                                                                setEditQuestionData(q => ({ ...q, subQuestions: updated }));
+                                                            }}
+                                                        />
+                                                        <input
+                                                            type="file"
+                                                            className="form-control form-control-sm"
+                                                            onChange={async e => {
+                                                                const file = e.target.files[0];
+                                                                if (file) {
+                                                                    const url = await uploadToImgBB(file);
+                                                                    const updated = [...editQuestionData.subQuestions];
+                                                                    updated[index].pairs[pairIndex][`${side}Image`] = url;
+                                                                    setEditQuestionData(q => ({ ...q, subQuestions: updated }));
+                                                                }
+                                                            }}
+                                                        />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ))}
+                                    </>
+                                )}
                             </div>
                         ))}
 
@@ -705,6 +793,7 @@ export default function QuestionManager() {
                         </button>
                     </>
                 )}
+
             </>
         );
     };
