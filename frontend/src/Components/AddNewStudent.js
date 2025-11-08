@@ -199,7 +199,7 @@ export default function AddNewStudent() {
         <div className="AddNewStudent">
 
             <p style={{ margin: '0px' }}>
-                <button className="btn btn-save btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#AdditionalInformationCollapse" aria-expanded="false" aria-controls="AdditionalInformationCollapse" disabled>
+                <button className="btn btn-save btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#AdditionalInformationCollapse" aria-expanded="false" aria-controls="AdditionalInformationCollapse" >
                     Add Additional Information
                 </button>
             </p>
