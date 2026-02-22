@@ -388,39 +388,80 @@ app.put('/chapters/:classId/:subjectId/:chapterId', async (req, res) => {
 
 // Route to add additional personal information
 app.post('/AddAdditionalPersonalInformation', async (req, res) => {
-    try {
-        const { sno, personalInformationList_name } = req.body;
+  try {
+    const { id, sno, personalInformationList_name } = req.body;
 
-        if (!sno || !personalInformationList_name) {
-            return res.status(400).json({ message: "S.No and Name are required" });
-        }
-
-        // Check if the name already exists
-        const existingInfo = await PersonalInformationList.findOne({ name: personalInformationList_name });
-
-        if (existingInfo) {
-            // Update the sno if it's different
-            if (existingInfo.sno !== sno) {
-                existingInfo.sno = sno;
-                await existingInfo.save();
-                return res.status(200).json({ message: "S.No updated for existing name", data: existingInfo });
-            } else {
-                return res.status(200).json({ message: "No changes made. Same S.No already exists for this name.", data: existingInfo });
-            }
-        }
-
-        // Create new entry if name doesn't exist
-        const newInfo = new PersonalInformationList({
-            sno,
-            name: personalInformationList_name
-        });
-
-        await newInfo.save();
-        res.status(201).json({ message: "New personal information added successfully", data: newInfo });
-
-    } catch (error) {
-        res.status(500).json({ message: "Internal server error", error: error.message });
+    if (!sno || !personalInformationList_name) {
+      return res.status(400).json({ message: "S.No and Name are required" });
     }
+
+    // ======================
+    // UPDATE EXISTING
+    // ======================
+    if (id) {
+      const existingInfo = await PersonalInformationList.findById(id);
+
+      if (!existingInfo) {
+        return res.status(404).json({ message: "Personal information not found" });
+      }
+
+      const oldName = existingInfo.name;
+
+      existingInfo.sno = sno;
+      existingInfo.name = personalInformationList_name;
+      await existingInfo.save();
+
+      // 🔥 Sync backup key in students
+      await Student.updateMany(
+        { "additionalInfo.infoId": existingInfo._id },
+        {
+          $set: {
+            "additionalInfo.$[elem].key": personalInformationList_name
+          }
+        },
+        {
+          arrayFilters: [{ "elem.infoId": existingInfo._id }]
+        }
+      );
+
+      return res.status(200).json({
+        message: "Personal information updated and synced to students",
+        oldName,
+        newName: personalInformationList_name,
+        data: existingInfo
+      });
+    }
+
+    // ======================
+    // CREATE NEW
+    // ======================
+    const nameExists = await PersonalInformationList.findOne({
+      name: personalInformationList_name
+    });
+
+    if (nameExists) {
+      return res.status(409).json({
+        message: "Personal information name already exists",
+        data: nameExists
+      });
+    }
+
+    const newInfo = new PersonalInformationList({
+      sno,
+      name: personalInformationList_name
+    });
+
+    await newInfo.save();
+
+    res.status(201).json({
+      message: "New personal information added successfully",
+      data: newInfo
+    });
+
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ message: "Internal server error", error: error.message });
+  }
 });
 
 // Route to get all personal information
@@ -1400,14 +1441,70 @@ app.delete('/delete-template/:id', async (req, res) => {
 });
 
 
+// app.post('/migrateAdditionalInfo', async (req, res) => {
+//   try {
+//     // 1. Load master personal info list
+//     const infos = await PersonalInformationList.find();
+//     const infoMap = {};
 
+//     infos.forEach(i => {
+//       infoMap[i.name.trim()] = i._id;
+//     });
 
+//     // 2. Load all students
+//     const students = await Student.find();
 
+//     let updatedCount = 0;
+//     let skipped = [];
 
+//     // 3. Loop students
+//     for (const student of students) {
+//       let updated = false;
 
+//       student.additionalInfo = student.additionalInfo.map(info => {
+//         // Normalize key
+//         const key = info.key?.trim();
 
+//         // If already migrated → leave it
+//         if (info.infoId) return info;
 
+//         // If mapping exists → add ObjectId
+//         if (key && infoMap[key]) {
+//           updated = true;
+//           return {
+//             infoId: infoMap[key],
+//             key: key,
+//             value: info.value
+//           };
+//         }
 
+//         // If no mapping → skip safely
+//         skipped.push({
+//           studentId: student._id,
+//           key: key
+//         });
+
+//         return info;
+//       });
+
+//       if (updated) {
+//         await student.save({ validateBeforeSave: false });
+//         updatedCount++;
+//       }
+//     }
+
+//     res.status(200).json({
+//       message: 'Migration completed successfully',
+//       studentsUpdated: updatedCount,
+//       skippedEntries: skipped.length,
+//       skippedDetails: skipped
+//     });
+
+//   } catch (error) {
+//     console.error('Migration error:', error);
+//     res.status(500).json({ error: error.message });
+//   }
+// });
 
 
 

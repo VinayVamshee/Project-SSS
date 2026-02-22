@@ -12,14 +12,14 @@ const studentSchema = new mongoose.Schema(
     },
     dob: {
       type: Date,
-      
+
     },
     dobInWords: {
       type: String,
     },
     gender: {
       type: String,
-      
+
     },
     aadharNo: {
       type: String
@@ -55,11 +55,11 @@ const studentSchema = new mongoose.Schema(
     academicYears: [{
       academicYear: {
         type: String,
-        
+
       },
       class: {
         type: String,
-        
+
       },
       status: {
         type: String,
@@ -69,8 +69,19 @@ const studentSchema = new mongoose.Schema(
     }],
     additionalInfo: [
       {
-        key: String,
-        value: String,
+        infoId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'PersonalInformationList',
+
+        },
+        key: {
+          type: String,   // copy of PersonalInformationList.name
+          required: true
+        },
+        value: {
+          type: String,   // student-specific value
+          required: true
+        }
       }
     ],
   },
