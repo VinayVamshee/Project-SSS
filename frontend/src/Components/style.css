@@ -1093,6 +1093,15 @@
     font-weight: bold;
 }
 
+.question-content p {
+    margin: 0;
+}
+
+.question-content ul,
+.question-content ol {
+    margin: 0;
+    padding-left: 20px;
+}
 
 .QuestionPaper {
     width: 100%;

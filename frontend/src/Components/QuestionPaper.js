@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 import PrintQuestionPaper from './PrintQuestionPaper';
 import DownloadQuestionBank from './DownloadQuestionBank';
+import TextEditor from './TextEditor';
 
 export default function QuestionManager() {
     const printRef = useRef(null);
@@ -907,8 +908,8 @@ export default function QuestionManager() {
                         )}
                         {level === 0 ? `Q${i + 1}.` : `${toRoman(i)}.`}
                     </strong>
-                    <span style={{ whiteSpace: 'pre-wrap' }}>
-                        <span className="text-muted">[ {q.questionId} ]</span> {q.questionText}
+                    <span style={{ whiteSpace: 'pre-wrap', display: 'flex' }}>
+                        <span className="text-muted">[ {q.questionId} ]</span> <div className="question-content" dangerouslySetInnerHTML={{ __html: q.questionText }} />
                     </span>
                 </h6>
 
@@ -1379,7 +1380,7 @@ export default function QuestionManager() {
                             <div className="row align-items-start g-2 mb-3" style={{ borderBottom: '0.5px solid gray', paddingBottom: '10px' }}>
                                 {/* Question Text */}
                                 <div className="col-md-6">
-                                    <textarea
+                                    {/* <textarea
                                         className="form-control shadow-sm"
                                         placeholder="Enter question text"
                                         value={newQuestion.questionText}
@@ -1387,6 +1388,15 @@ export default function QuestionManager() {
                                         onChange={e => setNewQuestion(q => ({ ...q, questionText: e.target.value }))}
                                         rows={1} // default height
                                         style={{ resize: "vertical", whiteSpace: "pre-wrap" }} // allow wrapping
+                                    /> */}
+                                    <TextEditor
+                                        value={newQuestion.questionText}
+                                        onChange={(value) =>
+                                            setNewQuestion(q => ({
+                                                ...q,
+                                                questionText: value
+                                            }))
+                                        }
                                     />
                                 </div>
 
@@ -2134,7 +2144,7 @@ export default function QuestionManager() {
                                     {/* Question Text + Marks + Image */}
                                     <div className="row align-items-center mb-3" style={{ borderBottom: '0.5px solid gray', paddingBottom: '10px', resize: "vertical", whiteSpace: "pre-wrap" }}>
                                         <div className="col-md-6">
-                                            <textarea
+                                            {/* <textarea
                                                 className="form-control shadow-sm"
                                                 type='text'
                                                 rows={1}
@@ -2145,6 +2155,15 @@ export default function QuestionManager() {
                                                     setEditQuestionData((q) => ({
                                                         ...q,
                                                         questionText: e.target.value,
+                                                    }))
+                                                }
+                                            /> */}
+                                            <TextEditor
+                                                value={editQuestionData.questionText}
+                                                onChange={(value) =>
+                                                    setEditQuestionData((q) => ({
+                                                        ...q,
+                                                        questionText: value,
                                                     }))
                                                 }
                                             />

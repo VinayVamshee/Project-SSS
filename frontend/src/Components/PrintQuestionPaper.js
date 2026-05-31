@@ -49,7 +49,13 @@ const PrintQuestionPaper = forwardRef(
             <div style={{ whiteSpace: 'nowrap', fontWeight: 'bold', }}>{qNumber} {isMain ? '.' : null} </div>
 
             {/* Question text wraps only here */}
-            <div style={{ textAlign: "justify", whiteSpace: 'pre-wrap' }}>{q.questionText}
+            <div style={{ textAlign: "justify", whiteSpace: 'pre-wrap' }}>
+              <div
+                className="question-content"
+                dangerouslySetInnerHTML={{
+                  __html: q.questionText
+                }}
+              />
               {q.questionImage && (
                 <div style={{ marginBottom: '12px', gridColumn: '3 / 4' }}>
                   <img
