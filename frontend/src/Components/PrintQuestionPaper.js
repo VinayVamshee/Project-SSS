@@ -74,7 +74,7 @@ const PrintQuestionPaper = forwardRef(
                       key={i}
                       style={{
                         borderBottom: '1px solid gray',
-                        margin: i === answerLines - 1 ? '10px 0 0 0' : '22px 0',
+                        margin: i === answerLines - 1 ? '18px 0 0 0' : '30px 0',
                         width: '100%',
                       }}
                     ></div>
