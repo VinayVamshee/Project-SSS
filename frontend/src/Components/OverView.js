@@ -1,455 +1,438 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo, useCallback } from "react";
 import axios from "axios";
-import { Bar, Doughnut, Line } from "react-chartjs-2";
-import {
-    Chart as ChartJS,
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    ArcElement,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend,
-} from "chart.js";
 import { useNavigate } from "react-router-dom";
+import {
+    BarChart,
+    Bar,
+    LineChart,
+    Line,
+    PieChart,
+    Pie,
+    Cell,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip as RechartsTooltip,
+    Legend as RechartsLegend,
+    ResponsiveContainer
+} from "recharts";
+import "./OverView.css";
 
-ChartJS.register(
-    CategoryScale,
-    LinearScale,
-    BarElement,
-    ArcElement,
-    PointElement,
-    LineElement,
-    Title,
-    Tooltip,
-    Legend
-);
+const customClassOrder = [
+    "Pre-Nursery",
+    "Nursery",
+    "KG-1",
+    "KG-2",
+    "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
+    "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
+    "Class-11", "Class-12"
+];
 
 export default function OverView() {
     const navigate = useNavigate();
 
+    // ==========================================
+    // DATA & CALCULATION STATES
+    // ==========================================
     const [students, setStudents] = useState([]);
     const [classes, setClasses] = useState([]);
     const [academicYears, setAcademicYears] = useState([]);
-    const [studentCountPerYear, setStudentCountPerYear] = useState({});
-    const [classStudentCount, setClassStudentCount] = useState({});
     const [allPayments, setAllPayments] = useState([]);
-    const [totalPaidFees, setTotalPaidFees] = useState(0);
-    const [latestYear, setLatestYear] = useState("");
     const [classFeesData, setClassFeesData] = useState([]);
-    const [totalFeesAmount, setTotalFeesAmount] = useState(0);
 
-    // Redirect to login if no token
+    // The currently active academic year selection
+    const [selectedYear, setSelectedYear] = useState("");
+
+    // Calculated states depending on selected year
+    const [activeStudents, setActiveStudents] = useState([]);
+    const [classStudentCount, setClassStudentCount] = useState({});
+    const [studentCountPerYear, setStudentCountPerYear] = useState({});
+    const [totalPaidFees, setTotalPaidFees] = useState(0);
+    const [totalFeesAmount, setTotalFeesAmount] = useState(0);
+    const [totalDiscountAmount, setTotalDiscountAmount] = useState(0);
+    const [payableAfterDiscount, setPayableAfterDiscount] = useState(0);
+    const [classWiseSummaryData, setClassWiseSummaryData] = useState({});
+
+    // Auth verification
     useEffect(() => {
         const token = localStorage.getItem("token");
         if (!token) navigate("/login");
     }, [navigate]);
 
-    const [activeStudents, setActiveStudents] = useState([]);
-
-    const customClassOrder = [
-        "Pre-Nursery",
-        "Nursery",
-        "KG-1",
-        "KG-2",
-        "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
-        "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
-        "Class-11", "Class-12"
-    ];
-
-    // Fetch all data: students, classes, academic years, fees
-    const fetchData = async () => {
+    // Fetch primary metadata (students, classes, academic years, fees, class fees)
+    const loadInitialData = useCallback(async () => {
         try {
-            const studentRes = await axios.get("https://sss-server-eosin.vercel.app/getStudent");
+            const [studentRes, classRes, yearRes, feesRes, classFeesRes] = await Promise.all([
+                axios.get("https://sss-server-eosin.vercel.app/getStudent"),
+                axios.get("https://sss-server-eosin.vercel.app/getClasses"),
+                axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear"),
+                axios.get("https://sss-server-eosin.vercel.app/getFees"),
+                axios.get("https://sss-server-eosin.vercel.app/class-fees")
+            ]);
+
             const studentList = studentRes.data.students || [];
             setStudents(studentList);
 
-            const classRes = await axios.get("https://sss-server-eosin.vercel.app/getClasses");
-            const customOrder = [
-                "Pre-Nursery",
-                "Nursery",
-                "KG-1",
-                "KG-2",
-                "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
-                "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
-                "Class-11", "Class-12"
-            ];
-
             const sortedClasses = (classRes.data.classes || []).sort((a, b) => {
-                const indexA = customOrder.indexOf(a.class);
-                const indexB = customOrder.indexOf(b.class);
-
+                const indexA = customClassOrder.indexOf(a.class);
+                const indexB = customClassOrder.indexOf(b.class);
                 return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
             });
-
             setClasses(sortedClasses);
 
-            const yearRes = await axios.get("https://sss-server-eosin.vercel.app/GetAcademicYear");
             const sortedYears = (yearRes.data.data || []).sort(
                 (a, b) => parseInt(a.year.split("-")[0]) - parseInt(b.year.split("-")[0])
             );
             setAcademicYears(sortedYears);
 
-            // Find latest academic year from student data
-            const allYears = studentList.flatMap((s) =>
-                s.academicYears.map((y) => y.academicYear)
-            );
+            setAllPayments(feesRes.data || []);
+            setClassFeesData(classFeesRes.data || []);
+
+            // Set initial selected year to the latest academic year based on student entries
+            const allYears = studentList.flatMap((s) => s.academicYears.map((y) => y.academicYear));
             const sortedAcademicYears = allYears
                 .filter(Boolean)
                 .sort((a, b) => parseInt(b.split("-")[0]) - parseInt(a.split("-")[0]));
-            const latest = sortedAcademicYears[0];
-            setLatestYear(latest);
 
-            const activeStudentsInLatestYear = studentList.filter((student) =>
-                student.academicYears.some(
-                    (year) => year.academicYear === latest && year.status === "Active"
-                )
-            );
-            setActiveStudents(activeStudentsInLatestYear);
-
-            // Count students per class for latestYear only
-            // Count students in latestYear where status is Active
-            const latestYearCount = {};
-            studentList.forEach((student) => {
-                const activeYearEntry = student.academicYears.find(
-                    (y) => y.academicYear === latest && y.status === "Active"
-                );
-
-                if (activeYearEntry) {
-                    const cls = activeYearEntry.class;
-                    latestYearCount[cls] = (latestYearCount[cls] || 0) + 1;
-                }
-            });
-            setClassStudentCount(latestYearCount);
-
-            // Count students per academic year (for line chart)
-            const activeStudentPerYearCount = {};
-            studentList.forEach((s) => {
-                s.academicYears.forEach((y) => {
-                    const year = y.academicYear;
-                    const status = y.status;
-
-                    if (year === latest && status === "Active") {
-                        activeStudentPerYearCount[year] = (activeStudentPerYearCount[year] || 0) + 1;
-                    } else if (year !== latest && status === "Passed") {
-                        activeStudentPerYearCount[year] = (activeStudentPerYearCount[year] || 0) + 1;
-                    }
-                });
-            });
-            setStudentCountPerYear(activeStudentPerYearCount);
-
-            // Calculate total fees paid only for the latest academic year
-            const feesRes = await axios.get("https://sss-server-eosin.vercel.app/getFees");
-            setAllPayments(feesRes.data || [])
-            const allFees = feesRes.data || [];
-
-            let totalPaid = 0;
-            allFees.forEach((fee) => {
-                const yearData = fee.academicYears.find((y) => y.academicYear === latest);
-                if (yearData && yearData.payments && Array.isArray(yearData.payments)) {
-                    totalPaid += yearData.payments.reduce((sum, p) => sum + p.amount, 0);
-                }
-            });
-            setTotalPaidFees(totalPaid);
+            const latest = sortedAcademicYears[0] || (sortedYears[sortedYears.length - 1]?.year || "");
+            setSelectedYear(latest);
         } catch (err) {
-            console.error("Error fetching data:", err);
+            console.error("Error loading initial dashboard data:", err);
         }
-    };
-
-    useEffect(() => {
-        fetchData();
-    }, [navigate]);
-
-    // Fetch class fees
-    useEffect(() => {
-        const fetchClassFees = async () => {
-            try {
-                const res = await axios.get("https://sss-server-eosin.vercel.app/class-fees");
-                setClassFeesData(res.data || []);
-            } catch (err) {
-                console.error("Error fetching class fees:", err);
-            }
-        };
-        fetchClassFees();
     }, []);
 
-
-    const [totalDiscountAmount, setTotalDiscountAmount] = useState(0);
-    const [payableAfterDiscount, setPayableAfterDiscount] = useState(0);
-    const [classWiseFees, setClassWiseFees] = useState({});
-
-    // Calculate total fees to collect for latest academic year
     useEffect(() => {
-    if (
-        classes.length === 0 ||
-        classFeesData.length === 0 ||
-        students.length === 0 ||
-        !latestYear
-    ) {
-        return;
-    }
+        loadInitialData();
+    }, [loadInitialData]);
 
-    let totalFees = 0;
-    let totalDiscount = 0;
-    let totalPayableAfterDiscount = 0;
+    // ==========================================
+    // RE-CALCULATE METRICS WHEN SELECTED YEAR CHANGES
+    // ==========================================
+    useEffect(() => {
+        if (!selectedYear || students.length === 0) return;
 
-    const classWiseSummary = {};
-
-    students.forEach(student => {
-        const academicYear = student.academicYears.find(
-            y => y.academicYear === latestYear && y.status === "Active"
+        // 1. Calculate active students in selected year
+        const activeInSelected = students.filter((student) =>
+            student.academicYears.some((year) => year.academicYear === selectedYear && year.status === "Active")
         );
+        setActiveStudents(activeInSelected);
 
-        if (!academicYear) return;
-
-        const studentClassName = academicYear.class;
-        const classObj = classes.find(c => c.class === studentClassName);
-        const classId = classObj?._id;
-
-        const studentPaymentRecord = allPayments.find(
-            payment => payment.studentId === student._id
-        );
-
-        let fullFee = 0;
-        let discount = 0;
-        let paidAmount = 0;
-
-        if (studentPaymentRecord) {
-            const yearData = studentPaymentRecord.academicYears.find(
-                y => y.academicYear === latestYear
+        // 2. Count active students per class in selected year
+        const classCount = {};
+        students.forEach((student) => {
+            const activeYearEntry = student.academicYears.find(
+                (y) => y.academicYear === selectedYear && y.status === "Active"
             );
-
-            if (yearData) {
-                fullFee = yearData.totalFees || 0;
-                discount = yearData.discount || 0;
-                paidAmount = yearData.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+            if (activeYearEntry) {
+                const cls = activeYearEntry.class;
+                classCount[cls] = (classCount[cls] || 0) + 1;
             }
+        });
+        setClassStudentCount(classCount);
+
+        // 3. Count active students per academic year (line chart history)
+        const activeStudentPerYearCount = {};
+        students.forEach((s) => {
+            s.academicYears.forEach((y) => {
+                const year = y.academicYear;
+                const status = y.status;
+                if (year === selectedYear && status === "Active") {
+                    activeStudentPerYearCount[year] = (activeStudentPerYearCount[year] || 0) + 1;
+                } else if (year !== selectedYear && status === "Passed") {
+                    activeStudentPerYearCount[year] = (activeStudentPerYearCount[year] || 0) + 1;
+                }
+            });
+        });
+        setStudentCountPerYear(activeStudentPerYearCount);
+
+        // 4. Calculate total fees paid for selected year
+        let totalPaid = 0;
+        allPayments.forEach((fee) => {
+            const yearData = fee.academicYears.find((y) => y.academicYear === selectedYear);
+            if (yearData && yearData.payments && Array.isArray(yearData.payments)) {
+                totalPaid += yearData.payments.reduce((sum, p) => sum + p.amount, 0);
+            }
+        });
+        setTotalPaidFees(totalPaid);
+
+        // 5. Calculate school financial parameters (totals, concessions, net targets)
+        if (classes.length > 0 && classFeesData.length > 0) {
+            let totalFees = 0;
+            let totalDiscount = 0;
+            let totalPayableAfterDiscount = 0;
+            const classWiseSummary = {};
+
+            students.forEach(student => {
+                const academicYear = student.academicYears.find(
+                    y => y.academicYear === selectedYear && y.status === "Active"
+                );
+                if (!academicYear) return;
+
+                const studentClassName = academicYear.class;
+                const classObj = classes.find(c => c.class === studentClassName);
+                const classId = classObj?._id;
+
+                const studentPaymentRecord = allPayments.find(payment => payment.studentId === student._id);
+
+                let fullFee = 0;
+                let discount = 0;
+                let paidAmount = 0;
+
+                if (studentPaymentRecord) {
+                    const yearData = studentPaymentRecord.academicYears.find(y => y.academicYear === selectedYear);
+                    if (yearData) {
+                        fullFee = yearData.totalFees || 0;
+                        discount = yearData.discount || 0;
+                        paidAmount = yearData.payments?.reduce((sum, p) => sum + p.amount, 0) || 0;
+                    }
+                }
+
+                if (fullFee === 0) {
+                    const yearFees = classFeesData.find(fee => fee.academicYear === selectedYear);
+                    const classFees = yearFees?.classes.find(clsFee =>
+                        (clsFee.class_id?._id || clsFee.class_id)?.toString() === classId?.toString()
+                    );
+                    if (classFees) {
+                        fullFee =
+                            (classFees.admission_fees || 0) * (student.isNewStudent ? 1 : 0) +
+                            (classFees.development_fee || 0) +
+                            (classFees.exam_fee || 0) +
+                            (classFees.progress_card || 0) +
+                            (classFees.identity_card || 0) +
+                            (classFees.school_diary || 0) +
+                            (classFees.school_activity || 0) +
+                            (classFees.tuition_fee || 0) +
+                            (classFees.late_fee || 0) +
+                            (classFees.miscellaneous || 0);
+                    }
+                }
+
+                const payableAfterDiscountVal = fullFee - discount;
+                totalFees += fullFee;
+                totalDiscount += discount;
+                totalPayableAfterDiscount += payableAfterDiscountVal;
+
+                if (studentClassName) {
+                    if (!classWiseSummary[studentClassName]) {
+                        classWiseSummary[studentClassName] = { total: 0, paid: 0 };
+                    }
+                    classWiseSummary[studentClassName].total += payableAfterDiscountVal;
+                    classWiseSummary[studentClassName].paid += paidAmount;
+                }
+            });
+
+            setTotalFeesAmount(totalFees);
+            setTotalDiscountAmount(totalDiscount);
+            setPayableAfterDiscount(totalPayableAfterDiscount);
+            setClassWiseSummaryData(classWiseSummary);
         }
 
-        // ❗ If no payment record or no yearData, fallback to class fee calculation
-        if (fullFee === 0) {
-            const yearFees = classFeesData.find(fee => fee.academicYear === latestYear);
-            const classFees = yearFees?.classes.find(clsFee =>
-                (clsFee.class_id?._id || clsFee.class_id)?.toString() === classId?.toString()
-            );
+    }, [selectedYear, students, classes, classFeesData, allPayments]);
 
-            if (classFees) {
-                fullFee =
-                    (classFees.admission_fees || 0) * (student.isNewStudent ? 1 : 0) +
-                    (classFees.development_fee || 0) +
-                    (classFees.exam_fee || 0) +
-                    (classFees.progress_card || 0) +
-                    (classFees.identity_card || 0) +
-                    (classFees.school_diary || 0) +
-                    (classFees.school_activity || 0) +
-                    (classFees.tuition_fee || 0) +
-                    (classFees.late_fee || 0) +
-                    (classFees.miscellaneous || 0);
-            }
-        }
+    // ==========================================
+    // RECHARTS DATA FORMATTING
+    // ==========================================
+    const barChartData = useMemo(() => {
+        return classes.map((cls) => ({
+            class: cls.class,
+            students: classStudentCount[cls.class] || 0
+        }));
+    }, [classes, classStudentCount]);
 
-        const payableAfterDiscount = fullFee - discount;
+    const donutChartData = useMemo(() => {
+        const remaining = payableAfterDiscount - totalPaidFees;
+        return [
+            { name: "Fees Collected", value: totalPaidFees, color: "#10b981" },
+            { name: "Pending Balance", value: remaining > 0 ? remaining : 0, color: "#f43f5e" }
+        ];
+    }, [totalPaidFees, payableAfterDiscount]);
 
-        totalFees += fullFee;
-        totalDiscount += discount;
-        totalPayableAfterDiscount += payableAfterDiscount;
-
-        if (studentClassName) {
-            if (!classWiseSummary[studentClassName]) {
-                classWiseSummary[studentClassName] = { total: 0, paid: 0 };
-            }
-
-            classWiseSummary[studentClassName].total += payableAfterDiscount;
-            classWiseSummary[studentClassName].paid += paidAmount;
-        }
-    });
-
-    setTotalFeesAmount(totalFees);
-    setTotalDiscountAmount(totalDiscount);
-    setPayableAfterDiscount(totalPayableAfterDiscount);
-    setClassWiseFees(classWiseSummary);
-}, [classes, classFeesData, students, latestYear, allPayments]);
-
-
-
-    // Prepare chart data
-    const buttonColor = getComputedStyle(document.documentElement)
-        .getPropertyValue("--button-color")
-        .trim();
-    const backgroundColor = getComputedStyle(document.documentElement)
-        .getPropertyValue("--background-color")
-        .trim();
-
-    const BarData = {
-        labels: classes.map((cls) => `${cls.class}`),
-        datasets: [
-            {
-                label: "Students per Class",
-                data: classes.map((cls) => classStudentCount[cls.class] || 0),
-                backgroundColor: buttonColor,
-                borderRadius: { topLeft: 50, topRight: 50 },
-                borderSkipped: "bottom",
-                barThickness: 15,
-            },
-        ],
-    };
-
-    const pieData = {
-        labels: ["Paid Fees", "Total Fees"],
-        datasets: [
-            {
-                label: "Fee Payment",
-                data: [totalPaidFees, totalFeesAmount - totalPaidFees],
-                backgroundColor: [buttonColor, backgroundColor],
-                hoverOffset: 4,
-                cutout: "90%",
-                radius: "80%",
-            },
-        ],
-    };
-
-    const lineData = {
-        labels: academicYears.map((year) => year.year),
-        datasets: [
-            {
-                label: "Total Students",
-                data: academicYears.map((year) => studentCountPerYear[year.year] || 0),
-                borderColor: buttonColor,
-                tension: 0.4,
-                fill: false,
-            },
-        ],
-    };
-
-    const lineOptions = {
-        responsive: true,
-        plugins: {
-            legend: { position: "top" },
-            title: { display: true, text: "Total Students per Academic Year" },
-        },
-        scales: {
-            x: { title: { display: true, text: "Academic Year" } },
-            y: { beginAtZero: true, title: { display: true, text: "Total Students" } },
-        },
-    };
-
+    const lineChartData = useMemo(() => {
+        return academicYears.map((year) => ({
+            year: year.year,
+            students: studentCountPerYear[year.year] || 0
+        }));
+    }, [academicYears, studentCountPerYear]);
 
     return (
-        <div className="OverView">
-            <div className="totalCards">
-                <div className="totalCard">
-                    <i className="fa-solid fa-user fa-xl"></i>
-                    <div className="totalValue">
+        <div className="OverView ov-animate-fade">
+
+            {/* Header / Interactive Academic Session Selector */}
+            <div className="ov-header-compact">
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span className="ov-dropdown-label" style={{ fontSize: '0.82rem', fontWeight: 600, color: '#475569' }}>Academic Session:</span>
+                    <select
+                        className="ov-session-select"
+                        value={selectedYear}
+                        onChange={(e) => setSelectedYear(e.target.value)}
+                    >
+                        <option value="">-- Choose Academic Year --</option>
+                        {academicYears.map((y) => (
+                            <option key={y._id} value={y.year}>{y.year}</option>
+                        ))}
+                    </select>
+                </div>
+            </div>
+
+            {/* Core School Stats Metric Cards */}
+            <div className="ov-stats-grid">
+                <div className="ov-stat-card">
+                    <div className="ov-icon-wrapper students"><i className="fa-solid fa-graduation-cap"></i></div>
+                    <div className="ov-stat-info">
                         <strong>{activeStudents.length}</strong>
-                        <p>Total Students</p>
+                        <span>Active Students</span>
                     </div>
                 </div>
 
-                <div className="totalCard">
-                    <i className="fa-solid fa-id-badge fa-xl"></i>
-                    <div className="totalValue">
+                <div className="ov-stat-card">
+                    <div className="ov-icon-wrapper staff"><i className="fa-solid fa-user-tie"></i></div>
+                    <div className="ov-stat-info">
                         <strong>10</strong>
-                        <p>Total Staff</p>
+                        <span>Total Staff</span>
                     </div>
                 </div>
 
-                <div className="totalCard">
-                    <i className="fa-solid fa-wallet bg-wallet fa-xl"></i>
-                    <div className="totalValue">
-                        <strong>{totalPaidFees.toLocaleString("en-IN")}</strong>
-                        <p>Fees Collected</p>
+                <div className="ov-stat-card">
+                    <div className="ov-icon-wrapper collected"><i className="fa-solid fa-indian-rupee-sign"></i></div>
+                    <div className="ov-stat-info">
+                        <strong>₹{totalPaidFees.toLocaleString("en-IN")}</strong>
+                        <span>Collected Fees</span>
                     </div>
                 </div>
 
-                <div className="totalCard">
-                    <i className="fa-solid fa-wallet bg-wallet fa-xl"></i>
-                    <div className="totalValue">
-                        <strong>{totalDiscountAmount.toLocaleString("en-IN")}</strong>
-                        <p>Concession Provided</p>
+                <div className="ov-stat-card">
+                    <div className="ov-icon-wrapper concession"><i className="fa-solid fa-tags"></i></div>
+                    <div className="ov-stat-info">
+                        <strong>₹{totalDiscountAmount.toLocaleString("en-IN")}</strong>
+                        <span>Concessions Granted</span>
                     </div>
                 </div>
 
-                <div className="totalCard">
-                    <i className="fa-solid fa-wallet bg-wallet fa-xl"></i>
-                    <div className="totalValue">
-                        <strong>{payableAfterDiscount.toLocaleString("en-IN")}</strong>
-                        <p>Fees After Concession</p>
+                <div className="ov-stat-card">
+                    <div className="ov-icon-wrapper payable"><i className="fa-solid fa-calculator"></i></div>
+                    <div className="ov-stat-info">
+                        <strong>₹{payableAfterDiscount.toLocaleString("en-IN")}</strong>
+                        <span>Payable Balance</span>
                     </div>
                 </div>
 
-                <div className="totalCard">
-                    <i className="fa-solid fa-wallet bg-wallet fa-xl"></i>
-                    <div className="totalValue">
-                        <strong>{totalFeesAmount.toLocaleString("en-IN")}</strong>
-                        <p>Total Fees to be Collected</p>
-                    </div>
-                </div>
-
-                <div className="totalCard">
-                    <i className="fa-solid fa-school bg-classes fa-xl"></i>
-                    <div className="totalValue">
-                        <strong>{classes.length}</strong>
-                        <p>Total Classes</p>
+                <div className="ov-stat-card">
+                    <div className="ov-icon-wrapper total-fees"><i className="fa-solid fa-receipt"></i></div>
+                    <div className="ov-stat-info">
+                        <strong>₹{totalFeesAmount.toLocaleString("en-IN")}</strong>
+                        <span>Total Gross Target</span>
                     </div>
                 </div>
             </div>
 
-            <div className="ClassStudentsChart">
-                <Bar className="BarGraph" data={BarData} />
-                <Doughnut className="PieGraph" data={pieData} />
+            {/* Charts Row using Recharts */}
+            <div className="ov-charts-grid">
+                <div className="ov-chart-card">
+                    <h4>Enrollment Distribution per Class</h4>
+                    <div className="ov-chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={barChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                                <XAxis dataKey="class" tick={{ fontSize: 9 }} stroke="#94a3b8" />
+                                <YAxis tick={{ fontSize: 9 }} stroke="#94a3b8" />
+                                <RechartsTooltip contentStyle={{ fontSize: '11px', borderRadius: '6px' }} />
+                                <Bar dataKey="students" fill="#3b82f6" radius={[4, 4, 0, 0]} barSize={14} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                <div className="ov-chart-card">
+                    <h4>Collection Progress Distribution</h4>
+                    <div className="ov-chart-container">
+                        <ResponsiveContainer width="100%" height="100%">
+                            <PieChart>
+                                <Pie
+                                    data={donutChartData}
+                                    cx="50%"
+                                    cy="50%"
+                                    innerRadius="65%"
+                                    outerRadius="85%"
+                                    paddingAngle={3}
+                                    dataKey="value"
+                                >
+                                    {donutChartData.map((entry, index) => (
+                                        <Cell key={`cell-${index}`} fill={entry.color} />
+                                    ))}
+                                </Pie>
+                                <RechartsTooltip formatter={(value) => `₹${value.toLocaleString("en-IN")}`} contentStyle={{ fontSize: '11px', borderRadius: '6px' }} />
+                                <RechartsLegend iconSize={8} iconType="circle" wrapperStyle={{ fontSize: '11px', marginTop: '10px' }} />
+                            </PieChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
             </div>
 
-            <div className="AcademicYearStudentsChart">
-                <Line className="LineGraph" options={lineOptions} data={lineData} />
-                <div className="ClassWiseSummary">
-                    {Object.keys(classWiseFees).length === 0 ? (
-                        <p className="text-muted">No data available for the selected academic year.</p>
-                    ) : (
-                        <table>
-                            <thead >
+            <div className="ov-charts-grid">
+                <div className="ov-chart-card">
+                    <h4>Enrollment Growth History</h4>
+                    <div className="ov-chart-container" style={{ minHeight: '180px' }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                            <LineChart data={lineChartData} margin={{ top: 10, right: 10, left: -25, bottom: 0 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                                <XAxis dataKey="year" tick={{ fontSize: 10 }} stroke="#94a3b8" />
+                                <YAxis tick={{ fontSize: 10 }} stroke="#94a3b8" />
+                                <RechartsTooltip contentStyle={{ fontSize: '11px', borderRadius: '6px' }} />
+                                <Line type="monotone" dataKey="students" stroke="#8b5cf6" strokeWidth={2.5} activeDot={{ r: 6 }} dot={{ r: 3 }} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                </div>
+
+                {/* Class wise detailed metrics */}
+                <div className="ov-table-card">
+                    <h4>Class-wise Fee Collection Progress</h4>
+                    <div className="ov-table-wrapper">
+                        <table className="ov-table">
+                            <thead>
                                 <tr>
                                     <th>Class</th>
-                                    <th>Fee Progress [ Paid Fees / ( Class Fees - Concession ) ]</th>
+                                    <th>Progress & Collection Target</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {Object.entries(classWiseFees).sort(([classA], [classB]) => {
-                                    const indexA = customClassOrder.indexOf(classA);
-                                    const indexB = customClassOrder.indexOf(classB);
-                                    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-                                }).map(([cls, data], idx) => {
-                                    const total = data.total;
-                                    const paid = data.paid;
-                                    const progress = total > 0 ? (paid / total) * 100 : 0;
+                                {Object.keys(classWiseSummaryData).length === 0 ? (
+                                    <tr>
+                                        <td colSpan="2" style={{ textAlign: 'center', color: '#64748b' }}>No data loaded</td>
+                                    </tr>
+                                ) : (
+                                    Object.entries(classWiseSummaryData).sort(([classA], [classB]) => {
+                                        const indexA = customClassOrder.indexOf(classA);
+                                        const indexB = customClassOrder.indexOf(classB);
+                                        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+                                    }).map(([cls, data], idx) => {
+                                        const total = data.total;
+                                        const paid = data.paid;
+                                        const progress = total > 0 ? (paid / total) * 100 : 0;
 
-                                    return (
-                                        <tr key={idx}>
-                                            <td>{cls}</td>
-                                            <td>
-                                                <div className="fees-container w-100">
-                                                    <div className="fees-bar">
-                                                        <div
-                                                            className="fees-progress"
-                                                            style={{ width: `${progress.toFixed(2)}%` }}
-                                                        />
+                                        return (
+                                            <tr key={idx}>
+                                                <td style={{ fontWeight: 600 }}>{cls}</td>
+                                                <td>
+                                                    <div className="ov-progress-container">
+                                                        <div className="ov-progress-bar-bg">
+                                                            <div className="ov-progress-fill" style={{ width: `${progress}%`, backgroundColor: progress >= 100 ? '#10b981' : '#3b82f6' }}></div>
+                                                        </div>
+                                                        <span className="ov-progress-text">
+                                                            ₹{paid.toLocaleString("en-IN")} / ₹{total.toLocaleString("en-IN")}
+                                                        </span>
                                                     </div>
-                                                    <span className="fees-text" style={{ width: 'fit-content' }}>
-                                                        ₹{paid.toLocaleString("en-IN", { minimumFractionDigits: 2 })} / ₹{total.toLocaleString("en-IN", { minimumFractionDigits: 2 })}
-                                                    </span>
-                                                </div>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
                             </tbody>
                         </table>
-                    )}
+                    </div>
                 </div>
-
-
             </div>
+
         </div>
     );
 }

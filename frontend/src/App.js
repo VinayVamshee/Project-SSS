@@ -10,6 +10,7 @@ import Payments from './Components/Payments';
 import Results from './Components/Results';
 import Master from './Components/Master';
 import QuestionPaper from './Components/QuestionPaper';
+import QuestionPaperV2 from './Components/QuestionPaperV2';
 
 function App() {
   return (
@@ -26,6 +27,7 @@ function App() {
           <Route path="/Payments" element={<Payments />} />
           <Route path="/QuestionPaper" element={<QuestionPaper />} />
           <Route path="/Master" element={<Master />} />
+          <Route path="/QuestionPaperV2" element={<QuestionPaperV2 />} />
         </Routes>
         </div>
       </div>

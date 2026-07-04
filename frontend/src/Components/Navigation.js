@@ -158,6 +158,10 @@ export default function Navigation() {
                         <i className="fa-solid fa-clipboard-question fa-lg"></i>
                         {!isCollapsed && " QuestionPaper"}
                     </NavLink>
+                     <NavLink to="/QuestionPaperV2" className={({ isActive }) => isActive ? "Link active" : "Link"}>
+                        <i className="fa-solid fa-clipboard-question fa-lg"></i>
+                        {!isCollapsed && " QuestionPaper V2"}
+                    </NavLink>
                     <NavLink to="/Master" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                         <i className="fa-solid fa-gears fa-lg"></i>
                         {!isCollapsed && " Master"}
