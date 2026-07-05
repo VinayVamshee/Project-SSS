@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import api, { getStudents, getAcademicYears, getClasses, passStudentsTo, updateAcademicYearStatus, addStudent, dropAcademicYear, getAllMasters, updateStudent, getFieldDefinitions } from '../../API';
+import api, { getStudents, getAcademicYears, getClasses, passStudentsTo, updateAcademicYearStatus, addStudent, dropAcademicYear, getAllMasters, updateStudent } from '../../API';
 import boy from "../Images/bussiness-man.png";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
@@ -138,6 +138,7 @@ export default function Students() {
     const [filters, setFilters] = useState([]);
     const [selectedField, setSelectedField] = useState('');
     const [searchText, setSearchText] = useState('');
+    // eslint-disable-next-line
     const [globalSearch, setGlobalSearch] = useState('');
 
     // Final Filtered Students
@@ -626,14 +627,6 @@ export default function Students() {
     const previousStudentData = students.find(
         stu => stu._id === selectedStudent?.previousStudentId
     );
-
-    const predefinedOptions = {
-        gender: ["Male", "Female"],
-        category: ["General", "OBC", "SC", "ST", "EWS"],
-        bloodGroup: ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"],
-        FreeStud: ["Yes", "No"],
-        "Academic - status": ["Active", "Inactive"], // You can update this as per your actual statuses
-    };
 
     return (
         <div className="Students">

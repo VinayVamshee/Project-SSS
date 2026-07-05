@@ -6,7 +6,6 @@ import './Master.css';
 export default function Master() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('profile');
-    const [initialTheme, setInitialTheme] = useState('light');
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -50,7 +49,6 @@ export default function Master() {
                         theme: { themeName: activeTheme }
                     });
                     setLatestId(data._id);
-                    setInitialTheme(activeTheme);
                 }
             })
             .catch(() => setLatestId(null));
@@ -95,7 +93,6 @@ export default function Master() {
                 localStorage.setItem('schoolLogo', form.imageUrl);
                 localStorage.setItem('schoolName', form.name);
                 localStorage.setItem('theme', form.theme.themeName);
-                setInitialTheme(form.theme.themeName);
                 window.location.reload();
             })
             .catch(err => alert('Error saving settings: ' + err.message));

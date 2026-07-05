@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import api, { getStudents, getAcademicYears, getClasses, getFees, getFeesByStudent, getClassFees, saveClassFees, saveFees, incrementReceipt, getReceiptBook, updateReceiptBook, getAllMasters, getFieldDefinitions } from '../../API';
+import { getStudents, getAcademicYears, getClasses, getFees, getFeesByStudent, getClassFees, saveClassFees, saveFees, incrementReceipt, getReceiptBook, updateReceiptBook, getAllMasters, getFieldDefinitions } from '../../API';
 import boy from "../Images/bussiness-man.png";
 import { generatePdf } from "../DownloadReceipt/DownloadReceipt";
 import SearchFilterBar from "../Shared/SearchFilterBar";
@@ -176,14 +176,6 @@ export default function Payments() {
         setSelectAllChecked(!selectAllChecked);
     };
 
-    const predefinedOptions = {
-        gender: ["Male", "Female"],
-        category: ["General", "OBC", "SC", "ST", "EWS"],
-        bloodGroup: ["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"],
-        FreeStud: ["Yes", "No"],
-        "Academic - status": ["Active", "Inactive"], // You can update this as per your actual statuses
-    };
-
     // eslint-disable-next-line
     const [receiptSearch, setReceiptSearch] = useState("");
     const [receiptSortOrder, setReceiptSortOrder] = useState("desc"); // "desc" = latest first, "asc" = oldest first
@@ -205,6 +197,7 @@ export default function Payments() {
         return pickedYears.flatMap((y) => y.payments || []);
     };
 
+    // eslint-disable-next-line
     const [globalSearch, setGlobalSearch] = useState("");
 
     // Filter students based on selected year, class, and search

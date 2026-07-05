@@ -12,9 +12,7 @@ import {
     CartesianGrid,
     Tooltip as RechartsTooltip,
     Legend as RechartsLegend,
-    ResponsiveContainer,
-    AreaChart,
-    Area
+    ResponsiveContainer
 } from "recharts";
 import "./OverView.css";
 
@@ -111,7 +109,7 @@ export default function OverView() {
         } catch (err) {
             console.error("Error loading initial dashboard data:", err);
         }
-    }, [navigate]);
+    }, []);
 
     useEffect(() => {
         loadInitialData();
