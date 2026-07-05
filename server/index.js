@@ -74,10 +74,15 @@ const corsOptions = {
     
     try {
       const url = new URL(origin);
+      // Allow local development domains
       if (url.hostname === 'localhost' || url.hostname.endsWith('.localhost')) {
         if (url.port === '3000' || !url.port) {
           return callback(null, true);
         }
+      }
+      // Allow production domain and all associated subdomains
+      if (url.hostname === 'schooltechnosolution.com' || url.hostname.endsWith('.schooltechnosolution.com')) {
+        return callback(null, true);
       }
     } catch (e) {
       // Invalid URL format
