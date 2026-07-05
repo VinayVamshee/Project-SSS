@@ -4,8 +4,9 @@ const paymentSchema = new mongoose.Schema({
     studentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Student', required: true }, // Link to Student model
     academicYears: [
         {
-            academicYear: { type: String, required: true }, // Academic Year (e.g., 2024-25, 2025-26)
-            totalFees: { type: Number, required: true }, // Total Fees for this academic year
+            // Referenced AcademicYear Object ID instead of String
+            academicYear: { type: mongoose.Schema.Types.ObjectId, ref: 'AcademicYear', required: true },
+            totalFees: { type: Number, required: true }, 
             discount: { type: Number, default: 0 },
             isNewStudent: { type: Boolean, default: false },
 
@@ -13,7 +14,7 @@ const paymentSchema = new mongoose.Schema({
             payments: [
                 {
                     amount: { type: Number, required: true }, // Total Amount Paid
-                    date: { type: Date, default: Date.now }, // Defaults to the current date if not provided
+                    date: { type: Date, default: Date.now }, 
                     paymentMethod: { type: String },
                     paymentBy: { type: String },
 

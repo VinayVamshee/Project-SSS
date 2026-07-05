@@ -1,0 +1,111 @@
+/* Components/Developer/Developer.css */
+
+.developer-container {
+    animation: fadeIn 0.6s ease-out;
+    width: 100%;
+    max-width: 100%;
+    padding: 2rem 1.5rem;
+    color: var(--text-color, #1e293b);
+    background-color: var(--background-color, #FDFBEE);
+    min-height: 100vh;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(15px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.premium-card {
+    background: var(--background-color, #ffffff);
+    color: var(--text-color, #1e293b);
+    border: 1px solid rgba(226, 232, 240, 0.4);
+    border-radius: 16px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+}
+
+.card-header-gradient {
+    background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+    color: #ffffff;
+    padding: 1.25rem 1.5rem;
+    font-weight: 600;
+    font-size: 1.15rem;
+}
+
+.premium-label {
+    font-weight: 500;
+    color: var(--text-color, #334155);
+    margin-bottom: 0.5rem;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+}
+
+.premium-input {
+    border: 1.5px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0.5rem 0.75rem; /* Reduced padding */
+    font-size: 0.95rem;
+    color: var(--text-color, #1e293b);
+    background-color: var(--background-color, #f8fafc);
+}
+
+.btn-premium {
+    padding: 0.5rem 1rem; /* Reduced padding */
+    font-weight: 600;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.btn-premium-primary {
+    background-color: #0f172a;
+    color: #ffffff;
+    border: none;
+}
+
+.btn-premium-primary:hover {
+    background-color: #1e293b;
+    transform: translateY(-1px);
+}
+
+.btn-premium-success {
+    background-color: #10b981;
+    color: #ffffff;
+    border: none;
+}
+
+.btn-premium-success:hover {
+    background-color: #059669;
+    transform: translateY(-1px);
+}
+
+.btn-xs {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    border-radius: 4px;
+}
+
+.hover-select {
+    transition: background-color 0.2s ease, transform 0.1s ease;
+}
+
+.hover-select:hover {
+    background-color: #e2e8f0 !important;
+    transform: translateX(2px);
+}
+
+.bg-success-light {
+    background-color: #ecfdf5 !important;
+    color: #065f46 !important;
+}
+
+.bg-success-light:hover {
+    background-color: #fca5a5 !important; /* turns red on hover to suggest deselect */
+    color: #991b1b !important;
+}

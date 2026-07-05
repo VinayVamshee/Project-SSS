@@ -1,0 +1,328 @@
+/* OverView.css - Premium Analytics Dashboard Styling */
+
+.OverView {
+  width: 100%;
+  min-height: 100vh;
+  padding: 24px;
+  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  box-sizing: border-box;
+  font-family: 'Outfit', 'Inter', sans-serif;
+  color: #0f172a;
+}
+
+/* Animations */
+@keyframes ovFadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.ov-animate-fade {
+  animation: ovFadeIn 0.25s ease-out forwards;
+}
+
+/* Dashboard Header & Title Bar */
+.ov-dashboard-titlebar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+  border-bottom: 1px solid #e2e8f0;
+  padding-bottom: 16px;
+}
+.ov-portal-title {
+  font-size: 1.45rem;
+  font-weight: 800;
+  margin: 0;
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.ov-portal-subtitle {
+  font-size: 0.82rem;
+  color: #64748b;
+  margin: 4px 0 0 0;
+}
+
+.ov-actions-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* Academic Selector input styling */
+.ov-academic-selector {
+  display: flex;
+  align-items: center;
+  background-color: white;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 6px 12px;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+}
+.ov-session-select {
+  appearance: none;
+  background: transparent;
+  border: none;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #1e293b;
+  outline: none;
+  cursor: pointer;
+  padding-right: 4px;
+}
+
+/* Metrics Cards Section */
+.ov-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+}
+
+.ov-stat-card {
+  border-radius: 12px;
+  padding: 18px;
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 110px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+.ov-stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08);
+}
+
+.ov-stat-card.gradient-blue {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+}
+.ov-stat-card.gradient-emerald {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+}
+.ov-stat-card.gradient-purple {
+  background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
+}
+.ov-stat-card.gradient-orange {
+  background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+}
+
+.ov-card-header-flex {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 600;
+  opacity: 0.9;
+}
+.ov-icon-circle {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.85rem;
+}
+
+.ov-metric-big {
+  font-size: 1.85rem;
+  font-weight: 800;
+  margin: 8px 0;
+  letter-spacing: -0.5px;
+}
+.ov-metric-trend {
+  font-size: 0.72rem;
+  opacity: 0.85;
+}
+
+/* Ledger summary strip styling */
+.ov-ledger-summary-row {
+  background: white;
+  border-radius: 12px;
+  padding: 16px 24px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+.ov-ledger-metric {
+  display: flex;
+  flex-direction: column;
+}
+.ov-ledger-metric .label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 2px;
+}
+.ov-ledger-metric .value {
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+.ov-divider-dashed {
+  height: 24px;
+  width: 1px;
+  border-left: 1px dashed #cbd5e1;
+}
+
+/* Charts & Details Grid */
+.ov-charts-grid {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 16px;
+}
+@media (max-width: 992px) {
+  .ov-charts-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.ov-chart-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ov-chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.ov-chart-card h4 {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #1e293b;
+}
+
+.badge-info, .badge-success {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 4px 8px;
+  border-radius: 20px;
+}
+.badge-info { background-color: #eff6ff; color: #1e40af; }
+.badge-success { background-color: #ecfdf5; color: #065f46; }
+
+.ov-chart-container {
+  position: relative;
+  flex: 1;
+  min-height: 280px; /* Expanded for better detail */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Pie chart center overlay label */
+.ov-pie-center-label {
+  position: absolute;
+  top: 48%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  pointer-events: none;
+}
+.ov-pie-center-label .percentage {
+  font-size: 1.3rem;
+  font-weight: 800;
+  color: #0f172a;
+}
+.ov-pie-center-label .label {
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.ov-no-data {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.82rem;
+}
+
+/* Classwise Table card styling */
+.ov-table-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.ov-table-wrapper {
+  overflow-y: auto;
+  max-height: 280px;
+}
+
+.ov-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.82rem;
+  text-align: left;
+}
+.ov-table th {
+  background-color: #f8fafc;
+  color: #64748b;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.ov-table td {
+  padding: 10px 12px;
+  border-bottom: 1px solid #f1f5f9;
+  color: #334155;
+  vertical-align: middle;
+}
+.ov-table tr:hover td {
+  background-color: #f8fafc;
+}
+
+/* Progress bar alignment in list */
+.ov-progress-container {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+.ov-progress-bar-bg {
+  flex: 1;
+  height: 6px;
+  background-color: #f1f5f9;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.ov-progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.ov-progress-text {
+  font-size: 0.72rem;
+  color: #475569;
+  font-weight: 700;
+  min-width: 110px;
+  text-align: right;
+}

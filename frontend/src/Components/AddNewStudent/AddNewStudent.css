@@ -1,0 +1,36 @@
+/* Components/AddNewStudent/AddNewStudent.css */
+
+.AddNewStudent {
+    width: 100%;
+    min-height: 100vh;
+    padding: 20px;
+    background-color: var(--background-color);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.AddNewStudent .addAcademicYear {
+    background-color: var(--button-color);
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    color: white;
+    cursor: pointer;
+}
+
+.AddNewStudent .addAcademicYear:hover {
+    background-color: var(--button-hover);
+}
+
+.btn-save {
+    background-color: var(--button-color);
+    border: none;
+    color: white;
+    font-weight: 500;
+}
+
+.btn-save:hover {
+    background-color: var(--button-hover);
+    color: white;
+}

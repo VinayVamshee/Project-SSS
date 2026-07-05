@@ -42,7 +42,8 @@ const classFeeSubSchema = new mongoose.Schema({
 
 const classFeesSchema = new mongoose.Schema({
   academicYear: {
-    type: String,
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'AcademicYear',
     required: true,
     unique: true
   },

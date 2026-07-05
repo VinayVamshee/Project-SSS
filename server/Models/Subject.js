@@ -5,7 +5,17 @@ const subjectSchema = new mongoose.Schema({
     type: String,
     required: true 
   },
+  schoolId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'School',
+    required: true,
+    index: true
+  }
 });
 
+// Enforce unique subject name within each school
+subjectSchema.index({ name: 1, schoolId: 1 }, { unique: true });
+
 module.exports = mongoose.model('Subject', subjectSchema);
+
  

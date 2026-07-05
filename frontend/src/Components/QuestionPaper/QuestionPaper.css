@@ -1,0 +1,105 @@
+/* Components/QuestionPaper/QuestionPaper.css */
+
+.question-content p {
+    margin: 0;
+}
+
+.question-content ul,
+.question-content ol {
+    margin: 0;
+    padding-left: 20px;
+}
+
+.QuestionPaper {
+    width: 100%;
+    padding: 20px;
+    background-color: var(--background-color);
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    font-family: "Times New Roman", Times, serif !important;
+    height: 100vh;
+}
+
+.QuestionPaper .QuestionPaper-Page-Content {
+    height: 100vh - 41px;
+    overflow: scroll;
+}
+
+.question-paper-selection {
+    background-color: var(--background-color);
+}
+
+.question-paper-selection select,
+.question-paper-selection input {
+    border-radius: 15px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.359);
+}
+
+.question-paper-selection .btn {
+    border-radius: 7px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.359);
+}
+
+.question-paper-selection label {
+    font-family: 'Times New Roman', Times, serif;
+    border-bottom: 0.5px solid gray;
+    font-size: larger;
+    font-weight: bolder;
+}
+
+.questions-list {
+    overflow: scroll;
+    height: 72vh;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.questions-list p {
+    font-family: 'Times New Roman', Times, serif;
+    font-size: 15px;
+}
+
+.print-container {
+    padding: 1rem;
+    font-family: "Times New Roman", Times, serif !important;
+    font-size: 16px;
+}
+
+.fade-in {
+    animation: fadeInOut 5s forwards;
+}
+
+@keyframes fadeInOut {
+    0% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    10% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    90% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+    100% {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+}
+
+.progress-bar-animate {
+    animation: shrinkBar 5s linear forwards;
+}
+
+@keyframes shrinkBar {
+    from {
+        width: 100%;
+    }
+    to {
+        width: 0%;
+    }
+}

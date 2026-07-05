@@ -1,91 +1,69 @@
 const mongoose = require('mongoose');
-const moment = require('moment');
 
+// Student schema follows EAV (Entity-Attribute-Value) architecture.
+// Core system fields (name, image, schoolId, academicYearId) are stored directly.
+// All configurable student information is stored in dynamicFields, referencing PersonalInformationList.
 const studentSchema = new mongoose.Schema(
   {
+    // Core identity fields (referenced across Payments, Marks, Results modules)
     name: {
       type: String,
-      required: true,
-    },
-    nameHindi: {
-      type: String,
-    },
-    dob: {
-      type: Date,
-
-    },
-    dobInWords: {
-      type: String,
-    },
-    gender: {
-      type: String,
-
-    },
-    aadharNo: {
-      type: String
-    },
-    bloodGroup: {
-      type: String,
+      required: true
     },
     image: {
       type: String,
+      default: ''
     },
-    category: {
-      type: String,
-    },
-    AdmissionNo: {
-      type: String,
-    },
-    oldAdmissionNo: {                    // 🔹 NEW FIELD
-      type: String,
-    },
-    previousStudentId: {                // 🔹 NEW FIELD
-      type: mongoose.Types.ObjectId,
-      ref: 'Student',
-    },
-    Caste: {
-      type: String,
-    },
-    CasteHindi: {
-      type: String,
-    },
-    FreeStud: {
-      type: String,
-    },
-    academicYears: [{
-      academicYear: {
-        type: String,
 
+    // Multi-tenant school reference (injected via global plugin pre-validate hook)
+    schoolId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'School',
+      required: true,
+      index: true
+    },
+
+    // Active academic year reference (replaces string year)
+    academicYearId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'AcademicYear',
+      required: false
+    },
+
+    // Enrollment history — tracks per-year class assignment and status
+    enrollments: [{
+      academicYear: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'AcademicYear',
+        required: true
       },
       class: {
-        type: String,
-
+        type: String
       },
       status: {
         type: String,
         enum: ['Active', 'Passed', 'TC-Issued', 'Dropped'],
         default: 'Active'
-      },
-    }],
-    additionalInfo: [
-      {
-        infoId: {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'PersonalInformationList',
-
-        },
-        key: {
-          type: String,   // copy of PersonalInformationList.name
-          required: true
-        },
-        value: {
-          type: String,   // student-specific value
-          required: true
-        }
       }
-    ],
+    }],
+
+    // EAV dynamic fields — all configurable student attributes stored here
+    dynamicFields: [{
+      fieldId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'PersonalInformationList',
+        required: true
+      },
+      value: {
+        type: String,
+        default: ''
+      }
+    }]
   },
   { timestamps: true }
 );
+
+// Compound index for fast lookups per school
+studentSchema.index({ schoolId: 1, academicYearId: 1 });
 
 module.exports = mongoose.model('Student', studentSchema);
