@@ -2,7 +2,7 @@ import axios from 'axios';
 
 // ─── Base Configuration ───────────────────────────────────────────────────────
 // Change this one constant to switch between local and production environments
-const BASE_URL = 'http://localhost:3001';
+const BASE_URL = process.env.REACT_APP_API_URL;
 
 // Pre-configured axios instance — all calls go through here
 const api = axios.create({ baseURL: BASE_URL });

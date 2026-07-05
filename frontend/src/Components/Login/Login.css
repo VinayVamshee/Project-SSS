@@ -1,151 +1,220 @@
-/* Components/Login/Login.css */
+/* Components/Login/Login.css - Premium Enterprise Split Portal */
 
-.login-page-container {
+.login-split-container {
     display: flex;
-    justify-content: center;
-    align-items: center;
     min-height: 100vh;
-    width: 100%;
-    padding: 1.5rem;
-    background: radial-gradient(circle at 10% 20%, rgba(239, 246, 255, 0.4) 0%, rgba(219, 234, 254, 0.2) 90%), var(--background-color, #FDFBEE);
-    transition: background 0.5s ease;
-}
-
-.login-card-wrapper {
-    background: #ffffff;
-    border: 1px solid rgba(226, 232, 240, 0.8);
-    border-radius: 24px;
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 16px -6px rgba(0, 0, 0, 0.03);
-    width: 100%;
-    max-width: 440px;
+    width: 100vw;
+    background-color: #ffffff;
+    font-family: 'Outfit', 'Inter', sans-serif;
     overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* ==========================================
+   LEFT COLUMN: AUTHENTICATION (40–45% width)
+   ========================================== */
+.login-auth-panel {
+    flex: 0.85; /* Translates to ~40-42% width on desktop layout */
     display: flex;
-    flex-direction: column;
-    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    align-items: center;
+    justify-content: center;
+    padding: 3rem;
+    background-color: #ffffff;
+    z-index: 10;
 }
-
-@keyframes slideUp {
-    from {
-        opacity: 0;
-        transform: translateY(20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
+@media (max-width: 992px) {
+    .login-auth-panel {
+        flex: 1;
+        padding: 2rem 1.5rem;
     }
 }
 
-.login-branding {
-    padding: 3rem 2rem 2rem 2rem;
-    text-align: center;
-    background: linear-gradient(180deg, rgba(248, 250, 252, 0.8) 0%, rgba(255, 255, 255, 0) 100%);
-    border-bottom: 1px solid rgba(241, 245, 249, 0.8);
-}
-
-.login-school-logo {
-    width: 80px;
-    height: 80px;
-    object-fit: cover;
-    border-radius: 50%;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+.login-card-inner {
+    width: 100%;
+    max-width: 440px; /* Aligned with 420-460px specification */
     background: #ffffff;
-    border: 3px solid var(--button-color, #3b82f6);
+    border-radius: 18px; /* Aligned with 16-20px specification */
+    padding: 40px;
+    box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.01); /* Very subtle shadow */
+    border: 1px solid #f1f5f9;
+    animation: ovSlideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
-.school-brand-title {
-    font-weight: 750;
-    color: var(--text-color, #0f172a);
-    margin-bottom: 0.25rem;
-    font-size: 1.35rem;
-    letter-spacing: -0.02em;
+.login-header-minimal h2 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin: 0 0 6px 0;
+    letter-spacing: -0.5px;
 }
-
-.school-brand-subtitle {
+.login-header-minimal p {
     font-size: 0.85rem;
     color: #64748b;
-    margin-bottom: 0;
+    margin: 0;
     font-weight: 500;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
+    line-height: 1.5;
 }
 
-.login-form-content {
-    padding: 2.5rem 2.25rem;
-}
-
+/* Form inputs & select layouts */
 .login-field-label {
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: 0.72rem;
+    font-weight: 700;
     color: #475569;
     text-transform: uppercase;
-    letter-spacing: 0.03em;
-    margin-bottom: 0.5rem;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+    display: block;
 }
 
-.login-input {
-    border: 1.5px solid #e2e8f0;
-    border-left: none;
-    border-radius: 0 10px 10px 0;
-    padding: 0.65rem 0.75rem;
-    font-size: 0.95rem;
-    background-color: #f8fafc;
-    color: #1e293b;
+.login-input-modern {
+    background-color: #f8fafc !important;
+    border: 1px solid #cbd5e1;
+    color: #0f172a !important;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    padding: 12px 14px;
     transition: all 0.2s ease;
-}
-
-.login-input:focus {
-    background-color: #ffffff;
-    border-color: var(--button-color, #3b82f6);
     box-shadow: none;
 }
-
-.login-input-icon {
-    background-color: #f8fafc;
-    border: 1.5px solid #e2e8f0;
-    border-right: none;
-    border-radius: 10px 0 0 10px;
-    padding-left: 0.85rem;
-    padding-right: 0.5rem;
+.login-input-modern:focus {
+    background-color: #ffffff;
+    border-color: var(--button-color, #3b82f6);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+    outline: none;
+}
+.login-input-modern::placeholder {
+    color: #94a3b8;
 }
 
-.login-select {
-    border: 1.5px solid #e2e8f0;
-    border-radius: 10px;
-    padding: 0.65rem 0.75rem;
-    font-size: 0.95rem;
+.login-select-modern {
     background-color: #f8fafc;
-    color: #1e293b;
-    font-weight: 550;
+    border: 1px solid #cbd5e1;
+    color: #0f172a;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    padding: 12px 14px;
+    font-weight: 600;
     cursor: pointer;
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23475569' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m2 5 6 6 6-6'/%3e%3c/svg%3e");
+    background-repeat: no-repeat;
+    background-position: right 14px center;
+    background-size: 12px 10px;
     transition: all 0.2s ease;
 }
-
-.login-select:focus {
-    background-color: #ffffff;
+.login-select-modern:focus {
     border-color: var(--button-color, #3b82f6);
-    box-shadow: none;
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.08);
+    background-color: #ffffff;
+    outline: none;
 }
 
+/* Continue Call-to-action button */
 .btn-login {
-    background-color: var(--button-color, #0f172a);
+    background: var(--button-color, #0f172a);
     color: #ffffff;
     border: none;
-    border-radius: 10px;
-    font-size: 1rem;
-    transition: all 0.25s ease;
-    box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+    border-radius: 8px;
+    font-size: 0.95rem;
+    font-weight: 700;
+    padding: 13px;
+    transition: all 0.2s ease;
+    cursor: pointer;
 }
-
 .btn-login:hover {
-    background-color: var(--button-hover, #1e293b);
-    transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(15, 23, 42, 0.15);
+    background: var(--button-hover, #1e293b);
     color: #ffffff;
 }
-
 .btn-login:disabled {
-    background-color: #94a3b8;
+    background: #e2e8f0;
+    color: #94a3b8;
     cursor: not-allowed;
-    transform: none;
-    box-shadow: none;
+}
+
+/* ==========================================
+   RIGHT COLUMN: BRANDING (55–60% width)
+   ========================================== */
+.login-brand-panel {
+    flex: 1.15; /* Translates to ~58-60% width on desktop layout */
+    position: relative;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    display: flex;
+    align-items: flex-end;
+    padding: 5rem;
+    box-sizing: border-box;
+    transition: background-image 0.5s ease;
+}
+@media (max-width: 992px) {
+    .login-brand-panel {
+        display: none; /* Hide branding panel on tablets/mobile */
+    }
+}
+
+.brand-panel-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 1;
+    transition: background-color 0.5s ease;
+}
+
+.brand-panel-content {
+    position: relative;
+    z-index: 2;
+    max-width: 520px;
+    color: #ffffff;
+    animation: ovFadeIn 0.6s ease-out forwards;
+}
+
+.brand-school-logo {
+    width: 72px;
+    height: 72px;
+    object-fit: cover;
+    border-radius: 12px;
+    background-color: white;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.brand-global-icon {
+    width: 72px;
+    height: 72px;
+    border-radius: 12px;
+    background-color: rgba(255,255,255,0.1);
+    border: 1.5px solid rgba(255,255,255,0.2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 2.2rem;
+}
+
+.brand-school-name {
+    font-size: 2.6rem;
+    font-weight: 800;
+    margin: 0 0 10px 0;
+    letter-spacing: -0.8px;
+    line-height: 1.15;
+}
+
+.brand-school-motto {
+    font-size: 0.9rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.15em;
+    color: rgba(255, 255, 255, 0.85);
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* Keyframes animations */
+@keyframes ovSlideUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+@keyframes ovFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
 }

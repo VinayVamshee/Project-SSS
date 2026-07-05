@@ -5,6 +5,8 @@ const SchoolSchema = new mongoose.Schema({
   slug: { type: String, required: true, unique: true }, // e.g. 'abc' for abc.mysss.com
   customDomain: { type: String, unique: true, sparse: true }, // e.g. 'schoolname.com'
   logoUrl: { type: String },
+  motto: { type: String },
+  backgroundImage: { type: String },
   address: { type: String },
   phoneNo: { type: String, required: true },
   email: { type: String, required: true, unique: true },

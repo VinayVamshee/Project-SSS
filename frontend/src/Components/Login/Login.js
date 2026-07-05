@@ -2,6 +2,25 @@ import React, { useState, useEffect } from 'react';
 import { login as apiLogin, getAllMasters } from '../../API';
 import './Login.css';
 
+// Dynamic assets maps based on school slug
+const schoolAssets = {
+    "brilliant-public-school": {
+        motto: "Nurturing Excellence, Inspiring Brilliance",
+        campusImage: "https://images.unsplash.com/photo-1541339907198-e08756dedf3f?auto=format&fit=crop&w=1200&q=80",
+        overlayColor: "rgba(15, 32, 67, 0.88)" // Rich Deep Navy Blue
+    },
+    "vamshee": {
+        motto: "Innovation in Education, Excellence in Life",
+        campusImage: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=1200&q=80",
+        overlayColor: "rgba(67, 30, 15, 0.88)" // Deep Warm Amber/Bronze
+    },
+    "default": {
+        motto: "Empowering Minds, Shaping Futures",
+        campusImage: "https://images.unsplash.com/photo-1506784983877-45594efa4cbe?auto=format&fit=crop&w=1200&q=80",
+        overlayColor: "rgba(15, 23, 42, 0.9)" // Slate Dark
+    }
+};
+
 export default function Login() {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
@@ -108,6 +127,8 @@ export default function Login() {
                 localStorage.setItem('schoolId', school._id || payload.schoolId || '');
                 localStorage.setItem('schoolName', school.name || '');
                 localStorage.setItem('schoolLogo', school.logoUrl || school.imageUrl || '');
+                localStorage.setItem('schoolMotto', school.motto || '');
+                localStorage.setItem('schoolBgImage', school.backgroundImage || '');
                 localStorage.setItem('theme', school.theme?.themeName || 'light');
                 document.documentElement.setAttribute('data-theme', school.theme?.themeName || 'light');
             }
@@ -121,42 +142,32 @@ export default function Login() {
         }
     };
 
-    return (
-        <div className="login-page-container">
-            <div className="login-card-wrapper ov-animate-fade">
-                {/* Branding Block */}
-                <div className="login-branding">
-                    {selectedSchool ? (
-                        <>
-                            <img 
-                                src={selectedSchool.logoUrl || selectedSchool.imageUrl || 'default.jpg'} 
-                                alt={selectedSchool.name} 
-                                className="login-school-logo mb-3"
-                                onError={(e) => { e.target.src = 'https://placehold.co/120x120?text=School'; }}
-                            />
-                            <h4 className="school-brand-title">{selectedSchool.name}</h4>
-                            <p className="school-brand-subtitle">Student Scholastic System</p>
-                        </>
-                    ) : (
-                        <>
-                            <i className="fas fa-school fa-3x text-primary mb-3"></i>
-                            <h4 className="school-brand-title">Scholastic Portal</h4>
-                            <p className="school-brand-subtitle">Select School Tenant to Begin</p>
-                        </>
-                    )}
-                </div>
+    // Resolve active school assets - prioritizing database fields, falling back to local preset configs
+    const activeAssets = {
+        motto: selectedSchool?.motto || (selectedSchool ? (schoolAssets[selectedSchool.slug]?.motto || schoolAssets["default"].motto) : schoolAssets["default"].motto),
+        campusImage: selectedSchool?.backgroundImage || (selectedSchool ? (schoolAssets[selectedSchool.slug]?.campusImage || schoolAssets["default"].campusImage) : schoolAssets["default"].campusImage),
+        overlayColor: selectedSchool ? (schoolAssets[selectedSchool.slug]?.overlayColor || schoolAssets["default"].overlayColor) : schoolAssets["default"].overlayColor
+    };
 
-                {/* Form Content */}
-                <div className="login-form-content">
-                    <form onSubmit={handleSubmit}>
-                        {error && <div className="alert alert-danger py-2 small mb-3">{error}</div>}
+    return (
+        <div className="login-split-container">
+            {/* Left Side: Authentication (40–45% width) */}
+            <div className="login-auth-panel">
+                <div className="login-card-inner">
+                    <div className="login-header-minimal">
+                        <h2>Sign In</h2>
+                        <p>Enter your institutional credentials to gain access.</p>
+                    </div>
+
+                    <form onSubmit={handleSubmit} className="mt-4">
+                        {error && <div className="alert alert-danger py-2 small mb-4">{error}</div>}
 
                         {/* Tenant Switcher dropdown on Login screen - hidden if loading via subdomain */}
                         {!isSubdomain && (
-                            <div className="mb-3">
-                                <label className="form-label login-field-label">Portal Directory</label>
+                            <div className="mb-4">
+                                <label className="form-label login-field-label">Select School</label>
                                 <select 
-                                    className="form-select login-select" 
+                                    className="form-select login-select-modern" 
                                     value={selectedSchool?._id || ''} 
                                     onChange={(e) => handleSchoolSwitch(e.target.value)}
                                 >
@@ -167,49 +178,77 @@ export default function Login() {
                             </div>
                         )}
 
-                        <div className="mb-3">
+                        <div className="mb-4">
                             <label className="form-label login-field-label">Username</label>
-                            <div className="input-group">
-                                <span className="input-group-text login-input-icon"><i className="fas fa-user text-muted"></i></span>
-                                <input 
-                                    type="text" 
-                                    className="form-control login-input" 
-                                    value={username} 
-                                    onChange={(e) => setUsername(e.target.value)} 
-                                    placeholder="Enter username" 
-                                    required 
-                                />
-                            </div>
+                            <input 
+                                type="text" 
+                                className="form-control login-input-modern" 
+                                placeholder="name@school" 
+                                value={username}
+                                onChange={(e) => setUsername(e.target.value)}
+                                required 
+                            />
                         </div>
 
                         <div className="mb-4">
                             <label className="form-label login-field-label">Password</label>
-                            <div className="input-group">
-                                <span className="input-group-text login-input-icon"><i className="fas fa-lock text-muted"></i></span>
-                                <input 
-                                    type="password" 
-                                    className="form-control login-input" 
-                                    value={password} 
-                                    onChange={(e) => setPassword(e.target.value)} 
-                                    placeholder="••••••••" 
-                                    required 
-                                />
-                            </div>
+                            <input 
+                                type="password" 
+                                className="form-control login-input-modern" 
+                                placeholder="••••••••" 
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required 
+                            />
                         </div>
 
                         <button 
                             type="submit" 
-                            className="btn btn-login w-100 fw-bold py-2 mt-2" 
+                            className="btn btn-login w-100 py-3 mt-3"
                             disabled={loading}
                         >
                             {loading ? (
-                                <>
-                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                    Authenticating...
-                                </>
-                            ) : 'Sign In'}
+                                <span><i className="fa-solid fa-spinner fa-spin me-2"></i>Verifying...</span>
+                            ) : (
+                                <span>Continue <i className="fa-solid fa-arrow-right ms-2"></i></span>
+                            )}
                         </button>
                     </form>
+                </div>
+            </div>
+
+            {/* Right Side: School Branding Area (55–60% width) */}
+            <div 
+                className="login-brand-panel"
+                style={{ backgroundImage: `url(${activeAssets.campusImage})` }}
+            >
+                {/* Brand Overlay containing deep tinted transparency matching school theme */}
+                <div 
+                    className="brand-panel-overlay"
+                    style={{ backgroundColor: activeAssets.overlayColor }}
+                ></div>
+                
+                <div className="brand-panel-content">
+                    {selectedSchool ? (
+                        <>
+                            <img 
+                                src={selectedSchool.logoUrl || selectedSchool.imageUrl || 'default.jpg'} 
+                                alt={selectedSchool.name} 
+                                className="brand-school-logo mb-4"
+                                onError={(e) => { e.target.src = 'https://placehold.co/120x120?text=School'; }}
+                            />
+                            <h1 className="brand-school-name">{selectedSchool.name}</h1>
+                            <p className="brand-school-motto">{activeAssets.motto}</p>
+                        </>
+                    ) : (
+                        <>
+                            <div className="brand-global-icon mb-4">
+                                <i className="fa-solid fa-globe"></i>
+                            </div>
+                            <h1 className="brand-school-name">School Scholastic System</h1>
+                            <p className="brand-school-motto">Integrated multi-tenant enterprise portal</p>
+                        </>
+                    )}
                 </div>
             </div>
         </div>

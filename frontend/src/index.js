@@ -7,8 +7,7 @@ import axios from 'axios';
 
 // Configure Global Axios Interceptor to rewrite URLs and inject Authorization header
 axios.interceptors.request.use((config) => {
-  const isLocal = window.location.hostname === 'localhost' || window.location.hostname.endsWith('.localhost');
-  const apiBase = isLocal ? 'http://localhost:3001' : 'http://localhost:3001';
+  const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:3001';
   
   if (config.url && config.url.includes('http://localhost:3001')) {
     config.url = config.url.replace('http://localhost:3001', apiBase);
@@ -52,8 +51,7 @@ const TenantAppBootstrapper = () => {
   useEffect(() => {
     const bootstrapTenant = async () => {
       try {
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname.endsWith('.localhost');
-        const apiBase = isLocal ? 'http://localhost:3001' : 'http://localhost:3001';
+        const apiBase = process.env.REACT_APP_API_URL || 'http://localhost:3001';
         
         // Resolve tenant details
         const headers = {};
@@ -85,6 +83,8 @@ const TenantAppBootstrapper = () => {
         localStorage.setItem('schoolName', school.name);
         localStorage.setItem('schoolLogo', school.logoUrl || '');
         localStorage.setItem('schoolSlug', school.slug || '');
+        localStorage.setItem('schoolMotto', school.motto || '');
+        localStorage.setItem('schoolBgImage', school.backgroundImage || '');
         
         setLoading(false);
       } catch (err) {
