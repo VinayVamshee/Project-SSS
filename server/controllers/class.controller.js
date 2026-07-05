@@ -143,6 +143,15 @@ exports.classSubjectLink = async (req, res) => {
     }
 };
 
+exports.getClassSubjects = async (req, res) => {
+    try {
+        const links = await ClassSubjectLink.find();
+        res.status(200).json({ data: links });
+    } catch (error) {
+        res.status(500).json({ message: 'Server Error', error: error.message });
+    }
+};
+
 // Academic Years
 exports.addAcademicYear = async (req, res) => {
     try {

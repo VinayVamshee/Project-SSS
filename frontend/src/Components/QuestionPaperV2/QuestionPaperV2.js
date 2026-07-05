@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import axios from 'axios';
+import api from '../../API';
 import { useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
 import PrintQuestionPaper from '../PrintQuestionPaper/PrintQuestionPaper';
@@ -97,16 +98,15 @@ export default function QuestionPaperV2() {
     useEffect(() => {
         const loadInitialData = async () => {
             try {
-                const [cRes, sRes, csRes, chRes] = await Promise.all([
-                    axios.get('http://localhost:3001/getClasses'),
-                    axios.get('http://localhost:3001/getSubjects'),
-                    axios.get('http://localhost:3001/class-subjects'),
-                    axios.get('http://localhost:3001/chapters'),
-                ]);
+                const cRes = await api.get('/getClasses').catch(err => ({ data: { classes: [] } }));
+                const sRes = await api.get('/getSubjects').catch(err => ({ data: { subjects: [] } }));
+                const csRes = await api.get('/class-subjects').catch(err => ({ data: { data: [] } }));
+                const chRes = await api.get('/chapters').catch(err => ({ data: { data: [] } }));
+
                 setClasses(cRes.data.classes || []);
                 setSubjects(sRes.data.subjects || []);
-                setClassSubjects(csRes.data.data || []);
-                setAllChapters(chRes.data.data || []);
+                setClassSubjects(csRes.data?.data || []);
+                setAllChapters(chRes.data?.data || []);
             } catch (err) {
                 console.error('Error loading initial data:', err.message);
                 showMessage('Error loading configuration data.');
@@ -122,9 +122,23 @@ export default function QuestionPaperV2() {
         setSelectedChapter('');
         setQuestions([]);
 
-        const link = classSubjects.find((x) => x.classId === cls || x.classId?._id === cls);
-        const linkedSubs = subjects.filter((s) => link?.subjectIds?.some(id => id === s._id || id?._id === s._id));
-        setFilteredSubjects(linkedSubs);
+        const link = classSubjects.find((x) => {
+            const linkClassId = (x.classId?._id || x.classId || '').toString();
+            return linkClassId === cls.toString();
+        });
+        if (link && link.subjectIds && link.subjectIds.length > 0) {
+            const linkedSubs = subjects.filter((s) => {
+                return link.subjectIds.some(id => {
+                    const subId = (id?._id || id || '').toString();
+                    const sId = (s._id || '').toString();
+                    return subId === sId;
+                });
+            });
+            setFilteredSubjects(linkedSubs);
+        } else {
+            // Graceful fallback: show all subjects of the school if no links link is found
+            setFilteredSubjects(subjects);
+        }
     };
 
     const onSubjectChange = (e) => {
@@ -156,7 +170,7 @@ export default function QuestionPaperV2() {
     const fetchQuestions = useCallback(async (cls = selectedClass, subj = selectedSubject, chap = selectedChapter) => {
         if (cls && subj && chap) {
             try {
-                const res = await axios.get(`http://localhost:3001/questions?class=${cls}&subject=${subj}&chapter=${chap}`);
+                const res = await api.get(`/questions?class=${cls}&subject=${subj}&chapter=${chap}`);
                 setQuestions(res.data.questions || []);
                 const newMap = {};
                 (res.data.questions || []).forEach(q => { newMap[q.questionId] = q; });
@@ -282,7 +296,7 @@ export default function QuestionPaperV2() {
 
         setQuestionUploading(true);
         try {
-            await axios.post('http://localhost:3001/questions', {
+            await api.post('/questions', {
                 class: selectedClass, subject: selectedSubject, chapter: selectedChapter || null, question: cleanedQuestion,
             });
             fetchQuestions();
@@ -314,7 +328,7 @@ export default function QuestionPaperV2() {
         }
         setQuestionUploading(true);
         try {
-            await axios.put(`http://localhost:3001/questions`, {
+            await api.put(`/questions`, {
                 class: selectedClass, subject: selectedSubject, chapter: selectedChapter || null,
                 mongoId: editQuestionData._id, updatedQuestion: editQuestionData
             });
@@ -333,7 +347,7 @@ export default function QuestionPaperV2() {
     const handleDelete = async (mongoId) => {
         if (!window.confirm('Are you sure you want to delete this question?')) return;
         try {
-            await axios.delete('http://localhost:3001/questions', {
+            await api.delete('/questions', {
                 data: { class: selectedClass, subject: selectedSubject, chapter: selectedChapter, mongoId },
             });
             fetchQuestions();
@@ -416,7 +430,7 @@ export default function QuestionPaperV2() {
                 stripIds(cleanObj);
 
                 // Add to new destination
-                await axios.post('http://localhost:3001/questions', {
+                await api.post('/questions', {
                     class: transferDestClass,
                     subject: transferDestSubject,
                     chapter: transferDestChapter || null,
@@ -424,7 +438,7 @@ export default function QuestionPaperV2() {
                 });
 
                 // Delete from current location
-                await axios.delete('http://localhost:3001/questions', {
+                await api.delete('/questions', {
                     data: {
                         class: selectedClass,
                         subject: selectedSubject,
@@ -469,13 +483,13 @@ export default function QuestionPaperV2() {
     };
 
     useEffect(() => {
-        axios.get('http://localhost:3001/get-all-templates').then(res => setTemplates(res.data)).catch(console.error);
+        api.get('/get-all-templates').then(res => setTemplates(res.data)).catch(console.error);
     }, []);
 
     const saveTemplate = async () => {
         try {
-            await axios.post('http://localhost:3001/save-template', newTemplate);
-            const res = await axios.get('http://localhost:3001/get-all-templates');
+            await api.post('/save-template', newTemplate);
+            const res = await api.get('/get-all-templates');
             setTemplates(res.data);
             setNewTemplate(initialTemplateState);
             showMessage('Saved successfully ✅');
@@ -489,8 +503,8 @@ export default function QuestionPaperV2() {
     const handleDeleteTemplate = async (id) => {
         if (!window.confirm("Are you sure you want to delete this template?")) return;
         try {
-            await axios.delete(`http://localhost:3001/delete-template/${id}`);
-            const res = await axios.get('http://localhost:3001/get-all-templates');
+            await api.delete(`/delete-template/${id}`);
+            const res = await api.get('/get-all-templates');
             setTemplates(res.data);
             showMessage("Template Deleted");
         } catch (error) {
@@ -848,38 +862,47 @@ export default function QuestionPaperV2() {
                 </div>
             )}
 
-            <div className="qpv2-toolbar-card qpv2-animate-fade" style={{ animationDelay: '0.05s' }}>
-                <div className="qpv2-filter-group">
-                    <select className="qpv2-select" value={selectedClass} onChange={onClassChange}>
+            <div className="SearchFilter">
+                {/* Class Dropdown */}
+                <div>
+                    <select className="form-select shadow-sm" value={selectedClass} onChange={onClassChange}>
                         <option value="">-- Select Class --</option>
                         {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
                     </select>
-                    <select className="qpv2-select" value={selectedSubject} onChange={onSubjectChange} disabled={!selectedClass}>
+                </div>
+
+                {/* Subject Dropdown */}
+                <div>
+                    <select className="form-select shadow-sm" value={selectedSubject} onChange={onSubjectChange} disabled={!selectedClass}>
                         <option value="">-- Select Subject --</option>
                         {filteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
                     </select>
-                    <select className="qpv2-select" value={selectedChapter} onChange={onChapterChange} disabled={!selectedSubject}>
+                </div>
+
+                {/* Chapter Dropdown */}
+                <div>
+                    <select className="form-select shadow-sm" value={selectedChapter} onChange={onChapterChange} disabled={!selectedSubject}>
                         <option value="">-- Select Chapter --</option>
                         {chapterList.map((ch, idx) => <option key={idx} value={ch._id}>{ch.name}</option>)}
                     </select>
                 </div>
-                <div className="qpv2-action-group">
-                    <button className="qpv2-btn-primary" disabled={!hasWriteAccess} onClick={() => setIsAddModalOpen(true)}>
-                        <i className="fas fa-plus"></i> Add Question
-                    </button>
-                    <button className="qpv2-btn-outline" disabled={selectedQuestions.length === 0} onClick={() => setIsTransferModalOpen(true)}>
-                        ✈️ Transfer ({selectedQuestions.length})
-                    </button>
-                    <button className="qpv2-btn-secondary" disabled={!hasWriteAccess} onClick={() => setIsTemplateModalOpen(true)}>
-                        <i className="fas fa-book"></i> Templates
-                    </button>
-                    <button className="qpv2-btn-outline" onClick={() => setIsCreateQPModalOpen(true)}>
-                        📝 Create Question Paper
-                    </button>
-                    <button className="qpv2-btn-outline" disabled={!hasWriteAccess} onClick={() => handleDownloadFiltered()}>
-                        <i className="fa-solid fa-download"></i> Download QB
-                    </button>
-                </div>
+
+                {/* Action Buttons */}
+                <button className="btn" disabled={!hasWriteAccess} onClick={() => setIsAddModalOpen(true)}>
+                    <i className="fas fa-plus me-2"></i>Add Question
+                </button>
+                <button className="btn" disabled={selectedQuestions.length === 0} onClick={() => setIsTransferModalOpen(true)}>
+                    ✈️ Transfer ({selectedQuestions.length})
+                </button>
+                <button className="btn" disabled={!hasWriteAccess} onClick={() => setIsTemplateModalOpen(true)}>
+                    <i className="fas fa-book me-2"></i>Templates
+                </button>
+                <button className="btn" onClick={() => setIsCreateQPModalOpen(true)}>
+                    📝 Create Question Paper
+                </button>
+                <button className="btn" disabled={!hasWriteAccess} onClick={() => handleDownloadFiltered()}>
+                    <i className="fa-solid fa-download me-2"></i>Download QB
+                </button>
             </div>
 
             <div className="qpv2-content-area qpv2-animate-fade" style={{ animationDelay: '0.1s' }}>

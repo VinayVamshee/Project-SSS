@@ -6,7 +6,7 @@ const tenantResolver = async (req, res, next) => {
   let slug = '';
 
   try {
-    if (host.includes('.localhost') || host.includes('.mysss.com') || host.includes('.schooltechnosolution.com')) {
+    if (host.includes('.localhost') || host.includes('.schooltechnosolution.com')) {
       slug = host.split('.')[0];
     } else {
       // Check for custom domain
