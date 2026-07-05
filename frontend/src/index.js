@@ -22,10 +22,15 @@ axios.interceptors.request.use((config) => {
     config.headers.Authorization = `Bearer ${token}`;
   }
   
-  // Inject x-tenant-slug dynamically based on subdomain or fallback
+  // Inject x-tenant-slug dynamically based on subdomain or custom domain
   const host = window.location.hostname;
-  if (host.includes('.localhost')) {
+  const isSystemDomain = host.endsWith('.schooltechnosolution.com') || host.endsWith('.localhost') || host.endsWith('.vercel.app');
+  
+  if (isSystemDomain) {
     config.headers['x-tenant-slug'] = host.split('.')[0];
+  } else if (host !== 'localhost' && host.includes('.')) {
+    // Custom domain: Pass full host domain so the backend can resolve it
+    config.headers['x-tenant-slug'] = host;
   } else {
     const schoolSlug = localStorage.getItem('schoolSlug');
     if (schoolSlug) {
@@ -53,8 +58,12 @@ const TenantAppBootstrapper = () => {
         // Resolve tenant details
         const headers = {};
         const host = window.location.hostname;
-        if (host.includes('.localhost')) {
+        const isSystemDomain = host.endsWith('.schooltechnosolution.com') || host.endsWith('.localhost') || host.endsWith('.vercel.app');
+        
+        if (isSystemDomain) {
           headers['x-tenant-slug'] = host.split('.')[0];
+        } else if (host !== 'localhost' && host.includes('.')) {
+          headers['x-tenant-slug'] = host;
         } else {
           const schoolSlug = localStorage.getItem('schoolSlug');
           headers['x-tenant-slug'] = schoolSlug || 'primary';

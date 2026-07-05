@@ -16,11 +16,25 @@ export default function Login() {
             .then(res => {
                 setSchools(res.data || []);
                 
-                // 1. Check if subdomain is active
+                // 1. Check if subdomain is active on system domains, or if it is a custom domain
                 const host = window.location.hostname;
-                if (host.includes('.localhost') && res.data) {
+                const isSystemDomain = host.endsWith('.schooltechnosolution.com') || host.endsWith('.localhost') || host.endsWith('.vercel.app');
+                
+                if (isSystemDomain && res.data) {
                     const subdomain = host.split('.')[0];
                     const match = res.data.find(s => s.slug === subdomain);
+                    if (match) {
+                        setSelectedSchool(match);
+                        localStorage.setItem('schoolSlug', match.slug);
+                        localStorage.setItem('schoolId', match._id);
+                        localStorage.setItem('schoolName', match.name);
+                        localStorage.setItem('schoolLogo', match.logoUrl || match.imageUrl || '');
+                        document.documentElement.setAttribute('data-theme', match.theme?.themeName || 'light');
+                        return; // Done
+                    }
+                } else if (host !== 'localhost' && host.includes('.') && res.data) {
+                    // Custom Domain: Find matching school by customDomain field
+                    const match = res.data.find(s => s.customDomain === host);
                     if (match) {
                         setSelectedSchool(match);
                         localStorage.setItem('schoolSlug', match.slug);
@@ -66,7 +80,10 @@ export default function Login() {
         }
     };
 
-    const isSubdomain = window.location.hostname.includes('.localhost');
+    const hostForSub = window.location.hostname;
+    const isSystemDomainForSub = hostForSub.endsWith('.schooltechnosolution.com') || hostForSub.endsWith('.localhost') || hostForSub.endsWith('.vercel.app');
+    const isCustomDomainForSub = hostForSub !== 'localhost' && hostForSub.includes('.') && !isSystemDomainForSub;
+    const isSubdomain = isSystemDomainForSub || isCustomDomainForSub;
 
     const handleSubmit = async (e) => {
         e.preventDefault();

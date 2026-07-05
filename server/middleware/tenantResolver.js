@@ -6,11 +6,18 @@ const tenantResolver = async (req, res, next) => {
   let slug = '';
 
   try {
-    if (host.includes('.localhost') || host.includes('.mysss.com')) {
+    if (host.includes('.localhost') || host.includes('.mysss.com') || host.includes('.schooltechnosolution.com')) {
       slug = host.split('.')[0];
     } else {
       // Check for custom domain
-      const school = await School.findOne({ customDomain: host });
+      let school = await School.findOne({ customDomain: host });
+      if (!school) {
+        const tenantHeader = req.headers['x-tenant-slug'];
+        if (tenantHeader && tenantHeader.includes('.')) {
+          school = await School.findOne({ customDomain: tenantHeader });
+        }
+      }
+
       if (school) {
         req.schoolId = school._id.toString();
         req.school = school;
