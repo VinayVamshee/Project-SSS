@@ -9,7 +9,7 @@ export default function Classes() {
     const navigate = useNavigate();
     const [uploading, setUploading] = useState(false);
     const [canEdit, setCanEdit] = useState(false);
-    const [canNoDeleteEdit, setCanNoDeleteEdit] = useState(false);
+    const [canNoDeleteEdit] = useState(false);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
