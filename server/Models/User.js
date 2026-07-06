@@ -4,7 +4,7 @@ const mongoose = require('mongoose');
 const userSchema = new mongoose.Schema({
   username: { type: String, required: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'viewer', 'student-enrollment', 'qp-editor'], default: 'viewer' },
+  role: { type: String, enum: ['admin', 'viewer', 'student-enrollment', 'qp-editor', 'payment-manager', 'payment'], default: 'viewer' },
   isDev: { type: Boolean, default: false }, // Super user developer flag
   schoolId: { type: mongoose.Schema.Types.ObjectId, ref: 'School', required: false }
 }, { timestamps: true });

@@ -48,6 +48,8 @@ export default function Navigation() {
     const [error, setError] = useState('');
     const [latestMaster, setLatestMaster] = useState({});
     const [isCollapsed, setIsCollapsed] = useState(false);
+    const isDev = localStorage.getItem("isDev") === "true";
+    const userRole = localStorage.getItem("userRole") || localStorage.getItem("userType") || "viewer";
 
     useEffect(() => {
         document.documentElement.setAttribute("data-theme", theme);
@@ -150,10 +152,12 @@ export default function Navigation() {
                         <i className="fa-solid fa-user fa-lg"></i>
                         {!isCollapsed && " Students"}
                     </NavLink>
-                    <NavLink to="/Classes" className={({ isActive }) => isActive ? "Link active" : "Link"}>
-                        <i className="fa-solid fa-school fa-lg"></i>
-                        {!isCollapsed && " Classes"}
-                    </NavLink>
+                    {(isDev || userRole === "admin") && (
+                        <NavLink to="/Classes" className={({ isActive }) => isActive ? "Link active" : "Link"}>
+                            <i className="fa-solid fa-school fa-lg"></i>
+                            {!isCollapsed && " Classes"}
+                        </NavLink>
+                    )}
                     <NavLink to="/Results" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                         <i className="fa-solid fa-file fa-lg"></i>
                         {!isCollapsed && " Results"}
@@ -204,16 +208,16 @@ export default function Navigation() {
                             {localStorage.getItem("token") ? (
                                 <>
                                     {/* Show Register only if admin */}
-                                    {localStorage.getItem("userType") === "admin" && (
-                                        <button
-                                            type="button"
-                                            className="btn btn-save mx-2"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#RegisterModal"
-                                        >
-                                            Register
-                                        </button>
-                                    )}
+                                    {(isDev || userRole === "admin") && (
+                                         <button
+                                             type="button"
+                                             className="btn btn-save mx-2"
+                                             data-bs-toggle="modal"
+                                             data-bs-target="#RegisterModal"
+                                         >
+                                             Register
+                                         </button>
+                                     )}
 
                                     {/* Always show logout if logged in */}
                                     <button

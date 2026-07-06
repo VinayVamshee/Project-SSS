@@ -20,13 +20,14 @@ export default function Students() {
     useEffect(() => {
         const token = localStorage.getItem('token');
         const userType = localStorage.getItem('userType');
+        const isDev = localStorage.getItem('isDev') === 'true';
 
-        if (!token || !userType) {
+        if (!token) {
             navigate('/login');
             return;
         }
 
-        if (userType === 'admin') {
+        if (isDev || userType === 'admin') {
             setCanEdit(true);
         }
     }, [navigate]);

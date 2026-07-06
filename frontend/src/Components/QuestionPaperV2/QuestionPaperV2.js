@@ -41,9 +41,12 @@ export default function QuestionPaperV2() {
         }
     }, [navigate]);
 
-    const canEdit = userType === "admin";
+    const isDev = localStorage.getItem('isDev') === 'true';
+    const canEdit = isDev || userType === "admin";
     const canQpEdit = userType === "qp-editor";
-    const hasWriteAccess = canEdit || canQpEdit;
+    const hasWriteAccess = isDev || canEdit || canQpEdit;
+    const canDelete = isDev || userType === "admin";
+    const canDownload = isDev || userType === "admin" || userType === "qp-editor";
 
     // ==========================================
     // GLOBAL UI STATE (Toast, Loaders, Modals)
@@ -538,7 +541,7 @@ export default function QuestionPaperV2() {
                     <button className="qpv2-icon-btn clone" disabled={!hasWriteAccess} onClick={() => handleClone(q)} title="Clone">
                         <i className="fas fa-copy"></i>
                     </button>
-                    <button className="qpv2-icon-btn delete" disabled={!canEdit} onClick={() => handleDelete(q._id)} title="Delete">
+                    <button className="qpv2-icon-btn delete" disabled={!canDelete} onClick={() => handleDelete(q._id)} title="Delete">
                         <i className="fas fa-trash-alt"></i>
                     </button>
                 </div>
@@ -1105,8 +1108,8 @@ export default function QuestionPaperV2() {
                                                 <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{t.examTitle}</div>
                                             </div>
                                             <div className="qpv2-d-flex qpv2-gap-2">
-                                                <button className="qpv2-icon-btn edit" onClick={()=>setNewTemplate(t)}><i className="fas fa-edit"></i></button>
-                                                <button className="qpv2-icon-btn delete" onClick={()=>handleDeleteTemplate(t._id)}><i className="fas fa-trash"></i></button>
+                                                <button className="qpv2-icon-btn edit" disabled={!hasWriteAccess} onClick={()=>setNewTemplate(t)}><i className="fas fa-edit"></i></button>
+                                                <button className="qpv2-icon-btn delete" disabled={!canDelete} onClick={()=>handleDeleteTemplate(t._id)}><i className="fas fa-trash"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1281,7 +1284,7 @@ export default function QuestionPaperV2() {
                         </div>
                         <div className="qpv2-modal-footer">
                             <button className="qpv2-btn-outline" onClick={() => setIsSelectInstructionsModalOpen(false)}>Cancel</button>
-                            <button className="qpv2-btn-primary" onClick={handlePrint} disabled={!hasWriteAccess}>
+                            <button className="qpv2-btn-primary" onClick={handlePrint} disabled={!canDownload}>
                                 <i className="fas fa-download" style={{marginRight:'6px'}}></i> Download PDF
                             </button>
                         </div>

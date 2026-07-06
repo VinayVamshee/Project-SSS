@@ -98,6 +98,9 @@ api.interceptors.response.use((response) => {
 // ─── Auth ─────────────────────────────────────────────────────────────────────
 export const login = (credentials) => api.post('/login', credentials);
 export const register = (userData) => api.post('/register', userData);
+export const devCreateUser = (userData) => api.post('/dev/users', userData);
+export const devGetUsers = (schoolId) => api.get('/dev/users', { params: { schoolId } });
+export const devUpdateUser = (id, userData) => api.put(`/dev/users/${id}`, userData);
 
 // ─── School / Masters ─────────────────────────────────────────────────────────
 export const getMasters = () => api.get('/masters');

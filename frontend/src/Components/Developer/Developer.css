@@ -22,7 +22,8 @@
 }
 
 .premium-card {
-    background: var(--background-color, #ffffff);
+
+    background-color: white;
     color: var(--text-color, #1e293b);
     border: 1px solid rgba(226, 232, 240, 0.4);
     border-radius: 16px;
@@ -53,7 +54,7 @@
     padding: 0.5rem 0.75rem; /* Reduced padding */
     font-size: 0.95rem;
     color: var(--text-color, #1e293b);
-    background-color: var(--background-color, #f8fafc);
+    background-color: whitesmoke !important;
 }
 
 .btn-premium {
@@ -109,3 +110,34 @@
     background-color: #fca5a5 !important; /* turns red on hover to suggest deselect */
     color: #991b1b !important;
 }
+
+/* Theme variable overrides to integrate Developer panel with active theme */
+.developer-container .form-control,
+.developer-container .form-select {
+    background-color: whitesmoke !important;
+    color: var(--text-color, #1e293b) !important;
+    border: 1px solid rgba(226, 232, 240, 0.8);
+}
+.developer-container .form-control:focus,
+.developer-container .form-select:focus {
+    background-color: var(--background-color, #ffffff) !important;
+    color: var(--text-color, #1e293b) !important;
+    border-color: var(--active-color, #fe4f2d) !important;
+    box-shadow: 0 0 0 0.25rem rgba(254, 79, 45, 0.25);
+}
+.developer-container .table {
+    background-color: var(--background-color, #ffffff) !important;
+    color: var(--text-color, #1e293b) !important;
+}
+.developer-container .table-light {
+    background-color: var(--background-color, #f8fafc) !important;
+    color: var(--text-color, #334155) !important;
+}
+.developer-container .premium-card {
+    color: var(--text-color, #1e293b) !important;
+    border-color: rgba(226, 232, 240, 0.4) !important;
+}
+.developer-container h4, .developer-container label {
+    color: var(--text-color, #1e293b) !important;
+}
+

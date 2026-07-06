@@ -14,16 +14,16 @@ export default function Classes() {
     useEffect(() => {
         const token = localStorage.getItem("token");
         const storedUserType = localStorage.getItem("userType");
+        const isDev = localStorage.getItem("isDev") === "true";
 
-        if (!token || !storedUserType) {
+        if (!token || (!storedUserType && !isDev)) {
             navigate("/login");
         } else {
-            if (storedUserType === "admin") {
+            if (isDev || storedUserType === "admin") {
                 setCanEdit(true);
-            }
-
-            if (storedUserType === "qp-editor") {
-                setCanNoDeleteEdit(true);
+            } else {
+                alert("❌ Access Denied: Classes & Subjects management is restricted to Administrators only.");
+                navigate("/");
             }
         }
     }, [navigate]);

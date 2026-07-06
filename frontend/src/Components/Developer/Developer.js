@@ -9,7 +9,10 @@ import {
     getFieldDefinitions,
     addFieldDefinition,
     updateFieldDefinition,
-    deleteFieldDefinition
+    deleteFieldDefinition,
+    devCreateUser,
+    devGetUsers,
+    devUpdateUser
 } from '../../API';
 import './Developer.css';
 
@@ -35,6 +38,20 @@ export default function Developer() {
     const [activeTab, setActiveTab] = useState('schools');
     const [allMasters, setAllMasters] = useState([]);
     const [fieldDefs, setFieldDefs] = useState([]);
+    
+    // User Accounts state
+    const [selectedSchoolForUsers, setSelectedSchoolForUsers] = useState(localStorage.getItem('schoolId') || '');
+    const [usersList, setUsersList] = useState([]);
+    const [isEditingUser, setIsEditingUser] = useState(false);
+    const [editingUserId, setEditingUserId] = useState(null);
+    const [showFormPassword, setShowFormPassword] = useState(false);
+    const [visiblePasswords, setVisiblePasswords] = useState({});
+    const [userForm, setUserForm] = useState({
+        username: '',
+        password: '',
+        role: 'viewer',
+        schoolId: localStorage.getItem('schoolId') || ''
+    });
     
     // School provisioning state
     const [isEditingSchool, setIsEditingSchool] = useState(false);
@@ -99,6 +116,107 @@ export default function Developer() {
         fetchSchools();
         fetchFields();
     }, []);
+
+    const fetchUsers = (schoolId) => {
+        if (!schoolId) {
+            setUsersList([]);
+            return;
+        }
+        devGetUsers(schoolId)
+            .then(res => setUsersList(res.data || []))
+            .catch(err => {
+                console.error('Error fetching users:', err.message);
+                setUsersList([]);
+            });
+    };
+
+    useEffect(() => {
+        if (activeTab === 'users') {
+            fetchUsers(selectedSchoolForUsers);
+        }
+    }, [activeTab, selectedSchoolForUsers]);
+
+    const handleSchoolSelectForUsers = (e) => {
+        const schoolId = e.target.value;
+        setSelectedSchoolForUsers(schoolId);
+        setUserForm(prev => ({ ...prev, schoolId }));
+    };
+
+    const handleCreateUser = (e) => {
+        e.preventDefault();
+        if (!userForm.username || !userForm.password || !userForm.schoolId) {
+            alert('⚠️ Please fill all required fields');
+            return;
+        }
+        if (isEditingUser) {
+            devUpdateUser(editingUserId, userForm)
+                .then(() => {
+                    alert('🎉 User updated successfully!');
+                    handleResetUserForm();
+                    fetchUsers(selectedSchoolForUsers);
+                })
+                .catch(err => alert('❌ Error updating user: ' + (err.response?.data?.message || err.message)));
+        } else {
+            devCreateUser(userForm)
+                .then(() => {
+                    alert('🎉 User created successfully!');
+                    setUserForm(prev => ({ ...prev, username: '', password: '' }));
+                    fetchUsers(selectedSchoolForUsers);
+                })
+                .catch(err => alert('❌ Error creating user: ' + (err.response?.data?.message || err.message)));
+        }
+    };
+
+    const handleEditUserClick = (user) => {
+        setIsEditingUser(true);
+        setEditingUserId(user._id);
+        setUserForm({
+            username: user.username,
+            password: user.password,
+            role: user.role,
+            schoolId: user.schoolId
+        });
+    };
+
+    const handleResetUserForm = () => {
+        setIsEditingUser(false);
+        setEditingUserId(null);
+        setUserForm({
+            username: '',
+            password: '',
+            role: 'viewer',
+            schoolId: selectedSchoolForUsers
+        });
+    };
+
+    const togglePasswordVisibility = (userId) => {
+        setVisiblePasswords(prev => ({
+            ...prev,
+            [userId]: !prev[userId]
+        }));
+    };
+
+    const handleImpersonateUser = (user) => {
+        localStorage.setItem("isImpersonating", "true");
+        localStorage.setItem("impersonatedUsername", user.username);
+        localStorage.setItem("impersonatedRole", user.role);
+        
+        // Backup developer status
+        localStorage.setItem("originalIsDev", "true");
+        localStorage.setItem("originalUserRole", localStorage.getItem("userRole") || "");
+        localStorage.setItem("originalUserType", localStorage.getItem("userType") || "");
+        
+        // Override with target impersonation role properties
+        localStorage.setItem("isDev", "false");
+        localStorage.setItem("userRole", user.role);
+        localStorage.setItem("userType", user.role);
+        
+        alert(`🔑 Impersonating ${user.username} as ${user.role.toUpperCase()}. Redirecting to home...`);
+        window.location.href = "/";
+    };
+
+
+
 
     // ─── SCHOOL ACTIONS ──────────────────────────────────────────────────────
     const handleSchoolChange = (e) => {
@@ -411,6 +529,13 @@ export default function Developer() {
                     style={{ borderRadius: '8px' }}
                 >
                     <i className="fas fa-database me-2"></i>Registration Fields
+                </button>
+                <button 
+                    onClick={() => setActiveTab('users')}
+                    className={`btn px-4 py-2 fw-semibold ${activeTab === 'users' ? 'btn-info text-white' : 'btn-light text-muted'}`}
+                    style={{ borderRadius: '8px' }}
+                >
+                    <i className="fas fa-users me-2"></i>User Accounts
                 </button>
             </div>
 
@@ -928,6 +1053,203 @@ export default function Developer() {
                                     )}
                                 </tbody>
                             </table>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: USER ACCOUNTS */}
+            {activeTab === 'users' && (
+                <div className="ov-animate-fade">
+                    <div className="row g-4 mb-4">
+                        <div className="col-md-5">
+                            <div className="premium-card p-4 shadow-sm" style={{ borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.4)' }}>
+                                <h4 className="fw-bold mb-4 text-primary d-flex align-items-center justify-content-between">
+                                    <span>
+                                        <i className={`fas ${isEditingUser ? 'fa-edit' : 'fa-user-plus'} me-2`}></i>
+                                        {isEditingUser ? 'Edit User Account' : 'Create New User Account'}
+                                    </span>
+                                    {isEditingUser && (
+                                        <span className="badge bg-warning text-dark" style={{ fontSize: '0.75rem' }}>Edit Mode</span>
+                                    )}
+                                </h4>
+                                <form onSubmit={handleCreateUser}>
+                                    <div className="mb-3 text-start">
+                                        <label className="form-label fw-semibold text-muted">Select School Tenant *</label>
+                                        <select 
+                                            className="form-select"
+                                            value={selectedSchoolForUsers}
+                                            onChange={handleSchoolSelectForUsers}
+                                            required
+                                            disabled={isEditingUser}
+                                        >
+                                            <option value="">-- Choose School --</option>
+                                            {allMasters.map(school => (
+                                                <option key={school._id} value={school._id}>
+                                                    {school.name} ({school.slug})
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div className="mb-3 text-start">
+                                        <label className="form-label fw-semibold text-muted">Username *</label>
+                                        <input 
+                                            type="text"
+                                            className="form-control"
+                                            placeholder="Enter username"
+                                            value={userForm.username}
+                                            onChange={e => setUserForm(prev => ({ ...prev, username: e.target.value }))}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="mb-3 text-start">
+                                        <label className="form-label fw-semibold text-muted">Password *</label>
+                                        <div className="input-group">
+                                            <input 
+                                                type={showFormPassword ? "text" : "password"}
+                                                className="form-control"
+                                                placeholder="Enter password"
+                                                value={userForm.password}
+                                                onChange={e => setUserForm(prev => ({ ...prev, password: e.target.value }))}
+                                                required
+                                            />
+                                            <button 
+                                                type="button" 
+                                                className="btn btn-outline-secondary"
+                                                onClick={() => setShowFormPassword(!showFormPassword)}
+                                                style={{ borderTopRightRadius: '8px', borderBottomRightRadius: '8px' }}
+                                            >
+                                                <i className={`fas ${showFormPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div className="mb-3 text-start">
+                                        <label className="form-label fw-semibold text-muted">Role *</label>
+                                        <select 
+                                            className="form-select text-capitalize"
+                                            value={userForm.role}
+                                            onChange={e => setUserForm(prev => ({ ...prev, role: e.target.value }))}
+                                            required
+                                        >
+                                            <option value="viewer">Viewer</option>
+                                            <option value="qp-editor">QP-Editor</option>
+                                            <option value="admin">Admin</option>
+                                            <option value="payment-manager">Payment Manager</option>
+                                        </select>
+                                    </div>
+                                    <div className="d-flex flex-column gap-2 mt-4">
+                                        <button type="submit" className="btn btn-save w-100 fw-bold py-2" style={{ borderRadius: '8px' }}>
+                                            <i className="fas fa-save me-2"></i>
+                                            {isEditingUser ? 'Save Changes' : 'Create User Account'}
+                                        </button>
+                                        {isEditingUser && (
+                                            <button 
+                                                type="button" 
+                                                className="btn btn-light w-100 fw-bold py-2" 
+                                                style={{ borderRadius: '8px', border: '1px solid #cbd5e1' }}
+                                                onClick={handleResetUserForm}
+                                            >
+                                                Cancel Edit
+                                            </button>
+                                        )}
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div className="col-md-7">
+                            <div className="premium-card p-4 shadow-sm" style={{ borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.4)', height: '100%', minHeight: '400px' }}>
+                                <h4 className="fw-bold mb-4 text-success d-flex align-items-center">
+                                    <i className="fas fa-users me-2"></i>Current Users
+                                </h4>
+                                
+                                <div className="mb-3 text-start">
+                                    <label className="form-label fw-semibold text-muted">Filter by School Context</label>
+                                    <select 
+                                        className="form-select border-success"
+                                        value={selectedSchoolForUsers}
+                                        onChange={handleSchoolSelectForUsers}
+                                    >
+                                        <option value="">-- Choose School --</option>
+                                        {allMasters.map(school => (
+                                            <option key={school._id} value={school._id}>
+                                                {school.name} ({school.slug})
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                <div className="table-responsive" style={{ maxHeight: '380px', overflowY: 'auto' }}>
+                                    <table className="table table-hover align-middle">
+                                        <thead className="table-light sticky-top">
+                                            <tr>
+                                                <th className="text-start">Username</th>
+                                                <th className="text-start">Role</th>
+                                                <th className="text-start">Password</th>
+                                                <th className="text-center">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {usersList.map(user => (
+                                                <tr key={user._id}>
+                                                    <td className="text-start fw-semibold">{user.username}</td>
+                                                    <td className="text-start">
+                                                        <span className={`badge ${
+                                                            user.role === 'admin' ? 'bg-danger' :
+                                                            user.role === 'qp-editor' ? 'bg-warning text-dark' :
+                                                            user.role === 'payment-manager' ? 'bg-primary' :
+                                                            'bg-secondary'
+                                                        } text-uppercase`}>
+                                                            {user.role === 'admin' ? 'Admin' :
+                                                             user.role === 'qp-editor' ? 'QP-Editor' :
+                                                             user.role === 'payment-manager' ? 'Payment Manager' :
+                                                             user.role === 'viewer' ? 'Viewer' : user.role || 'Viewer'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="text-start">
+                                                        <div className="d-flex align-items-center gap-2">
+                                                            <span className="font-monospace" style={{ fontSize: '0.85rem' }}>
+                                                                {visiblePasswords[user._id] ? user.password : '••••••••'}
+                                                            </span>
+                                                            <button 
+                                                                type="button"
+                                                                className="btn btn-xs btn-outline-secondary border-0 p-0"
+                                                                onClick={() => togglePasswordVisibility(user._id)}
+                                                                style={{ background: 'none' }}
+                                                            >
+                                                                <i className={`fas ${visiblePasswords[user._id] ? 'fa-eye-slash' : 'fa-eye'}`} style={{ fontSize: '0.85rem' }}></i>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                    <td className="text-center">
+                                                        <div className="d-flex gap-2 justify-content-center">
+                                                            <button 
+                                                                className="btn btn-xs btn-outline-primary"
+                                                                onClick={() => handleEditUserClick(user)}
+                                                            >
+                                                                Edit
+                                                            </button>
+                                                            <button 
+                                                                className="btn btn-xs btn-outline-info"
+                                                                onClick={() => handleImpersonateUser(user)}
+                                                            >
+                                                                Login As
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                            {usersList.length === 0 && (
+                                                <tr>
+                                                    <td colSpan="4" className="text-center text-muted py-4">
+                                                        No users found for this school context.
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
