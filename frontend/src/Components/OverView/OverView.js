@@ -26,10 +26,28 @@ const customClassOrder = [
     "Class-11", "Class-12", "Grade-1", "Grade-2", "Grade-3"
 ];
 
-const COLORS = ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#374151"];
-
 export default function OverView() {
     const navigate = useNavigate();
+
+    const activeTheme = localStorage.getItem("theme") || "light";
+
+    const themeColors = useMemo(() => {
+        const colors = {
+            light: { success: '#10b981', warning: '#f59e0b', neutral: '#cbd5e1', primary: '#3b82f6', secondary: '#8b5cf6' },
+            dark: { success: '#1dd1a1', warning: '#ff9f43', neutral: '#614242', primary: '#D84224', secondary: '#9b5cf6' },
+            'midnight-red': { success: '#34d399', warning: '#f54040', neutral: '#4a1f1f', primary: '#D91E36', secondary: '#A0153E' },
+            Ocean: { success: '#00e676', warning: '#ffb300', neutral: '#cbd5e1', primary: '#4A90E2', secondary: '#1565C0' },
+            'Deep Ocean': { success: '#81c995', warning: '#f28b82', neutral: '#0e4c82', primary: '#1B6FA8', secondary: '#3EA6FF' },
+            Earth: { success: '#8d6e63', warning: '#d7ccc8', neutral: '#bcaaa4', primary: '#AB886D', secondary: '#332720' },
+            'Charcoal Cyan': { success: '#4caf50', warning: '#ff5252', neutral: '#444b5d', primary: '#00BCD4', secondary: '#0097A7' },
+            'Dracula Midnight': { success: '#50fa7b', warning: '#ff5555', neutral: '#6272a4', primary: '#BD93F9', secondary: '#FF79C6' }
+        };
+        return colors[activeTheme] || colors.light;
+    }, [activeTheme]);
+
+    const COLORS = useMemo(() => {
+        return [themeColors.primary, themeColors.secondary, themeColors.success, themeColors.warning, "#ec4899", "#374151"];
+    }, [themeColors]);
 
     // ==========================================
     // DATA & CALCULATION STATES
@@ -250,11 +268,11 @@ export default function OverView() {
     const donutChartData = useMemo(() => {
         const remaining = payableAfterDiscount - totalPaidFees;
         return [
-            { name: "Collected", value: totalPaidFees, color: "#10b981" }, // Emerald green
-            { name: "Discount", value: totalDiscountAmount, color: "#f59e0b" }, // Amber orange
-            { name: "Pending", value: remaining > 0 ? remaining : 0, color: "#cbd5e1" } // Neutral slate gray
+            { name: "Collected", value: totalPaidFees, color: themeColors.success },
+            { name: "Discount", value: totalDiscountAmount, color: themeColors.warning },
+            { name: "Pending", value: remaining > 0 ? remaining : 0, color: themeColors.neutral }
         ];
-    }, [totalPaidFees, totalDiscountAmount, payableAfterDiscount]);
+    }, [totalPaidFees, totalDiscountAmount, payableAfterDiscount, themeColors]);
 
     // Additional insight calculations
     const collectionPercentage = useMemo(() => {
@@ -276,10 +294,9 @@ export default function OverView() {
         <div className="OverView ov-animate-fade">
             {/* Top Bar with Title and Actions */}
             <div className="ov-dashboard-titlebar">
-                
                 <div className="ov-actions-group">
                     <div className="ov-academic-selector">
-                        <i className="fa-regular fa-calendar-days me-2 text-muted"></i>
+                        <i className="fa-regular fa-calendar-days me-2"></i>
                         <select
                             className="ov-session-select"
                             value={selectedYear}
@@ -383,14 +400,14 @@ export default function OverView() {
                                 <BarChart data={barChartData} margin={{ top: 15, right: 10, left: -20, bottom: 5 }}>
                                     <defs>
                                         <linearGradient id="barColor" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9}/>
-                                            <stop offset="100%" stopColor="#1d4ed8" stopOpacity={0.6}/>
+                                            <stop offset="0%" stopColor={themeColors.primary} stopOpacity={0.9}/>
+                                            <stop offset="100%" stopColor={themeColors.secondary} stopOpacity={0.6}/>
                                         </linearGradient>
                                     </defs>
-                                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                                    <XAxis dataKey="class" tick={{ fontSize: 10, fill: '#64748b' }} stroke="#cbd5e1" />
-                                    <YAxis tick={{ fontSize: 10, fill: '#64748b' }} stroke="#cbd5e1" />
-                                    <RechartsTooltip cursor={{ fill: 'rgba(59, 130, 246, 0.05)' }} contentStyle={{ fontSize: '11px', borderRadius: '8px', border: '1px solid #cbd5e1', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }} />
+                                    <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                                    <XAxis dataKey="class" tick={{ fontSize: 10 }} />
+                                    <YAxis tick={{ fontSize: 10 }} />
+                                    <RechartsTooltip cursor={{ fill: 'var(--button-hover, rgba(59, 130, 246, 0.05))' }} />
                                     <Bar dataKey="students" fill="url(#barColor)" radius={[4, 4, 0, 0]} barSize={18} />
                                 </BarChart>
                             </ResponsiveContainer>

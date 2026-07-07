@@ -21,8 +21,11 @@
 }
 
 .Payment {
-    background-color: white;
-    padding: 5px 10px;
+    background-color: var(--card-bg-color, white);
+    color: var(--text-color, black);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    padding: 10px 15px;
     display: flex;
     align-items: center;
     justify-content: flex-start;
@@ -34,8 +37,9 @@
 
 .Payment:hover {
     cursor: pointer;
-    filter: brightness(1.2);
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.218);
+    background-color: var(--button-hover);
+    color: white;
+    box-shadow: 2px 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .Payment .Name {
@@ -83,7 +87,7 @@
 }
 
 .fees-text {
-    color: #000;
+    color: var(--text-color, #000);
     white-space: nowrap;
 }
 

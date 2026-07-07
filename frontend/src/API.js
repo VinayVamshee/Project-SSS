@@ -40,8 +40,8 @@ api.interceptors.response.use((response) => {
             };
             if (s.dynamicFields && Array.isArray(s.dynamicFields)) {
                 s.dynamicFields.forEach(df => {
-                    const key = df.fieldId?.fieldKey;
-                    const name = df.fieldId?.fieldName;
+                    const key = df.fieldId?.key || df.fieldId?.fieldKey;
+                    const name = df.fieldId?.label || df.fieldId?.fieldName;
                     if (name) {
                         legacyStudent.additionalInfo.push({ key: name, value: df.value });
                     }
@@ -90,6 +90,28 @@ api.interceptors.response.use((response) => {
             ...y,
             year: y.name || y.year || ""
         }));
+    }
+
+    // 5. Map field registry responses to inject legacy fieldKey, fieldName, and fieldType aliases
+    if (url.includes('/api/metadata/fields')) {
+        const fields = response.data?.data || [];
+        if (Array.isArray(fields)) {
+            fields.forEach(f => {
+                f.fieldKey = f.key;
+                f.fieldName = f.label;
+                f.fieldType = f.type;
+            });
+        } else if (response.data && typeof response.data === 'object') {
+            const f = response.data;
+            if (f.data) {
+                f.data.fieldKey = f.data.key;
+                f.data.fieldName = f.data.label;
+                f.data.fieldType = f.data.type;
+            }
+            f.fieldKey = f.key;
+            f.fieldName = f.label;
+            f.fieldType = f.type;
+        }
     }
 
     return response;
@@ -155,15 +177,41 @@ export const updateAcademicYearStatus = (studentId, payload) =>
 export const passStudentsTo = (payload) => api.post('/pass-students-to', payload);
 export const dropAcademicYear = (payload) => api.post('/drop-academic-year', payload);
 
-// ─── EAV Field Definitions (PersonalInformationList) ─────────────────────────
-export const getFieldDefinitions = () => api.get('/GetFieldDefinitions');
-export const addFieldDefinition = (payload) => api.post('/AddFieldDefinition', payload);
-export const updateFieldDefinition = (id, payload) => api.put(`/UpdateFieldDefinition/${id}`, payload);
-export const deleteFieldDefinition = (id) => api.delete(`/DeleteFieldDefinition/${id}`);
-// Legacy aliases
-export const getPersonalInformationList = () => api.get('/GetPersonalInformationList');
-export const addPersonalInformation = (payload) => api.post('/AddAdditionalPersonalInformation', payload);
-export const deletePersonalInfo = (id) => api.delete(`/DeletePersonalInfo/${id}`);
+// ─── EAV Field Definitions (FieldRegistry) ─────────────────────────
+export const getFieldDefinitions = () => api.get('/api/metadata/fields');
+export const getFieldDefinition = (id) => api.get(`/api/metadata/fields/${id}`);
+export const addFieldDefinition = (payload) => api.post('/api/metadata/fields', payload);
+export const updateFieldDefinition = (id, payload) => api.put(`/api/metadata/fields/${id}`, payload);
+export const deleteFieldDefinition = (id) => api.delete(`/api/metadata/fields/${id}`);
+export const archiveFieldDefinition = (id) => api.patch(`/api/metadata/fields/${id}/archive`);
+export const activateFieldDefinition = (id) => api.patch(`/api/metadata/fields/${id}/activate`);
+
+// Legacy aliases for EAV
+export const getPersonalInformationList = () => api.get('/api/metadata/fields');
+export const addPersonalInformation = (payload) => api.post('/api/metadata/fields', payload);
+export const deletePersonalInfo = (id) => api.delete(`/api/metadata/fields/${id}`);
+
+// ─── Entity Registry ─────────────────────────────────────────────────────────
+export const getEntities = () => api.get('/api/metadata/entities');
+export const getEntity = (id) => api.get(`/api/metadata/entities/${id}`);
+export const createEntity = (payload) => api.post('/api/metadata/entities', payload);
+export const updateEntity = (id, payload) => api.put(`/api/metadata/entities/${id}`, payload);
+export const archiveEntity = (id) => api.patch(`/api/metadata/entities/${id}/archive`);
+export const activateEntity = (id) => api.patch(`/api/metadata/entities/${id}/activate`);
+export const deleteEntity = (id) => api.delete(`/api/metadata/entities/${id}`);
+
+export const lookup = (field, search = "") => api.get("/api/metadata/lookup", { params: { field, search }});
+
+// ─── Templates ───────────────────────────────────────────────────────────────
+export const getTemplates = () => api.get('/api/metadata/templates');
+export const getTemplate = (id) => api.get(`/api/metadata/templates/${id}`);
+export const getTemplateForm = (id) => api.get(`/api/metadata/templates/${id}/form`);
+export const createTemplate = (payload) => api.post('/api/metadata/templates', payload);
+export const updateTemplate = (id, payload) => api.put(`/api/metadata/templates/${id}`, payload);
+export const publishTemplate = (id) => api.patch(`/api/metadata/templates/${id}/publish`);
+export const archiveTemplate = (id) => api.patch(`/api/metadata/templates/${id}/archive`);
+export const restoreTemplate = (id) => api.patch(`/api/metadata/templates/${id}/restore`);
+export const deleteTemplate = (id) => api.delete(`/api/metadata/templates/${id}`);
 
 // ─── Payments & Fees ──────────────────────────────────────────────────────────
 export const getFees = () => api.get('/getFees');
@@ -187,8 +235,8 @@ export const getQuestionsByFilter = (cls, subj, chap) =>
     api.get(`/questions?class=${cls}&subject=${subj}&chapter=${chap}`);
 export const addQuestion = (payload) => api.post('/questions', payload);
 export const getAllTemplates = () => api.get('/get-all-templates');
-export const saveTemplate = (payload) => api.post('/save-template', payload);
-export const deleteTemplate = (id) => api.delete(`/delete-template/${id}`);
+export const saveQuestionTemplate = (payload) => api.post('/save-template', payload);
+export const deleteQuestionTemplate = (id) => api.delete(`/delete-template/${id}`);
 
 // ─── Default export (raw axios instance for one-off calls) ───────────────────
 export default api;

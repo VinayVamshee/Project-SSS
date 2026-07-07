@@ -200,7 +200,7 @@ export default function QuestionPaperV2() {
     const [searchText, setSearchText] = useState('');
     const [filterType, setFilterType] = useState('');
     const [filterMarks, setFilterMarks] = useState('');
-    const [sortOrder, setSortOrder] = useState('qId'); 
+    const [sortOrder, setSortOrder] = useState('qId');
 
     // ==========================================
     // QP CREATION SELECTION STATE
@@ -230,11 +230,11 @@ export default function QuestionPaperV2() {
                 return 0;
             })
             .filter(q => {
-                const textMatch = q.questionText?.toLowerCase().includes(searchText.toLowerCase()) || 
-                                  (q.questionId && q.questionId.toString().includes(searchText));
+                const textMatch = q.questionText?.toLowerCase().includes(searchText.toLowerCase()) ||
+                    (q.questionId && q.questionId.toString().includes(searchText));
                 const marksMatch = filterMarks === '' || String(q.questionMarks) === String(filterMarks);
-                const typeMatch = filterType === '' || q.questionType === filterType || 
-                                  (q.subQuestions && q.subQuestions.some(sub => sub.questionType === filterType));
+                const typeMatch = filterType === '' || q.questionType === filterType ||
+                    (q.subQuestions && q.subQuestions.some(sub => sub.questionType === filterType));
                 return textMatch && marksMatch && typeMatch;
             })
             .sort((a, b) => {
@@ -285,7 +285,7 @@ export default function QuestionPaperV2() {
         }
         const cleanSubQuestions = (subQs) =>
             subQs.filter(sq => sq.questionText?.trim() && sq.questionType?.trim() && sq.questionMarks?.toString().trim())
-                 .map(sq => ({ ...sq, subQuestions: cleanSubQuestions(sq.subQuestions || []) }));
+                .map(sq => ({ ...sq, subQuestions: cleanSubQuestions(sq.subQuestions || []) }));
         const cleanedQuestion = {
             ...newQuestion,
             questionMarks: newQuestion.questionMarks?.toString().trim() ? newQuestion.questionMarks : undefined,
@@ -375,9 +375,25 @@ export default function QuestionPaperV2() {
         setTransferDestClass(cls);
         setTransferDestSubject('');
         setTransferDestChapter('');
-        const link = classSubjects.find((x) => x.classId === cls || x.classId?._id === cls);
-        const linkedSubs = subjects.filter((s) => link?.subjectIds?.some(id => id === s._id || id?._id === s._id));
-        setTransferFilteredSubjects(linkedSubs);
+
+        const link = classSubjects.find((x) => {
+            const linkClassId = (x.classId?._id || x.classId || '').toString();
+            return linkClassId === cls.toString();
+        });
+
+        if (link && link.subjectIds && link.subjectIds.length > 0) {
+            const linkedSubs = subjects.filter((s) => {
+                return link.subjectIds.some(id => {
+                    const subId = (id?._id || id || '').toString();
+                    const sId = (s._id || '').toString();
+                    return subId === sId;
+                });
+            });
+            setTransferFilteredSubjects(linkedSubs);
+        } else {
+            // Fallback to all subjects, same as the main dropdown
+            setTransferFilteredSubjects(subjects);
+        }
     };
 
     const onTransferSubjectChange = (e) => {
@@ -393,7 +409,6 @@ export default function QuestionPaperV2() {
                 const isSubjectMatch = item.subjectId === transferDestSubject || item.subjectId?._id === transferDestSubject;
                 return isClassMatch && isSubjectMatch;
             });
-            setChapterList(match?.chapters || []); // reusing state correctly
             setTransferChapterList(match?.chapters || []);
         } else {
             setTransferChapterList([]);
@@ -406,7 +421,7 @@ export default function QuestionPaperV2() {
             return;
         }
 
-        const topLevelIdsToTransfer = selectedQuestions.filter(id => 
+        const topLevelIdsToTransfer = selectedQuestions.filter(id =>
             questions.some(q => q.questionId === id)
         );
 
@@ -526,7 +541,7 @@ export default function QuestionPaperV2() {
 
     const renderQuestionBlock = (q, i, level = 0) => (
         <div key={q._id || i} className={`qpv2-question-card ${level > 0 ? 'qpv2-question-card-sub' : ''}`}>
-            
+
             {/* Header Actions */}
             <div className="qpv2-question-header">
                 <div className="qpv2-question-meta">
@@ -635,7 +650,7 @@ export default function QuestionPaperV2() {
                         alt="Question"
                         className={`qpv2-question-img ${fullWidthImagesMap[q.questionId] ? 'full' : 'thumbnail'}`}
                         style={{ width: fullWidthImagesMap[q.questionId] ? '100%' : '80px', height: 'auto', maxHeight: '120px', borderRadius: '4px', cursor: 'pointer', border: '1px solid #e1e5eb' }}
-                        onClick={() => { if(!fullWidthImagesMap[q.questionId]) setPreviewImageUrl(q.questionImage) }}
+                        onClick={() => { if (!fullWidthImagesMap[q.questionId]) setPreviewImageUrl(q.questionImage) }}
                     />
                     <div style={{ marginTop: '4px' }}>
                         <label className="qpv2-switch-wrapper">
@@ -683,7 +698,7 @@ export default function QuestionPaperV2() {
                         {q.pairs.map((pair, idx) => (
                             <div key={idx} className="qpv2-d-flex qpv2-align-center qpv2-gap-2" style={{ marginBottom: '4px', fontSize: '0.85rem' }}>
                                 <span>{pair.leftText}</span>
-                                {pair.leftImage && <img src={pair.leftImage} alt="Left" className="qpv2-question-img thumbnail" style={{ width: 30, height: 30 }} onClick={() => setPreviewImageUrl(pair.leftImage)}/>}
+                                {pair.leftImage && <img src={pair.leftImage} alt="Left" className="qpv2-question-img thumbnail" style={{ width: 30, height: 30 }} onClick={() => setPreviewImageUrl(pair.leftImage)} />}
                             </div>
                         ))}
                     </div>
@@ -692,7 +707,7 @@ export default function QuestionPaperV2() {
                         {q.pairs.map((pair, idx) => (
                             <div key={idx} className="qpv2-d-flex qpv2-align-center qpv2-gap-2" style={{ marginBottom: '4px', fontSize: '0.85rem' }}>
                                 <span>{pair.rightText}</span>
-                                {pair.rightImage && <img src={pair.rightImage} alt="Right" className="qpv2-question-img thumbnail" style={{ width: 30, height: 30 }} onClick={() => setPreviewImageUrl(pair.rightImage)}/>}
+                                {pair.rightImage && <img src={pair.rightImage} alt="Right" className="qpv2-question-img thumbnail" style={{ width: 30, height: 30 }} onClick={() => setPreviewImageUrl(pair.rightImage)} />}
                             </div>
                         ))}
                     </div>
@@ -713,12 +728,12 @@ export default function QuestionPaperV2() {
         const updateOption = (idx, field, val) => setter(q => {
             const opts = [...q.options]; opts[idx][field] = val; return { ...q, options: opts };
         });
-        const addOption = () => setter(q => ({ ...q, options: [...(q.options||[]), { text: '', imageUrl: '' }] }));
-        
+        const addOption = () => setter(q => ({ ...q, options: [...(q.options || []), { text: '', imageUrl: '' }] }));
+
         const updatePair = (idx, side, field, val) => setter(q => {
             const pairs = [...q.pairs]; pairs[idx][`${side}${field}`] = val; return { ...q, pairs };
         });
-        const addPair = () => setter(q => ({ ...q, pairs: [...(q.pairs||[]), { leftText: '', leftImage: '', rightText: '', rightImage: '' }] }));
+        const addPair = () => setter(q => ({ ...q, pairs: [...(q.pairs || []), { leftText: '', leftImage: '', rightText: '', rightImage: '' }] }));
 
         const updateSubQuestion = (idx, field, val) => setter(q => {
             const subs = [...q.subQuestions]; subs[idx][field] = val; return { ...q, subQuestions: subs };
@@ -750,7 +765,7 @@ export default function QuestionPaperV2() {
                     <div className="qpv2-form-group" style={{ gridColumn: 'span 2' }}>
                         <label className="qpv2-form-label">Upload Image</label>
                         <input type="file" accept="image/*" className="qpv2-form-control" onChange={async e => {
-                            if(e.target.files[0]) updateField('questionImage', await uploadToImgBB(e.target.files[0]));
+                            if (e.target.files[0]) updateField('questionImage', await uploadToImgBB(e.target.files[0]));
                         }} />
                         {data.questionImage && (
                             <div className="qpv2-d-flex qpv2-gap-2" style={{ marginTop: '6px' }}>
@@ -768,14 +783,14 @@ export default function QuestionPaperV2() {
                             <button className="qpv2-btn-secondary" onClick={addOption}><i className="fas fa-plus"></i> Add Option</button>
                         </div>
                         <div className="qpv2-form-grid">
-                            {(data.options||[]).map((opt, i) => (
+                            {(data.options || []).map((opt, i) => (
                                 <div key={i} className="qpv2-form-group" style={{ background: 'white', padding: '8px', borderRadius: '6px', border: '1px solid #e1e5eb' }}>
                                     <label className="qpv2-form-label">Option {String.fromCharCode(65 + i)}</label>
-                                    <input className="qpv2-form-control" style={{marginBottom: '4px'}} value={opt.text} onChange={e => updateOption(i, 'text', e.target.value)} placeholder="Text" />
+                                    <input className="qpv2-form-control" style={{ marginBottom: '4px' }} value={opt.text} onChange={e => updateOption(i, 'text', e.target.value)} placeholder="Text" />
                                     <input type="file" className="qpv2-form-control" onChange={async e => {
-                                        if(e.target.files[0]) updateOption(i, 'imageUrl', await uploadToImgBB(e.target.files[0]));
+                                        if (e.target.files[0]) updateOption(i, 'imageUrl', await uploadToImgBB(e.target.files[0]));
                                     }} />
-                                    {opt.imageUrl && <div className="qpv2-d-flex qpv2-gap-2" style={{marginTop: '4px'}}><button className="qpv2-btn-outline qpv2-btn-sm" onClick={()=>setPreviewImageUrl(opt.imageUrl)}>View</button><button className="qpv2-btn-danger qpv2-btn-sm" onClick={()=>updateOption(i, 'imageUrl', '')}>Remove</button></div>}
+                                    {opt.imageUrl && <div className="qpv2-d-flex qpv2-gap-2" style={{ marginTop: '4px' }}><button className="qpv2-btn-outline qpv2-btn-sm" onClick={() => setPreviewImageUrl(opt.imageUrl)}>View</button><button className="qpv2-btn-danger qpv2-btn-sm" onClick={() => updateOption(i, 'imageUrl', '')}>Remove</button></div>}
                                 </div>
                             ))}
                         </div>
@@ -788,15 +803,15 @@ export default function QuestionPaperV2() {
                             <h5 style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>Match Pairs</h5>
                             <button className="qpv2-btn-secondary" onClick={addPair}><i className="fas fa-plus"></i> Add Pair</button>
                         </div>
-                        {(data.pairs||[]).map((p, i) => (
+                        {(data.pairs || []).map((p, i) => (
                             <div key={i} className="qpv2-form-grid" style={{ background: 'white', padding: '8px', borderRadius: '6px', border: '1px solid #e1e5eb', marginBottom: '8px' }}>
                                 {['left', 'right'].map(side => (
                                     <div className="qpv2-form-group" key={side}>
                                         <label className="qpv2-form-label">{side === 'left' ? 'Column A' : 'Column B'} Text</label>
                                         <input className="qpv2-form-control" value={p[`${side}Text`]} onChange={e => updatePair(i, side, 'Text', e.target.value)} />
-                                        <label className="qpv2-form-label" style={{marginTop: '4px'}}>Image (Optional)</label>
+                                        <label className="qpv2-form-label" style={{ marginTop: '4px' }}>Image (Optional)</label>
                                         <input type="file" className="qpv2-form-control" onChange={async e => {
-                                            if(e.target.files[0]) updatePair(i, side, 'Image', await uploadToImgBB(e.target.files[0]));
+                                            if (e.target.files[0]) updatePair(i, side, 'Image', await uploadToImgBB(e.target.files[0]));
                                         }} />
                                     </div>
                                 ))}
@@ -809,13 +824,13 @@ export default function QuestionPaperV2() {
                     <div style={{ marginTop: '12px', padding: '12px', background: '#f9fbfc', borderRadius: '6px', border: '1px solid #e1e5eb' }}>
                         <div className="qpv2-d-flex qpv2-justify-between qpv2-align-center" style={{ marginBottom: '10px' }}>
                             <h5 style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>Sub-Questions</h5>
-                            <button className="qpv2-btn-secondary" onClick={() => setter(q => ({...q, subQuestions: [...(q.subQuestions||[]), { questionText: '', questionMarks: '', questionType: '', options: [], pairs: []}]}))}><i className="fas fa-plus"></i> Add Sub-Question</button>
+                            <button className="qpv2-btn-secondary" onClick={() => setter(q => ({ ...q, subQuestions: [...(q.subQuestions || []), { questionText: '', questionMarks: '', questionType: '', options: [], pairs: [] }] }))}><i className="fas fa-plus"></i> Add Sub-Question</button>
                         </div>
-                        {(data.subQuestions||[]).map((subQ, index) => (
+                        {(data.subQuestions || []).map((subQ, index) => (
                             <div key={index} style={{ background: 'white', padding: '10px', borderRadius: '6px', border: '1px solid #e1e5eb', marginBottom: '8px' }}>
                                 <div className="qpv2-form-grid">
                                     <div className="qpv2-form-group" style={{ gridColumn: 'span 2' }}>
-                                        <label className="qpv2-form-label">Sub-question {index+1} Text</label>
+                                        <label className="qpv2-form-label">Sub-question {index + 1} Text</label>
                                         <input className="qpv2-form-control" value={subQ.questionText} onChange={e => updateSubQuestion(index, 'questionText', e.target.value)} />
                                     </div>
                                     <div className="qpv2-form-group">
@@ -842,7 +857,7 @@ export default function QuestionPaperV2() {
 
     return (
         <div className="QuestionPaperV2">
-            
+
             {message && (
                 <div className="qpv2-toast-container">
                     <div className="qpv2-toast">
@@ -934,12 +949,12 @@ export default function QuestionPaperV2() {
 
                             <label className="qpv2-switch-wrapper" style={{ marginLeft: 'auto' }}>
                                 <div className="qpv2-switch">
-                                    <input 
-                                        type="checkbox" 
-                                        checked={selectedQuestions.length > 0 && selectedQuestions.length === getAllQuestionIds(questions).length} 
+                                    <input
+                                        type="checkbox"
+                                        checked={selectedQuestions.length > 0 && selectedQuestions.length === getAllQuestionIds(questions).length}
                                         onChange={(e) => {
                                             setSelectedQuestions(e.target.checked ? getAllQuestionIds(questions) : []);
-                                        }} 
+                                        }}
                                     />
                                     <span className="qpv2-slider"></span>
                                 </div>
@@ -961,7 +976,7 @@ export default function QuestionPaperV2() {
                     </>
                 )}
             </div>
-            
+
             {/* Transfer Questions Modal */}
             {isTransferModalOpen && (
                 <div className="qpv2-modal-overlay" onClick={() => setIsTransferModalOpen(false)}>
@@ -1056,7 +1071,7 @@ export default function QuestionPaperV2() {
                                 <div className="qpv2-form-group" style={{ gridColumn: 'span 2' }}>
                                     <label className="qpv2-form-label">School Logo</label>
                                     <input type="file" accept="image/*" className="qpv2-form-control" onChange={async e => {
-                                        if(e.target.files[0]) {
+                                        if (e.target.files[0]) {
                                             const url = await uploadToImgBB(e.target.files[0]);
                                             setNewTemplate(t => ({ ...t, logo: url }));
                                         }
@@ -1064,34 +1079,34 @@ export default function QuestionPaperV2() {
                                     {newTemplate.logo && (
                                         <div style={{ marginTop: '6px' }}>
                                             <img src={newTemplate.logo} alt="Logo" style={{ height: '40px', objectFit: 'contain' }} />
-                                            <button className="qpv2-btn-danger qpv2-btn-sm" style={{marginLeft: '10px'}} onClick={()=>setNewTemplate(t=>({...t, logo: ''}))}>Remove</button>
+                                            <button className="qpv2-btn-danger qpv2-btn-sm" style={{ marginLeft: '10px' }} onClick={() => setNewTemplate(t => ({ ...t, logo: '' }))}>Remove</button>
                                         </div>
                                     )}
                                 </div>
                                 <div className="qpv2-form-group">
                                     <label className="qpv2-form-label">School Name</label>
-                                    <input className="qpv2-form-control" value={newTemplate.schoolName} onChange={e=>setNewTemplate({...newTemplate, schoolName: e.target.value})} />
+                                    <input className="qpv2-form-control" value={newTemplate.schoolName} onChange={e => setNewTemplate({ ...newTemplate, schoolName: e.target.value })} />
                                 </div>
                                 <div className="qpv2-form-group">
                                     <label className="qpv2-form-label">Address</label>
-                                    <input className="qpv2-form-control" value={newTemplate.address || ''} onChange={e=>setNewTemplate({...newTemplate, address: e.target.value})} />
+                                    <input className="qpv2-form-control" value={newTemplate.address || ''} onChange={e => setNewTemplate({ ...newTemplate, address: e.target.value })} />
                                 </div>
                                 <div className="qpv2-form-group" style={{ gridColumn: 'span 2' }}>
                                     <label className="qpv2-form-label">Exam Title</label>
-                                    <input className="qpv2-form-control" value={newTemplate.examTitle} onChange={e=>setNewTemplate({...newTemplate, examTitle: e.target.value})} />
+                                    <input className="qpv2-form-control" value={newTemplate.examTitle} onChange={e => setNewTemplate({ ...newTemplate, examTitle: e.target.value })} />
                                 </div>
                             </div>
                             <div className="qpv2-d-flex qpv2-justify-between" style={{ marginBottom: '10px' }}>
                                 <h5 style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>Instructions</h5>
-                                <button className="qpv2-btn-secondary" onClick={()=>setNewTemplate({...newTemplate, instructions: [...newTemplate.instructions, '']})}>Add Instruction</button>
+                                <button className="qpv2-btn-secondary" onClick={() => setNewTemplate({ ...newTemplate, instructions: [...newTemplate.instructions, ''] })}>Add Instruction</button>
                             </div>
                             {newTemplate.instructions.map((inst, idx) => (
                                 <div key={idx} className="qpv2-d-flex qpv2-gap-2" style={{ marginBottom: '6px' }}>
-                                    <input className="qpv2-form-control" style={{ flex: 1 }} value={inst} onChange={e=>{
-                                        const insts = [...newTemplate.instructions]; insts[idx] = e.target.value; setNewTemplate({...newTemplate, instructions: insts});
+                                    <input className="qpv2-form-control" style={{ flex: 1 }} value={inst} onChange={e => {
+                                        const insts = [...newTemplate.instructions]; insts[idx] = e.target.value; setNewTemplate({ ...newTemplate, instructions: insts });
                                     }} placeholder={`Instruction ${idx + 1}`} />
-                                    <button className="qpv2-btn-danger" onClick={()=>{
-                                        setNewTemplate(t=>({ ...t, instructions: t.instructions.filter((_, i) => i !== idx) }));
+                                    <button className="qpv2-btn-danger" onClick={() => {
+                                        setNewTemplate(t => ({ ...t, instructions: t.instructions.filter((_, i) => i !== idx) }));
                                     }}>&times;</button>
                                 </div>
                             ))}
@@ -1108,8 +1123,8 @@ export default function QuestionPaperV2() {
                                                 <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{t.examTitle}</div>
                                             </div>
                                             <div className="qpv2-d-flex qpv2-gap-2">
-                                                <button className="qpv2-icon-btn edit" disabled={!hasWriteAccess} onClick={()=>setNewTemplate(t)}><i className="fas fa-edit"></i></button>
-                                                <button className="qpv2-icon-btn delete" disabled={!canDelete} onClick={()=>handleDeleteTemplate(t._id)}><i className="fas fa-trash"></i></button>
+                                                <button className="qpv2-icon-btn edit" disabled={!hasWriteAccess} onClick={() => setNewTemplate(t)}><i className="fas fa-edit"></i></button>
+                                                <button className="qpv2-icon-btn delete" disabled={!canDelete} onClick={() => handleDeleteTemplate(t._id)}><i className="fas fa-trash"></i></button>
                                             </div>
                                         </div>
                                     </div>
@@ -1154,7 +1169,7 @@ export default function QuestionPaperV2() {
                                     }}>➕ Add Section</button>
                                 </div>
                             </div>
-                            
+
                             <div className="qpv2-content-area">
                                 {questions.length > 0 && (
                                     <>
@@ -1180,7 +1195,7 @@ export default function QuestionPaperV2() {
                         <div className="qpv2-modal-footer">
                             <button className="qpv2-btn-outline" onClick={() => setIsCreateQPModalOpen(false)}>Cancel</button>
                             <button className="qpv2-btn-primary" onClick={() => setIsSelectInstructionsModalOpen(true)}>
-                                <i className="fas fa-sliders-h" style={{marginRight:'6px'}}></i> Select Instructions & Download
+                                <i className="fas fa-sliders-h" style={{ marginRight: '6px' }}></i> Select Instructions & Download
                             </button>
                         </div>
                     </div>
@@ -1191,11 +1206,11 @@ export default function QuestionPaperV2() {
                 <div className="qpv2-modal-overlay" style={{ zIndex: 1100 }} onClick={() => setIsSelectInstructionsModalOpen(false)}>
                     <div className="qpv2-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '700px' }}>
                         <div className="qpv2-modal-header">
-                            <h4><i className="fas fa-sliders-h text-primary" style={{marginRight:'6px'}}></i> Select Question Paper Details</h4>
+                            <h4><i className="fas fa-sliders-h text-primary" style={{ marginRight: '6px' }}></i> Select Question Paper Details</h4>
                             <button className="qpv2-modal-close" onClick={() => setIsSelectInstructionsModalOpen(false)}>&times;</button>
                         </div>
                         <div className="qpv2-modal-body">
-                            
+
                             <div className="qpv2-section-card">
                                 <h6 style={{ marginBottom: '10px', fontWeight: 600, fontSize: '0.85rem' }}>Heading Details (Select a Template)</h6>
                                 <div className="qpv2-d-flex" style={{ gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
@@ -1207,11 +1222,11 @@ export default function QuestionPaperV2() {
                                                 setSelectedAddress(t.address);
                                                 setSelectedExamTitle(t.examTitle);
                                                 if (t.logo) setSelectedLogo(t.logo);
-                                            }} style={{ 
-                                                flex: '1 1 180px', 
-                                                padding: '8px', 
-                                                border: `2px solid ${isSelected ? 'var(--button-color)' : '#e1e5eb'}`, 
-                                                borderRadius: '6px', 
+                                            }} style={{
+                                                flex: '1 1 180px',
+                                                padding: '8px',
+                                                border: `2px solid ${isSelected ? 'var(--button-color)' : '#e1e5eb'}`,
+                                                borderRadius: '6px',
                                                 cursor: 'pointer',
                                                 background: isSelected ? '#f0f7ff' : '#fff'
                                             }}>
@@ -1226,23 +1241,23 @@ export default function QuestionPaperV2() {
                                 <div className="qpv2-form-grid">
                                     <div className="qpv2-form-group">
                                         <label className="qpv2-form-label">School Name</label>
-                                        <select className="qpv2-form-control" value={selectedSchoolName} onChange={e=>setSelectedSchoolName(e.target.value)}>
+                                        <select className="qpv2-form-control" value={selectedSchoolName} onChange={e => setSelectedSchoolName(e.target.value)}>
                                             <option value="">-- Select --</option>
-                                            {[...new Set(templates.map(t=>t.schoolName))].map((n,i)=><option key={i} value={n}>{n}</option>)}
+                                            {[...new Set(templates.map(t => t.schoolName))].map((n, i) => <option key={i} value={n}>{n}</option>)}
                                         </select>
                                     </div>
                                     <div className="qpv2-form-group">
                                         <label className="qpv2-form-label">Address</label>
-                                        <select className="qpv2-form-control" value={selectedAddress} onChange={e=>setSelectedAddress(e.target.value)}>
+                                        <select className="qpv2-form-control" value={selectedAddress} onChange={e => setSelectedAddress(e.target.value)}>
                                             <option value="">-- Select --</option>
-                                            {[...new Set(templates.map(t=>t.address))].map((a,i)=><option key={i} value={a}>{a}</option>)}
+                                            {[...new Set(templates.map(t => t.address))].map((a, i) => <option key={i} value={a}>{a}</option>)}
                                         </select>
                                     </div>
                                     <div className="qpv2-form-group">
                                         <label className="qpv2-form-label">Exam Title</label>
-                                        <select className="qpv2-form-control" value={selectedExamTitle} onChange={e=>setSelectedExamTitle(e.target.value)}>
+                                        <select className="qpv2-form-control" value={selectedExamTitle} onChange={e => setSelectedExamTitle(e.target.value)}>
                                             <option value="">-- Select --</option>
-                                            {[...new Set(templates.map(t=>t.examTitle))].map((t,i)=><option key={i} value={t}>{t}</option>)}
+                                            {[...new Set(templates.map(t => t.examTitle))].map((t, i) => <option key={i} value={t}>{t}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -1256,7 +1271,7 @@ export default function QuestionPaperV2() {
                                             <input type="checkbox" onChange={(e) => {
                                                 const all = Array.from(new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== '')));
                                                 setSelectedInstructions(e.target.checked ? all : []);
-                                            }} checked={selectedInstructions.length === Array.from(new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== ''))).length && selectedInstructions.length > 0}/>
+                                            }} checked={selectedInstructions.length === Array.from(new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== ''))).length && selectedInstructions.length > 0} />
                                             <span className="qpv2-slider"></span>
                                         </div>
                                         <span className="qpv2-switch-label">Select All</span>
@@ -1265,8 +1280,8 @@ export default function QuestionPaperV2() {
                                 <div className="qpv2-form-grid" style={{ gridTemplateColumns: '1fr' }}>
                                     {Array.from(new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== ''))).map((instruction, i) => (
                                         <div key={i} className="qpv2-d-flex qpv2-align-center qpv2-gap-2">
-                                            <input type="checkbox" className="qpv2-question-checkbox" checked={selectedInstructions.includes(instruction)} onChange={() => toggleInstruction(instruction)} id={`inst-${i}`} style={{marginTop:0}} />
-                                            <label htmlFor={`inst-${i}`} style={{fontSize: '0.82rem', color: '#4b5563', cursor: 'pointer'}}>{instruction}</label>
+                                            <input type="checkbox" className="qpv2-question-checkbox" checked={selectedInstructions.includes(instruction)} onChange={() => toggleInstruction(instruction)} id={`inst-${i}`} style={{ marginTop: 0 }} />
+                                            <label htmlFor={`inst-${i}`} style={{ fontSize: '0.82rem', color: '#4b5563', cursor: 'pointer' }}>{instruction}</label>
                                         </div>
                                     ))}
                                 </div>
@@ -1275,9 +1290,9 @@ export default function QuestionPaperV2() {
                             <div className="qpv2-section-card">
                                 <h6 style={{ marginBottom: '10px', fontWeight: 600, fontSize: '0.85rem' }}>Exam Details</h6>
                                 <div className="qpv2-form-grid">
-                                    <div className="qpv2-form-group"><input className="qpv2-form-control" placeholder="Exam Date" value={examDate} onChange={e=>setExamDate(e.target.value)} /></div>
-                                    <div className="qpv2-form-group"><input className="qpv2-form-control" placeholder="Exam Time" value={examTime} onChange={e=>setExamTime(e.target.value)} /></div>
-                                    <div className="qpv2-form-group"><input className="qpv2-form-control" placeholder="Max Marks" value={maxMarks} onChange={e=>setMaxMarks(e.target.value)} /></div>
+                                    <div className="qpv2-form-group"><input className="qpv2-form-control" placeholder="Exam Date" value={examDate} onChange={e => setExamDate(e.target.value)} /></div>
+                                    <div className="qpv2-form-group"><input className="qpv2-form-control" placeholder="Exam Time" value={examTime} onChange={e => setExamTime(e.target.value)} /></div>
+                                    <div className="qpv2-form-group"><input className="qpv2-form-control" placeholder="Max Marks" value={maxMarks} onChange={e => setMaxMarks(e.target.value)} /></div>
                                 </div>
                             </div>
 
@@ -1285,7 +1300,7 @@ export default function QuestionPaperV2() {
                         <div className="qpv2-modal-footer">
                             <button className="qpv2-btn-outline" onClick={() => setIsSelectInstructionsModalOpen(false)}>Cancel</button>
                             <button className="qpv2-btn-primary" onClick={handlePrint} disabled={!canDownload}>
-                                <i className="fas fa-download" style={{marginRight:'6px'}}></i> Download PDF
+                                <i className="fas fa-download" style={{ marginRight: '6px' }}></i> Download PDF
                             </button>
                         </div>
                     </div>
@@ -1300,7 +1315,7 @@ export default function QuestionPaperV2() {
                     </div>
                 </div>
             )}
-            
+
             <div style={{ display: 'none' }}>
                 <PrintQuestionPaper
                     ref={printRef}
@@ -1324,10 +1339,10 @@ export default function QuestionPaperV2() {
 
             <div style={{ display: 'none' }}>
                 <div ref={printRefFiltered}>
-                    <DownloadQuestionBank 
+                    <DownloadQuestionBank
                         questions={questions}
-                        selectedClass={classes.find(c=>c._id===selectedClass)?.class}
-                        selectedSubject={subjects.find(s=>s._id===selectedSubject)?.name}
+                        selectedClass={classes.find(c => c._id === selectedClass)?.class}
+                        selectedSubject={subjects.find(s => s._id === selectedSubject)?.name}
                     />
                 </div>
             </div>

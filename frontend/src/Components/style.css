@@ -1,3 +1,4 @@
+/* 
 * {
     font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
     font-size: 15.2px;
@@ -9,6 +10,21 @@
     --background-color: #FDFBEE;
     --text-color: black;
     --active-color: #FE4F2D;
+    
+    --edit-button-color: #1e40af;
+    --edit-button-hover: #3b82f6;
+    --delete-button-color: #991b1b;
+    --delete-button-hover: #ef4444;
+    --success-button-color: #065f46;
+    --success-button-hover: #10b981;
+    --warning-button-color: #854d0e;
+    --warning-button-hover: #eab308;
+    --neutral-button-color: #475569;
+    --neutral-button-hover: #94a3b8;
+    
+    --card-bg-color: #ffffff;
+    --table-header-bg: #f8fafc;
+    --border-color: #e2e8f0;
 }
 
 [data-theme="midnight-red"] {
@@ -17,6 +33,15 @@
     --button-color: #D91E36;
     --button-hover: #D91E3680;
     --active-color: #A0153E;
+    --card-bg-color: #2b1212;
+    --table-header-bg: #3d1717;
+    --border-color: #4a1f1f;
+    --edit-button-color: #60a5fa;
+    --edit-button-hover: #93c5fd;
+    --delete-button-color: #f87171;
+    --delete-button-hover: #fca5a5;
+    --success-button-color: #34d399;
+    --success-button-hover: #6ee7b7;
 }
 
 [data-theme="Ocean"] {
@@ -25,6 +50,9 @@
     --background-color: #E3F2FD;
     --text-color: #0A2647;
     --active-color: #1565C0;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #E3F2FD;
+    --border-color: #B3E5FC;
 }
 
 [data-theme="Earth"] {
@@ -33,14 +61,26 @@
     --button-color: #AB886D;
     --button-hover: #AB886D98;
     --active-color: #332720;
+    --card-bg-color: #F5F5F7;
+    --table-header-bg: #E4E0E1;
+    --border-color: #D7CCC8;
 }
 
 [data-theme="Deep Ocean"] {
     --background-color: #031A2E;
-    --text-color: #D0E4FF;
+    --text-color: #cbe2ff;
     --button-color: #1B6FA8;
     --button-hover: #1B6FA880;
     --active-color: #3EA6FF;
+    --card-bg-color: #052642;
+    --table-header-bg: #09375e;
+    --border-color: #0e4c82;
+    --edit-button-color: #3ea6ff;
+    --edit-button-hover: #8ab4f8;
+    --delete-button-color: #f28b82;
+    --delete-button-hover: #fca5a5;
+    --success-button-color: #81c995;
+    --success-button-hover: #a8dab5;
 }
 
 [data-theme="Rose Blush"] {
@@ -49,6 +89,9 @@
     --button-color: #EC7FA9;
     --button-hover: #EC7FA998;
     --active-color: #ff0090;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #FFEDFA;
+    --border-color: #F8BBD0;
 }
 
 [data-theme="dark"] {
@@ -57,6 +100,15 @@
     --button-color: #D84224;
     --button-hover: #D8422480;
     --active-color: #FE4F2D;
+    --card-bg-color: #3d2727;
+    --table-header-bg: #4f3434;
+    --border-color: #614242;
+    --edit-button-color: #ff9f43;
+    --edit-button-hover: #ffb067;
+    --delete-button-color: #ff6b6b;
+    --delete-button-hover: #ff8585;
+    --success-button-color: #1dd1a1;
+    --success-button-hover: #54e1bd;
 }
 
 [data-theme="Sunset Peach"] {
@@ -65,6 +117,9 @@
     --button-color: #FF7E6B;
     --button-hover: #FF7E6B88;
     --active-color: #FF4C38;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #FFF3EC;
+    --border-color: #FFCCBC;
 }
 
 [data-theme="Mint Cream"] {
@@ -73,6 +128,9 @@
     --button-color: #3DC9A7;
     --button-hover: #3DC9A788;
     --active-color: #17B794;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #F0FFF4;
+    --border-color: #C8E6C9;
 }
 
 [data-theme="Lavender Day"] {
@@ -81,6 +139,9 @@
     --button-color: #9B7EDA;
     --button-hover: #9B7EDA88;
     --active-color: #7E57C2;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #F6F0FB;
+    --border-color: #E1BEE7;
 }
 
 [data-theme="Charcoal Cyan"] {
@@ -89,6 +150,15 @@
     --button-color: #00BCD4;
     --button-hover: #00BCD488;
     --active-color: #0097A7;
+    --card-bg-color: #282d37;
+    --table-header-bg: #353b49;
+    --border-color: #444b5d;
+    --edit-button-color: #00bcd4;
+    --edit-button-hover: #33ccff;
+    --delete-button-color: #ff5252;
+    --delete-button-hover: #ff7b7b;
+    --success-button-color: #4caf50;
+    --success-button-hover: #66bb6a;
 }
 
 [data-theme="Dracula Midnight"] {
@@ -97,6 +167,15 @@
     --button-color: #BD93F9;
     --button-hover: #BD93F988;
     --active-color: #FF79C6;
+    --card-bg-color: #343746;
+    --table-header-bg: #44475a;
+    --border-color: #6272a4;
+    --edit-button-color: #8be9fd;
+    --edit-button-hover: #a4f0ff;
+    --delete-button-color: #ff5555;
+    --delete-button-hover: #ff6e6e;
+    --success-button-color: #50fa7b;
+    --success-button-hover: #6eff95;
 }
 
 [data-theme="Candy Pop"] {
@@ -105,6 +184,9 @@
     --button-color: #F88DA9;
     --button-hover: #F88DA988;
     --active-color: #E2458C;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #FFF6FA;
+    --border-color: #F8BBD0;
 }
 
 [data-theme="Lemon Zest"] {
@@ -113,6 +195,9 @@
     --button-color: #FFE066;
     --button-hover: #FFE06688;
     --active-color: #FFCA3A;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #FFFBE6;
+    --border-color: #FFF9C4;
 }
 
 [data-theme="Watermelon Twist"] {
@@ -121,6 +206,9 @@
     --button-color: #FFA3A3;
     --button-hover: #FFA3A388;
     --active-color: #F96A6A;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #FFF5F2;
+    --border-color: #FFCDD2;
 }
 
 [data-theme="Sakura Bloom"] {
@@ -129,6 +217,9 @@
     --button-color: #F8A9C3;
     --button-hover: #F8A9C388;
     --active-color: #DE437A;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #FFF6F9;
+    --border-color: #F8BBD0;
 }
 
 [data-theme="Grape Soda"] {
@@ -137,6 +228,9 @@
     --button-color: #C998E0;
     --button-hover: #C998E088;
     --active-color: #A459D1;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #F9F3FB;
+    --border-color: #E1BEE7;
 }
 
 [data-theme="Cherry Red"] {
@@ -145,6 +239,9 @@
     --button-color: #F35D5D;
     --button-hover: #F35D5D88;
     --active-color: #B71C1C;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #FFEDEF;
+    --border-color: #FFCDD2;
 }
 
 [data-theme="Neon Orange"] {
@@ -153,6 +250,9 @@
     --button-color: #FFA46B;
     --button-hover: #FFA46B88;
     --active-color: #FF6E40;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #FFF3E9;
+    --border-color: #FFE0B2;
 }
 
 [data-theme="Solar Yellow"] {
@@ -161,6 +261,9 @@
     --button-color: #FFE066;
     --button-hover: #FFE06688;
     --active-color: #FFD54F;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #FFFAE5;
+    --border-color: #FFF9C4;
 }
 
 [data-theme="Tropical Green"] {
@@ -169,6 +272,9 @@
     --button-color: #4bfab7e0;
     --button-hover: #5AE4AE88;
     --active-color: #00B86B;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #c9ffe7c0;
+    --border-color: #C8E6C9;
 }
 
 [data-theme="Electric Blue"] {
@@ -177,6 +283,9 @@
     --button-color: #0e6eff;
     --button-hover: #5A9CFF88;
     --active-color: #2A76F7;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #a0c3f781;
+    --border-color: #BBDEFB;
 }
 
 [data-theme="Ultra Violet"] {
@@ -185,4 +294,1325 @@
     --button-color: #ab61ff;
     --button-hover: #d2abffc4;
     --active-color: #7B4FC2;
+    --card-bg-color: #FFFFFF;
+    --table-header-bg: #efe1ff;
+    --border-color: #E1BEE7;
+} */
+
+
+
+
+* {
+    font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        Roboto, Oxygen, Ubuntu, Cantarell, "Open Sans", "Helvetica Neue",
+        sans-serif;
+    font-size: 15px;
+    box-sizing: border-box;
+}
+
+:root {
+
+    /* ==========================================================
+       PRIMARY BRAND COLORS
+    ========================================================== */
+
+    --primary-color: #fe4f2d;
+    --primary-hover: #e84524;
+    --primary-active: #c93818;
+    --primary-light: #fff1ed;
+
+    /* ==========================================================
+       GENERAL BACKGROUNDS
+    ========================================================== */
+
+    --background-color: #f8fafc;
+
+    --sidebar-bg: #ffffff;
+
+    --navbar-bg: #ffffff;
+
+    --card-bg-color: #ffffff;
+
+    --modal-bg-color: #ffffff;
+
+    --tab-bg-color: #ffffff;
+
+    --table-bg-color: #ffffff;
+
+    --dropdown-bg: #ffffff;
+
+    /* ==========================================================
+       TEXT COLORS
+    ========================================================== */
+
+    --text-color: #1e293b;
+
+    --text-secondary: #475569;
+
+    --text-muted: #64748b;
+
+    --text-light: #94a3b8;
+
+    --heading-color: #0f172a;
+
+    --link-color: #2563eb;
+
+    --link-hover: #1d4ed8;
+
+    /* ==========================================================
+       INPUTS
+    ========================================================== */
+
+    --input-bg-color: #ffffff;
+
+    --input-text-color: #1e293b;
+
+    --input-placeholder-color: #94a3b8;
+
+    --input-border-color: #cbd5e1;
+
+    --input-hover-border: #94a3b8;
+
+    --input-focus-border: #2563eb;
+
+    --input-focus-shadow: rgba(37, 99, 235, .20);
+
+    --input-disabled-bg: #f1f5f9;
+
+    /* ==========================================================
+       BUTTONS
+    ========================================================== */
+
+    --button-color: var(--primary-color);
+
+    --button-hover: var(--primary-hover);
+
+    --button-active: var(--primary-active);
+
+    --button-text: #ffffff;
+
+    --button-disabled: #cbd5e1;
+
+    /* ==========================================================
+       ACTION BUTTONS
+    ========================================================== */
+
+    --edit-button-color: #2563eb;
+
+    --edit-button-hover: #1d4ed8;
+
+    --delete-button-color: #dc2626;
+
+    --delete-button-hover: #b91c1c;
+
+    --success-button-color: #16a34a;
+
+    --success-button-hover: #15803d;
+
+    --warning-button-color: #ca8a04;
+
+    --warning-button-hover: #a16207;
+
+    --neutral-button-color: #64748b;
+
+    --neutral-button-hover: #475569;
+
+    --info-button-color: #0891b2;
+
+    --info-button-hover: #0e7490;
+
+    /* ==========================================================
+       TABLES
+    ========================================================== */
+
+    --table-header-bg: #f8fafc;
+
+    --table-row-bg: #ffffff;
+
+    --table-row-hover: #f1f5f9;
+
+    --table-striped: #fafafa;
+
+    --table-selected: #dbeafe;
+
+    --table-border: #e2e8f0;
+
+    /* ==========================================================
+       TABS
+    ========================================================== */
+
+    --tab-background: #f8fafc;
+
+    --tab-hover: #e2e8f0;
+
+    --tab-active: var(--primary-color);
+
+    --tab-text: #334155;
+
+    --tab-active-text: #ffffff;
+
+    /* ==========================================================
+       CARDS
+    ========================================================== */
+
+    --card-header-bg: #ffffff;
+
+    --card-border: #e2e8f0;
+
+    --card-hover-border: #cbd5e1;
+
+    --card-shadow:
+        0 2px 6px rgba(15,23,42,.05);
+
+    --card-hover-shadow:
+        0 8px 24px rgba(15,23,42,.10);
+
+    /* ==========================================================
+       BORDERS
+    ========================================================== */
+
+    --border-color: #e2e8f0;
+
+    --border-light: #f1f5f9;
+
+    --border-dark: #cbd5e1;
+
+    /* ==========================================================
+       SCROLLBAR
+    ========================================================== */
+
+    --scrollbar-thumb: #cbd5e1;
+
+    --scrollbar-track: #f8fafc;
+
+    /* ==========================================================
+       STATUS COLORS
+    ========================================================== */
+
+    --success-bg: #ecfdf5;
+
+    --warning-bg: #fffbeb;
+
+    --danger-bg: #fef2f2;
+
+    --info-bg: #eff6ff;
+
+    /* ==========================================================
+       BADGES
+    ========================================================== */
+
+    --badge-success: #16a34a;
+
+    --badge-warning: #ca8a04;
+
+    --badge-danger: #dc2626;
+
+    --badge-info: #2563eb;
+
+    /* ==========================================================
+       SHADOWS
+    ========================================================== */
+
+    --shadow-sm:
+        0 1px 2px rgba(0,0,0,.05);
+
+    --shadow-md:
+        0 4px 8px rgba(0,0,0,.08);
+
+    --shadow-lg:
+        0 10px 25px rgba(0,0,0,.15);
+
+    /* ==========================================================
+       TRANSITIONS
+    ========================================================== */
+
+    --transition-fast: .15s ease;
+
+    --transition-normal: .25s ease;
+
+    --transition-slow: .35s ease;
+
+}
+
+/* ==========================================================
+   OCEAN
+========================================================== */
+
+[data-theme="Ocean"]{
+
+    --background-color:#eef6ff;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+    --modal-bg-color:#ffffff;
+    --tab-bg-color:#ffffff;
+    --table-bg-color:#ffffff;
+
+    --text-color:#12344d;
+    --text-secondary:#33556f;
+    --heading-color:#0b2740;
+
+    --button-color:#2563eb;
+    --button-hover:#1d4ed8;
+    --button-active:#1e40af;
+
+    --table-header-bg:#dbeafe;
+    --table-row-hover:#eff6ff;
+
+    --tab-background:#dbeafe;
+    --tab-hover:#bfdbfe;
+    --tab-active:#2563eb;
+
+    --border-color:#bfdcff;
+
+    --input-border-color:#c6daf7;
+    --input-focus-border:#2563eb;
+}
+
+/* ==========================================================
+   EARTH
+========================================================== */
+
+[data-theme="Earth"]{
+
+    --background-color:#f6f2ef;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#3b2f28;
+    --text-secondary:#64554b;
+    --heading-color:#2a211c;
+
+    --button-color:#8b5e3c;
+    --button-hover:#70492d;
+    --button-active:#59361f;
+
+    --table-header-bg:#ece4de;
+    --table-row-hover:#f4ede8;
+
+    --tab-background:#ece4de;
+    --tab-hover:#ddd2ca;
+    --tab-active:#8b5e3c;
+
+    --border-color:#d8c9be;
+
+    --input-border-color:#d3c3b8;
+    --input-focus-border:#8b5e3c;
+}
+
+/* ==========================================================
+   SUNSET PEACH
+========================================================== */
+
+[data-theme="Sunset Peach"]{
+
+    --background-color:#fff5ef;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#4c342d;
+    --text-secondary:#73524a;
+    --heading-color:#37231d;
+
+    --button-color:#f97316;
+    --button-hover:#ea580c;
+    --button-active:#c2410c;
+
+    --table-header-bg:#ffe6d5;
+    --table-row-hover:#fff0e7;
+
+    --tab-background:#ffe6d5;
+    --tab-hover:#ffd2b6;
+    --tab-active:#f97316;
+
+    --border-color:#ffd3b2;
+
+    --input-border-color:#f7c9a8;
+    --input-focus-border:#ea580c;
+}
+
+/* ==========================================================
+   MINT CREAM
+========================================================== */
+
+[data-theme="Mint Cream"]{
+
+    --background-color:#eefcf6;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#11483f;
+    --text-secondary:#2d645b;
+    --heading-color:#0b342d;
+
+    --button-color:#10b981;
+    --button-hover:#059669;
+    --button-active:#047857;
+
+    --table-header-bg:#d7f7ea;
+    --table-row-hover:#ecfdf5;
+
+    --tab-background:#d7f7ea;
+    --tab-hover:#c1efd9;
+    --tab-active:#10b981;
+
+    --border-color:#bdebd4;
+
+    --input-border-color:#b8e7cf;
+    --input-focus-border:#10b981;
+}
+
+/* ==========================================================
+   LAVENDER DAY
+========================================================== */
+
+[data-theme="Lavender Day"]{
+
+    --background-color:#f6f3ff;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#432b71;
+    --text-secondary:#65508f;
+    --heading-color:#311d58;
+
+    --button-color:#8b5cf6;
+    --button-hover:#7c3aed;
+    --button-active:#6d28d9;
+
+    --table-header-bg:#ebe5ff;
+    --table-row-hover:#f5f3ff;
+
+    --tab-background:#ebe5ff;
+    --tab-hover:#ddd3ff;
+    --tab-active:#8b5cf6;
+
+    --border-color:#d8cbff;
+
+    --input-border-color:#d3c6fb;
+    --input-focus-border:#8b5cf6;
+}
+
+/* ==========================================================
+   LEMON ZEST
+========================================================== */
+
+[data-theme="Lemon Zest"]{
+
+    --background-color:#fffdf1;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#4a3a0b;
+    --text-secondary:#6d5a21;
+    --heading-color:#342804;
+
+    --button-color:#eab308;
+    --button-hover:#ca8a04;
+    --button-active:#a16207;
+
+    --table-header-bg:#fff5c2;
+    --table-row-hover:#fffbea;
+
+    --tab-background:#fff5c2;
+    --tab-hover:#ffe98a;
+    --tab-active:#eab308;
+
+    --border-color:#f6df81;
+
+    --input-border-color:#efd977;
+    --input-focus-border:#ca8a04;
+}
+
+/* ==========================================================
+   DARK (DEFAULT)
+========================================================== */
+
+[data-theme="Dark"]{
+
+    --background-color:#111827;
+
+    --sidebar-bg:#1f2937;
+    --navbar-bg:#1f2937;
+    --card-bg-color:#1e293b;
+    --modal-bg-color:#1e293b;
+    --tab-bg-color:#1f2937;
+    --table-bg-color:#1e293b;
+
+    --text-color:#f8fafc;
+    --text-secondary:#cbd5e1;
+    --text-muted:#94a3b8;
+    --heading-color:#ffffff;
+
+    --button-color:#f97316;
+    --button-hover:#ea580c;
+    --button-active:#c2410c;
+
+    --table-header-bg:#334155;
+    --table-row-hover:#263446;
+
+    --tab-background:#334155;
+    --tab-hover:#475569;
+    --tab-active:#f97316;
+
+    --border-color:#475569;
+
+    --input-bg-color:#273548;
+    --input-text-color:#ffffff;
+    --input-border-color:#475569;
+    --input-focus-border:#f97316;
+
+    --scrollbar-thumb:#64748b;
+    --scrollbar-track:#1e293b;
+}
+
+/* ==========================================================
+   DEEP OCEAN
+========================================================== */
+
+[data-theme="Deep Ocean"]{
+
+    --background-color:#071a2d;
+
+    --sidebar-bg:#0b253f;
+    --navbar-bg:#0b253f;
+    --card-bg-color:#0f2e4d;
+    --modal-bg-color:#0f2e4d;
+
+    --text-color:#e8f3ff;
+    --text-secondary:#b6d4f2;
+    --text-muted:#8eb3d8;
+    --heading-color:#ffffff;
+
+    --button-color:#3b82f6;
+    --button-hover:#2563eb;
+    --button-active:#1d4ed8;
+
+    --table-header-bg:#153d66;
+    --table-row-hover:#123455;
+
+    --tab-background:#153d66;
+    --tab-hover:#1f4b78;
+    --tab-active:#3b82f6;
+
+    --border-color:#285680;
+
+    --input-bg-color:#153454;
+    --input-text-color:#ffffff;
+    --input-border-color:#2c5f8d;
+    --input-focus-border:#60a5fa;
+
+    --scrollbar-thumb:#3b82f6;
+    --scrollbar-track:#0f2e4d;
+}
+
+/* ==========================================================
+   CHARCOAL CYAN
+========================================================== */
+
+[data-theme="Charcoal Cyan"]{
+
+    --background-color:#181c22;
+
+    --sidebar-bg:#20252d;
+    --navbar-bg:#20252d;
+    --card-bg-color:#262c36;
+    --modal-bg-color:#262c36;
+
+    --text-color:#f4fdff;
+    --text-secondary:#d3ecf0;
+    --text-muted:#9bb5bd;
+    --heading-color:#ffffff;
+
+    --button-color:#06b6d4;
+    --button-hover:#0891b2;
+    --button-active:#0e7490;
+
+    --table-header-bg:#313844;
+    --table-row-hover:#38404c;
+
+    --tab-background:#313844;
+    --tab-hover:#424b59;
+    --tab-active:#06b6d4;
+
+    --border-color:#495463;
+
+    --input-bg-color:#2e3642;
+    --input-text-color:#ffffff;
+    --input-border-color:#495463;
+    --input-focus-border:#22d3ee;
+
+    --scrollbar-thumb:#64748b;
+    --scrollbar-track:#262c36;
+}
+
+/* ==========================================================
+   DRACULA MIDNIGHT
+========================================================== */
+
+[data-theme="Dracula Midnight"]{
+
+    --background-color:#1d1b29;
+
+    --sidebar-bg:#252338;
+    --navbar-bg:#252338;
+    --card-bg-color:#2e2b45;
+    --modal-bg-color:#2e2b45;
+
+    --text-color:#f8f8f2;
+    --text-secondary:#d6d6ec;
+    --text-muted:#b0b2cf;
+    --heading-color:#ffffff;
+
+    --button-color:#8b5cf6;
+    --button-hover:#7c3aed;
+    --button-active:#6d28d9;
+
+    --table-header-bg:#403c5c;
+    --table-row-hover:#4b4768;
+
+    --tab-background:#403c5c;
+    --tab-hover:#555172;
+    --tab-active:#8b5cf6;
+
+    --border-color:#62608a;
+
+    --input-bg-color:#3a3655;
+    --input-text-color:#ffffff;
+    --input-border-color:#62608a;
+    --input-focus-border:#a78bfa;
+
+    --scrollbar-thumb:#7c3aed;
+    --scrollbar-track:#2e2b45;
+}
+
+/* ==========================================================
+   CHERRY RED
+========================================================== */
+
+[data-theme="Cherry Red"]{
+
+    --background-color:#fff5f5;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#581c1c;
+    --text-secondary:#7f2d2d;
+
+    --button-color:#dc2626;
+    --button-hover:#b91c1c;
+    --button-active:#991b1b;
+
+    --table-header-bg:#fee2e2;
+    --table-row-hover:#fef2f2;
+
+    --tab-background:#fee2e2;
+    --tab-hover:#fecaca;
+    --tab-active:#dc2626;
+
+    --border-color:#fecaca;
+
+    --input-border-color:#fca5a5;
+    --input-focus-border:#dc2626;
+}
+
+/* ==========================================================
+   ELECTRIC BLUE
+========================================================== */
+
+[data-theme="Electric Blue"]{
+
+    --background-color:#eef6ff;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#0b3b70;
+    --text-secondary:#24517f;
+
+    --button-color:#2563eb;
+    --button-hover:#1d4ed8;
+    --button-active:#1e40af;
+
+    --table-header-bg:#dbeafe;
+    --table-row-hover:#eff6ff;
+
+    --tab-background:#dbeafe;
+    --tab-hover:#bfdbfe;
+    --tab-active:#2563eb;
+
+    --border-color:#bfdbfe;
+
+    --input-border-color:#93c5fd;
+    --input-focus-border:#2563eb;
+}
+
+/* ==========================================================
+   TROPICAL GREEN
+========================================================== */
+
+[data-theme="Tropical Green"]{
+
+    --background-color:#edfdf6;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#064e3b;
+    --text-secondary:#166534;
+
+    --button-color:#10b981;
+    --button-hover:#059669;
+    --button-active:#047857;
+
+    --table-header-bg:#d1fae5;
+    --table-row-hover:#ecfdf5;
+
+    --tab-background:#d1fae5;
+    --tab-hover:#a7f3d0;
+    --tab-active:#10b981;
+
+    --border-color:#a7f3d0;
+
+    --input-border-color:#86efac;
+    --input-focus-border:#10b981;
+}
+
+/* ==========================================================
+   ULTRA VIOLET
+========================================================== */
+
+[data-theme="Ultra Violet"]{
+
+    --background-color:#f5f3ff;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#4c1d95;
+    --text-secondary:#6d28d9;
+
+    --button-color:#8b5cf6;
+    --button-hover:#7c3aed;
+    --button-active:#6d28d9;
+
+    --table-header-bg:#ede9fe;
+    --table-row-hover:#f5f3ff;
+
+    --tab-background:#ede9fe;
+    --tab-hover:#ddd6fe;
+    --tab-active:#8b5cf6;
+
+    --border-color:#ddd6fe;
+
+    --input-border-color:#c4b5fd;
+    --input-focus-border:#8b5cf6;
+}
+
+/* ==========================================================
+   EMERALD PRO (NEW)
+========================================================== */
+
+[data-theme="Emerald Pro"]{
+
+    --background-color:#f2fffa;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#065f46;
+    --text-secondary:#047857;
+
+    --button-color:#059669;
+    --button-hover:#047857;
+    --button-active:#065f46;
+
+    --table-header-bg:#d1fae5;
+    --table-row-hover:#ecfdf5;
+
+    --tab-background:#d1fae5;
+    --tab-hover:#a7f3d0;
+    --tab-active:#059669;
+
+    --border-color:#a7f3d0;
+
+    --input-border-color:#6ee7b7;
+    --input-focus-border:#059669;
+}
+
+/* ==========================================================
+   ROYAL INDIGO (NEW)
+========================================================== */
+
+[data-theme="Royal Indigo"]{
+
+    --background-color:#f7f7ff;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#312e81;
+    --text-secondary:#4338ca;
+
+    --button-color:#4f46e5;
+    --button-hover:#4338ca;
+    --button-active:#3730a3;
+
+    --table-header-bg:#e0e7ff;
+    --table-row-hover:#eef2ff;
+
+    --tab-background:#e0e7ff;
+    --tab-hover:#c7d2fe;
+    --tab-active:#4f46e5;
+
+    --border-color:#c7d2fe;
+
+    --input-border-color:#a5b4fc;
+    --input-focus-border:#4f46e5;
+}
+
+/* ==========================================================
+   CRIMSON WINE (NEW)
+========================================================== */
+
+[data-theme="Crimson Wine"]{
+
+    --background-color:#fff5f7;
+
+    --sidebar-bg:#ffffff;
+    --navbar-bg:#ffffff;
+    --card-bg-color:#ffffff;
+
+    --text-color:#7f1d1d;
+    --text-secondary:#9f1239;
+
+    --button-color:#be123c;
+    --button-hover:#9f1239;
+    --button-active:#881337;
+
+    --table-header-bg:#ffe4e6;
+    --table-row-hover:#fff1f2;
+
+    --tab-background:#ffe4e6;
+    --tab-hover:#fecdd3;
+    --tab-active:#be123c;
+
+    --border-color:#fecdd3;
+
+    --input-border-color:#fda4af;
+    --input-focus-border:#be123c;
+}
+
+/* ==========================================================
+   GLOBAL BODY
+========================================================== */
+
+body{
+
+    background:var(--background-color);
+
+    color:var(--text-color);
+
+    transition:all .25s ease;
+
+}
+
+
+/* ==========================================================
+   LINKS
+========================================================== */
+
+a{
+
+    color:var(--link-color);
+
+    text-decoration:none;
+
+    transition:.2s;
+
+}
+
+a:hover{
+
+    color:var(--link-hover);
+
+}
+
+
+/* ==========================================================
+   BUTTONS
+========================================================== */
+
+button{
+
+    background:var(--button-color);
+
+    color:var(--button-text);
+
+    border:none;
+
+    border-radius:10px;
+
+    padding:10px 18px;
+
+    cursor:pointer;
+
+    transition:.2s;
+
+    font-weight:600;
+
+}
+
+button:hover{
+
+    background:var(--button-hover);
+
+    transform:translateY(-1px);
+
+}
+
+button:active{
+
+    background:var(--button-active);
+
+    transform:scale(.98);
+
+}
+
+button:disabled{
+
+    background:var(--button-disabled);
+
+    cursor:not-allowed;
+
+}
+
+
+/* ==========================================================
+   EDIT
+========================================================== */
+
+.btn-edit{
+
+    background:var(--edit-button-color);
+
+}
+
+.btn-edit:hover{
+
+    background:var(--edit-button-hover);
+
+}
+
+
+/* ==========================================================
+   DELETE
+========================================================== */
+
+.btn-delete{
+
+    background:var(--delete-button-color);
+
+}
+
+.btn-delete:hover{
+
+    background:var(--delete-button-hover);
+
+}
+
+
+/* ==========================================================
+   SUCCESS
+========================================================== */
+
+.btn-success{
+
+    background:var(--success-button-color);
+
+}
+
+.btn-success:hover{
+
+    background:var(--success-button-hover);
+
+}
+
+
+/* ==========================================================
+   WARNING
+========================================================== */
+
+.btn-warning{
+
+    background:var(--warning-button-color);
+
+}
+
+.btn-warning:hover{
+
+    background:var(--warning-button-hover);
+
+}
+
+
+/* ==========================================================
+   INFO
+========================================================== */
+
+.btn-info{
+
+    background:var(--info-button-color);
+
+}
+
+.btn-info:hover{
+
+    background:var(--info-button-hover);
+
+}
+
+
+/* ==========================================================
+   INPUTS
+========================================================== */
+
+input,
+textarea,
+select{
+
+    width:100%;
+
+    padding:10px 12px;
+
+    border-radius:8px;
+
+    border:1px solid var(--input-border-color);
+
+    background:var(--input-bg-color);
+
+    color:var(--input-text-color);
+
+    transition:.2s;
+
+}
+
+input::placeholder,
+textarea::placeholder{
+
+    color:var(--input-placeholder-color);
+
+}
+
+input:hover,
+textarea:hover,
+select:hover{
+
+    border-color:var(--input-hover-border);
+
+}
+
+input:focus,
+textarea:focus,
+select:focus{
+
+    outline:none;
+
+    border-color:var(--input-focus-border);
+
+    box-shadow:0 0 0 4px var(--input-focus-shadow);
+
+}
+
+
+/* ==========================================================
+   CARDS
+========================================================== */
+
+.card{
+
+    background:var(--card-bg-color);
+
+    border:1px solid var(--card-border);
+
+    border-radius:16px;
+
+    padding:20px;
+
+    box-shadow:var(--card-shadow);
+
+    transition:.25s;
+
+}
+
+.card:hover{
+
+    box-shadow:var(--card-hover-shadow);
+
+    border-color:var(--card-hover-border);
+
+}
+
+
+/* ==========================================================
+   TABLES
+========================================================== */
+
+table{
+
+    width:100%;
+
+    border-collapse:collapse;
+
+    background:var(--table-bg-color);
+
+}
+
+thead{
+
+    background:var(--table-header-bg);
+
+}
+
+th{
+
+    text-align:left;
+
+    padding:14px;
+
+    color:var(--heading-color);
+
+}
+
+td{
+
+    padding:12px;
+
+    border-bottom:1px solid var(--table-border);
+
+}
+
+tbody tr{
+
+    transition:.2s;
+
+}
+
+tbody tr:hover{
+
+    background:var(--table-row-hover);
+
+}
+
+
+/* ==========================================================
+   TABS
+========================================================== */
+
+.tab{
+
+    padding:10px 18px;
+
+    border-radius:10px;
+
+    background:var(--tab-background);
+
+    color:var(--tab-text);
+
+    cursor:pointer;
+
+    transition:.2s;
+
+}
+
+.tab:hover{
+
+    background:var(--tab-hover);
+
+}
+
+.tab.active{
+
+    background:var(--tab-active);
+
+    color:var(--tab-active-text);
+
+}
+
+
+/* ==========================================================
+   MODALS
+========================================================== */
+
+.modal{
+
+    background:var(--modal-bg-color);
+
+    border-radius:18px;
+
+    box-shadow:var(--shadow-lg);
+
+}
+
+
+/* ==========================================================
+   DROPDOWNS
+========================================================== */
+
+.dropdown{
+
+    background:var(--dropdown-bg);
+
+    border:1px solid var(--border-color);
+
+    border-radius:12px;
+
+}
+
+
+/* ==========================================================
+   BADGES
+========================================================== */
+
+.badge{
+
+    padding:4px 10px;
+
+    border-radius:999px;
+
+    font-size:12px;
+
+    font-weight:600;
+
+}
+
+.badge-success{
+
+    background:var(--success-bg);
+
+    color:var(--success-button-color);
+
+}
+
+.badge-warning{
+
+    background:var(--warning-bg);
+
+    color:var(--warning-button-color);
+
+}
+
+.badge-danger{
+
+    background:var(--danger-bg);
+
+    color:var(--delete-button-color);
+
+}
+
+.badge-info{
+
+    background:var(--info-bg);
+
+    color:var(--info-button-color);
+
+}
+
+
+/* ==========================================================
+   SCROLLBAR
+========================================================== */
+
+::-webkit-scrollbar{
+
+    width:10px;
+
+    height:10px;
+
+}
+
+::-webkit-scrollbar-thumb{
+
+    background:var(--scrollbar-thumb);
+
+    border-radius:100px;
+
+}
+
+::-webkit-scrollbar-track{
+
+    background:var(--scrollbar-track);
+
+}
+
+
+/* ==========================================================
+   SELECTION
+========================================================== */
+
+::selection{
+
+    background:var(--button-color);
+
+    color:white;
+
+}
+
+
+/* ==========================================================
+   HORIZONTAL RULE
+========================================================== */
+
+hr{
+
+    border:none;
+
+    border-top:1px solid var(--border-color);
+
+}
+
+
+/* ==========================================================
+   FOCUS
+========================================================== */
+
+*:focus-visible{
+
+    outline:3px solid var(--input-focus-shadow);
+
+    outline-offset:2px;
+
+}
+
+
+/* ==========================================================
+   TRANSITIONS
+========================================================== */
+
+*{
+
+    transition:
+        background .2s,
+        color .2s,
+        border-color .2s,
+        box-shadow .2s;
+
 }

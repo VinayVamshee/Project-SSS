@@ -4,13 +4,14 @@
   width: 100%;
   min-height: 100vh;
   padding: 24px;
-  background-color: #f8fafc;
+  background-color: var(--background-color, #f8fafc);
   display: flex;
   flex-direction: column;
   gap: 20px;
   box-sizing: border-box;
   font-family: 'Outfit', 'Inter', sans-serif;
-  color: #0f172a;
+  color: var(--text-color, #0f172a);
+  transition: background-color 0.25s ease, color 0.25s ease;
 }
 
 /* Animations */
@@ -29,20 +30,19 @@
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1.5px solid var(--border-color, #e2e8f0);
   padding-bottom: 16px;
 }
 .ov-portal-title {
   font-size: 1.45rem;
   font-weight: 800;
   margin: 0;
-  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
+  color: var(--text-color);
 }
 .ov-portal-subtitle {
   font-size: 0.82rem;
-  color: #64748b;
+  color: var(--text-color);
+  opacity: 0.7;
   margin: 4px 0 0 0;
 }
 
@@ -56,8 +56,8 @@
 .ov-academic-selector {
   display: flex;
   align-items: center;
-  background-color: white;
-  border: 1px solid #cbd5e1;
+  background-color: var(--card-bg-color, #ffffff);
+  border: 1.5px solid var(--border-color, #cbd5e1);
   border-radius: 8px;
   padding: 6px 12px;
   box-shadow: 0 1px 2px rgba(0,0,0,0.03);
@@ -68,10 +68,14 @@
   border: none;
   font-size: 0.85rem;
   font-weight: 700;
-  color: #1e293b;
+  color: var(--text-color, #1e293b);
   outline: none;
   cursor: pointer;
   padding-right: 4px;
+}
+.ov-academic-selector i {
+  color: var(--text-color);
+  opacity: 0.6;
 }
 
 /* Metrics Cards Section */
@@ -84,7 +88,7 @@
 .ov-stat-card {
   border-radius: 12px;
   padding: 18px;
-  color: white;
+  color: white !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
   display: flex;
   flex-direction: column;
@@ -144,16 +148,17 @@
 
 /* Ledger summary strip styling */
 .ov-ledger-summary-row {
-  background: white;
+  background: var(--card-bg-color, #ffffff);
   border-radius: 12px;
   padding: 16px 24px;
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid var(--border-color, #e2e8f0);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 16px;
+  color: var(--text-color);
 }
 .ov-ledger-metric {
   display: flex;
@@ -173,7 +178,7 @@
 .ov-divider-dashed {
   height: 24px;
   width: 1px;
-  border-left: 1px dashed #cbd5e1;
+  border-left: 1.5px dashed var(--border-color, #cbd5e1);
 }
 
 /* Charts & Details Grid */
@@ -189,14 +194,15 @@
 }
 
 .ov-chart-card {
-  background: white;
+  background: var(--card-bg-color, #ffffff);
   border-radius: 12px;
   padding: 20px;
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid var(--border-color, #e2e8f0);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
   gap: 16px;
+  color: var(--text-color);
 }
 .ov-chart-header {
   display: flex;
@@ -207,7 +213,7 @@
   margin: 0;
   font-size: 0.92rem;
   font-weight: 800;
-  color: #1e293b;
+  color: var(--text-color, #1e293b);
 }
 
 .badge-info, .badge-success {
@@ -216,13 +222,13 @@
   padding: 4px 8px;
   border-radius: 20px;
 }
-.badge-info { background-color: #eff6ff; color: #1e40af; }
-.badge-success { background-color: #ecfdf5; color: #065f46; }
+.badge-info { background-color: var(--background-color); color: var(--text-color); border: 1px solid var(--border-color); }
+.badge-success { background-color: var(--success-button-hover); color: white; }
 
 .ov-chart-container {
   position: relative;
   flex: 1;
-  min-height: 280px; /* Expanded for better detail */
+  min-height: 280px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -243,31 +249,34 @@
 .ov-pie-center-label .percentage {
   font-size: 1.3rem;
   font-weight: 800;
-  color: #0f172a;
+  color: var(--text-color, #0f172a);
 }
 .ov-pie-center-label .label {
   font-size: 0.68rem;
-  color: #64748b;
+  color: var(--text-color, #64748b);
+  opacity: 0.7;
   font-weight: 600;
   text-transform: uppercase;
 }
 
 .ov-no-data {
   text-align: center;
-  color: #94a3b8;
+  color: var(--text-color);
+  opacity: 0.6;
   font-size: 0.82rem;
 }
 
 /* Classwise Table card styling */
 .ov-table-card {
-  background: white;
+  background: var(--card-bg-color, #ffffff);
   border-radius: 12px;
   padding: 20px;
-  border: 1px solid #e2e8f0;
+  border: 1.5px solid var(--border-color, #e2e8f0);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
   display: flex;
   flex-direction: column;
   gap: 16px;
+  color: var(--text-color);
 }
 .ov-table-wrapper {
   overflow-y: auto;
@@ -281,23 +290,23 @@
   text-align: left;
 }
 .ov-table th {
-  background-color: #f8fafc;
-  color: #64748b;
+  background-color: var(--table-header-bg, #f8fafc);
+  color: var(--text-color, #64748b);
   font-weight: 700;
   padding: 8px 12px;
-  border-bottom: 1px solid #e2e8f0;
+  border-bottom: 1.5px solid var(--border-color, #e2e8f0);
   position: sticky;
   top: 0;
   z-index: 10;
 }
 .ov-table td {
   padding: 10px 12px;
-  border-bottom: 1px solid #f1f5f9;
-  color: #334155;
+  border-bottom: 1.5px solid var(--border-color, #f1f5f9);
+  color: var(--text-color, #334155);
   vertical-align: middle;
 }
 .ov-table tr:hover td {
-  background-color: #f8fafc;
+  background-color: var(--background-color, #f8fafc);
 }
 
 /* Progress bar alignment in list */
@@ -310,7 +319,7 @@
 .ov-progress-bar-bg {
   flex: 1;
   height: 6px;
-  background-color: #f1f5f9;
+  background-color: var(--background-color, #f1f5f9);
   border-radius: 3px;
   overflow: hidden;
 }
@@ -321,8 +330,30 @@
 }
 .ov-progress-text {
   font-size: 0.72rem;
-  color: #475569;
+  color: var(--text-color, #475569);
   font-weight: 700;
   min-width: 110px;
   text-align: right;
+}
+
+/* Recharts custom theme styling overrides */
+.OverView .recharts-cartesian-grid-horizontal line,
+.OverView .recharts-cartesian-grid-vertical line {
+    stroke: var(--border-color, #e2e8f0) !important;
+    opacity: 0.5;
+}
+.OverView .recharts-text {
+    fill: var(--text-color, #1e293b) !important;
+    font-weight: 600;
+    font-size: 11px;
+}
+.OverView .recharts-legend-item-text {
+    color: var(--text-color, #1e293b) !important;
+}
+.OverView .recharts-default-tooltip {
+    background-color: var(--card-bg-color, #ffffff) !important;
+    border: 1.5px solid var(--border-color, #e2e8f0) !important;
+    color: var(--text-color, #1e293b) !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08) !important;
 }

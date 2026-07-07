@@ -12,30 +12,39 @@
     position: sticky;
     top: 0;
     height: 100vh;
-    font-size: 13px;
+    font-size: 13.5px;
     display: flex;
     flex-direction: column;
     align-items: center;
-    width: 220px;
-    transition: width 0.3s ease;
+    width: 240px;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background-color: var(--card-bg-color, #ffffff);
+    color: var(--text-color, #1e293b);
+    border-right: 1.5px solid var(--border-color, #e2e8f0);
+    padding: 1.5rem 0.5rem;
+    box-shadow: 2px 0 10px rgba(0, 0, 0, 0.01);
+    z-index: 100;
 }
 
 .Navigation.collapsed {
-    width: 60px;
+    width: 70px;
+    padding: 1.5rem 0.25rem;
 }
 
 .Navigation .logo {
-    color: #424242;
-    font-weight: 500;
-    font-size: 18px;
-    padding: 18px;
+    color: var(--text-color, #1e293b);
+    font-weight: 700;
+    font-size: 16px;
+    padding: 1rem 0.5rem;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-    margin-top: 20px;
+    margin-top: 10px;
+    margin-bottom: 1.5rem;
     gap: 10px;
     text-align: center;
+    width: 100%;
 }
 
 .Navigation.collapsed .logo {
@@ -43,94 +52,171 @@
 }
 
 .Navigation .logo img {
-    width: 50px;
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+    border-radius: 8px;
+    transition: all 0.2s ease;
+}
+
+.Navigation.collapsed .logo img {
+    width: 36px;
+    height: 36px;
 }
 
 .Navigation.collapsed .Link {
+    width: 44px;
+    height: 44px;
     justify-content: center;
+    border-radius: 50% !important;
+    padding: 0 !important;
+    gap: 0 !important;
+    margin: 0.2rem auto !important;
+    border-left: none !important;
 }
 
-.Navigation.collapsed .Link>*:not(i) {
+.Navigation.collapsed .Link > *:not(i) {
     display: none;
 }
 
+.Navigation.collapsed .active {
+    background-color: var(--active-color) !important;
+    color: #ffffff !important;
+}
+
 .toggle-btn {
-    background: none;
+    background: transparent;
     border: none;
-    color: inherit;
-    font-size: 1.2rem;
-    margin: 10px;
+    color: var(--text-color, #1e293b);
+    font-size: 1.1rem;
     cursor: pointer;
     width: 100%;
-    text-align: start;
+    text-align: right;
+    padding: 0.5rem 1rem;
+    opacity: 0.6;
+    transition: all 0.2s ease;
 }
 
+.toggle-btn:hover {
+    opacity: 1;
+    color: var(--active-color);
+}
+
+.Navigation.collapsed .toggle-btn {
+    text-align: center;
+    padding: 0.5rem 0;
+}
+
+/* Register Student Button */
 .AddStudent {
-    padding: 10px;
+    padding: 0.65rem 1rem;
     display: flex;
-    width: fit-content;
-    gap: 10px;
+    width: 90%;
+    gap: 12px;
     align-items: center;
-    border-radius: 5px;
+    justify-content: center;
+    border-radius: 8px;
     text-decoration: none;
     background-color: var(--button-color);
-    color: white;
-}
-
-.AddStudent i {
-    padding: 5px 0px;
+    color: white !important;
+    font-weight: 600;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
 }
 
 .AddStudent:hover {
-    color: white;
     background-color: var(--button-hover);
-    cursor: pointer;
+    transform: translateY(-1px);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.08);
 }
 
+.Navigation.collapsed .AddStudent {
+    width: 42px;
+    height: 42px;
+    padding: 0;
+    justify-content: center;
+}
+
+/* Sidebar Links */
 .LinkToPages {
-    margin-top: 20px;
+    margin-top: 1.5rem;
     display: flex;
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
     width: 100%;
+    gap: 0.25rem;
 }
 
 .LinkToPages .Link {
-    padding: 10px;
-    width: 100%;
-    height: 42.11px;
+    padding: 0.65rem 1rem;
+    width: 90%;
+    margin: 0 auto;
+    border-radius: 8px;
     text-decoration: none;
-    color: #424242;
+    color: var(--text-color, #475569);
     display: flex;
-    gap: 30px;
+    gap: 16px;
     align-items: center;
     justify-content: flex-start;
+    opacity: 0.8;
+    font-weight: 550;
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
 }
 
 .LinkToPages .Link i {
-    width: 17px;
+    width: 20px;
+    text-align: center;
+    font-size: 1.1rem;
 }
 
 .LinkToPages .Link:hover {
-    cursor: pointer;
+    opacity: 1;
+    background-color: var(--button-hover, rgba(0, 0, 0, 0.04));
+    color: var(--text-color, #1e293b);
 }
 
 .LinkToPages .active {
-    color: var(--active-color);
-    background-color: var(--background-color);
+    color: var(--active-color) !important;
+    background-color: var(--background-color) !important;
+    opacity: 1;
+    border-left: 3px solid var(--active-color);
+    font-weight: 600;
 }
 
+/* Theme Dropdown */
 .theme-selector {
     display: flex;
     flex-direction: column;
-    gap: 10px;
-    align-items: center;
+    gap: 8px;
+    align-items: flex-start;
+    width: 90%;
+    margin: 2rem auto 0 auto;
+    border-top: 1px solid var(--border-color, #e2e8f0);
+    padding-top: 1rem;
+}
+
+.theme-selector label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--text-color);
+    opacity: 0.6;
+    letter-spacing: 0.5px;
 }
 
 #theme-select {
-    padding: 8px;
-    border-radius: 5px;
-    border: 1px solid #ccc;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+    border: 1.5px solid var(--border-color, #ccc);
+    background-color: var(--background-color);
+    color: var(--text-color);
     cursor: pointer;
+    width: 100%;
+    font-size: 0.85rem;
+    outline: none;
+    transition: border-color 0.2s ease;
+}
+
+#theme-select:focus {
+    border-color: var(--active-color);
 }

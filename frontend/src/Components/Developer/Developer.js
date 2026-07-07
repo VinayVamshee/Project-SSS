@@ -1,1259 +1,2280 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { 
-    getAllMasters, 
-    createMaster, 
-    updateMaster,
-    setMasterInUse, 
-    deleteMaster as apiDeleteMaster,
-    getFieldDefinitions,
-    addFieldDefinition,
-    updateFieldDefinition,
-    deleteFieldDefinition,
-    devCreateUser,
-    devGetUsers,
-    devUpdateUser
+import React, { useState, useEffect } from 'react';
+import {
+  getEntities, createEntity, archiveEntity, activateEntity, deleteEntity,
+  getFieldDefinitions, addFieldDefinition, updateFieldDefinition, deleteFieldDefinition, archiveFieldDefinition, activateFieldDefinition,
+  getTemplates, getTemplateForm, createTemplate, updateTemplate, publishTemplate, archiveTemplate, restoreTemplate, deleteTemplate,
+  getAllMasters, createMaster, deleteMaster, setMasterInUse,
+  devGetUsers, devCreateUser, devUpdateUser, login
 } from '../../API';
+import DynamicForm from '../Shared/DynamicForm';
 import './Developer.css';
 
 export default function Developer() {
-    const navigate = useNavigate();
+  const [activeTab, setActiveTab] = useState('entity_registry');
+  const [notification, setNotification] = useState({ message: '', type: 'success' });
 
-    // ─── AUTHENTICATION CHECK ────────────────────────────────────────────────
-    useEffect(() => {
-        const token = localStorage.getItem("token");
-        const isDev = localStorage.getItem("isDev");
+  const showNotification = (msg, type = 'success') => {
+    setNotification({ message: msg, type });
+    setTimeout(() => {
+      setNotification({ message: '', type: 'success' });
+    }, 4000);
+  };
 
-        if (!token) {
-            navigate("/login");
-            return;
+
+
+  // 1. Entity Registry States
+  const [entities, setEntities] = useState([]);
+  const [newEntity, setNewEntity] = useState({
+    key: '',
+    label: '',
+    description: '',
+    collection: '',
+    model: '',
+    category: 'General',
+    icon: '',
+    color: '#6366f1',
+    allowTemplates: true,
+    allowLookup: true,
+    visibleInMenu: true,
+    system: false,
+    status: 'active'
+  });
+
+  // 2. Field Registry States
+  const [fields, setFields] = useState([]);
+  const [editingFieldId, setEditingFieldId] = useState(null);
+  const [expandedFieldIds, setExpandedFieldIds] = useState({});
+  const [newField, setNewField] = useState({
+    key: '',
+    label: '',
+    description: '',
+    category: 'General',
+    type: 'text',
+    placeholder: '',
+    helperText: '',
+    required: false,
+    unique: false,
+    min: '',
+    max: '',
+    minLength: '',
+    maxLength: '',
+    validationPattern: '',
+    validationMessage: '',
+    defaultValue: '',
+    options: [],
+    lookup: {
+      entity: '',
+      displayField: 'name',
+      valueField: '_id',
+      multiple: false,
+      searchable: true
+    },
+    ui: {
+      icon: '',
+      color: '',
+      width: 12
+    }
+  });
+  const [optionLabel, setOptionLabel] = useState('');
+  const [optionValue, setOptionValue] = useState('');
+
+  // 3. Templates States
+  const [templates, setTemplates] = useState([]);
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [newTemplate, setNewTemplate] = useState({
+    key: '',
+    label: '',
+    description: '',
+    entity: '',
+    scope: 'global',
+    schools: [],
+    fields: []
+  });
+  const [fieldFilterText, setFieldFilterText] = useState('');
+
+  // 4. Form Preview States
+  const [previewTemplateId, setPreviewTemplateId] = useState('');
+  const [previewForm, setPreviewForm] = useState(null);
+  const [formSubmittedData, setFormSubmittedData] = useState(null);
+
+  // 5. School Tenants States (Empty inputs initial state)
+  const [schools, setSchools] = useState([]);
+  const [newSchool, setNewSchool] = useState({
+    name: '',
+    slug: '',
+    customDomain: '',
+    logoUrl: '',
+    motto: '',
+    backgroundImage: '',
+    address: '',
+    phoneNo: '',
+    email: '',
+    themeName: 'light',
+    plan: 'basic',
+    subscriptionStatus: 'active',
+    questionPaperModule: true
+  });
+
+  // 6. User accounts states (Empty inputs)
+  const [users, setUsers] = useState([]);
+  const [selectedSchoolForUsers, setSelectedSchoolForUsers] = useState('');
+  const [newUser, setNewUser] = useState({ username: '', password: '', role: 'viewer' });
+  const [visiblePasswords, setVisiblePasswords] = useState({});
+  const [editingUserId, setEditingUserId] = useState(null);
+  const [editUserData, setEditUserData] = useState({ password: '', role: '' });
+
+  // Loaders
+  const loadEntities = async () => {
+    try {
+      const res = await getEntities();
+      setEntities(res.data.data || []);
+    } catch (e) {
+      showNotification('Failed to load entities.', 'error');
+    }
+  };
+
+  const loadFields = async () => {
+    try {
+      const res = await getFieldDefinitions();
+      setFields(res.data.data || []);
+    } catch (e) {
+      showNotification('Failed to load fields.', 'error');
+    }
+  };
+
+  const loadTemplates = async () => {
+    try {
+      const res = await getTemplates();
+      setTemplates(res.data.data || []);
+    } catch (e) {
+      showNotification('Failed to load templates.', 'error');
+    }
+  };
+
+  const loadSchools = async () => {
+    try {
+      const res = await getAllMasters();
+      setSchools(res.data || []);
+      const currentActiveSlug = localStorage.getItem('schoolSlug');
+      const activeSchool = res.data?.find(s => s.slug === currentActiveSlug);
+      if (activeSchool) {
+        setSelectedSchoolForUsers(activeSchool._id);
+      } else if (res.data && res.data.length > 0 && !selectedSchoolForUsers) {
+        setSelectedSchoolForUsers(res.data[0]._id);
+      }
+    } catch (e) {
+      showNotification('Failed to load schools.', 'error');
+    }
+  };
+
+  const loadUsers = async () => {
+    if (!selectedSchoolForUsers) return;
+    try {
+      const res = await devGetUsers(selectedSchoolForUsers);
+      setUsers(res.data || []);
+    } catch (e) {
+      showNotification('Failed to load users.', 'error');
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'entity_registry') loadEntities();
+    if (activeTab === 'fields') loadFields();
+    if (activeTab === 'templates') {
+      loadTemplates();
+      loadEntities();
+      loadFields();
+      loadSchools();
+    }
+    if (activeTab === 'preview') {
+      loadTemplates();
+    }
+    if (activeTab === 'schools') loadSchools();
+    if (activeTab === 'users') {
+      loadSchools();
+      loadUsers();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedSchoolForUsers]);
+
+  // Entity Handlers
+  const handleCreateEntity = async (e) => {
+    e.preventDefault();
+    try {
+      await createEntity(newEntity);
+      showNotification('Entity registered successfully!');
+      setNewEntity({
+        key: '',
+        label: '',
+        description: '',
+        collection: '',
+        model: '',
+        category: 'General',
+        icon: '',
+        color: '#6366f1',
+        allowTemplates: true,
+        allowLookup: true,
+        visibleInMenu: true,
+        system: false,
+        status: 'active'
+      });
+      loadEntities();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to create entity', 'error');
+    }
+  };
+
+  const handleArchiveEntity = async (id) => {
+    try {
+      await archiveEntity(id);
+      showNotification('Entity archived.');
+      loadEntities();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to archive entity', 'error');
+    }
+  };
+
+  const handleActivateEntity = async (id) => {
+    try {
+      await activateEntity(id);
+      showNotification('Entity activated.');
+      loadEntities();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to activate entity', 'error');
+    }
+  };
+
+  const handleDeleteEntity = async (id) => {
+    if (!window.confirm('Delete this entity?')) return;
+    try {
+      await deleteEntity(id);
+      showNotification('Entity deleted.');
+      loadEntities();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to delete entity', 'error');
+    }
+  };
+
+  // Field Handlers
+  const handleCreateField = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...newField,
+        fieldKey: newField.key,
+        fieldName: newField.label,
+        fieldType: newField.type,
+        min: newField.min ? Number(newField.min) : undefined,
+        max: newField.max ? Number(newField.max) : undefined,
+        minLength: newField.minLength ? Number(newField.minLength) : undefined,
+        maxLength: newField.maxLength ? Number(newField.maxLength) : undefined,
+        lookup: newField.type === 'lookup' ? newField.lookup : undefined
+      };
+
+      if (editingFieldId) {
+        await updateFieldDefinition(editingFieldId, payload);
+        showNotification('Field updated successfully!');
+        setEditingFieldId(null);
+      } else {
+        await addFieldDefinition(payload);
+        showNotification('Field created successfully!');
+      }
+
+      setNewField({
+        key: '',
+        label: '',
+        description: '',
+        category: 'General',
+        type: 'text',
+        placeholder: '',
+        helperText: '',
+        required: false,
+        unique: false,
+        min: '',
+        max: '',
+        minLength: '',
+        maxLength: '',
+        validationPattern: '',
+        validationMessage: '',
+        defaultValue: '',
+        options: [],
+        lookup: {
+          entity: '',
+          displayField: 'name',
+          valueField: '_id',
+          multiple: false,
+          searchable: true
+        },
+        ui: {
+          icon: '',
+          color: '',
+          width: 12
         }
+      });
+      setOptionLabel('');
+      setOptionValue('');
+      loadFields();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to save field', 'error');
+    }
+  };
 
-        if (isDev !== "true") {
-            navigate("/");
-        }
-    }, [navigate]);
-
-    // ─── STATE MANAGEMENT ────────────────────────────────────────────────────
-    const [activeTab, setActiveTab] = useState('schools');
-    const [allMasters, setAllMasters] = useState([]);
-    const [fieldDefs, setFieldDefs] = useState([]);
-    
-    // User Accounts state
-    const [selectedSchoolForUsers, setSelectedSchoolForUsers] = useState(localStorage.getItem('schoolId') || '');
-    const [usersList, setUsersList] = useState([]);
-    const [isEditingUser, setIsEditingUser] = useState(false);
-    const [editingUserId, setEditingUserId] = useState(null);
-    const [showFormPassword, setShowFormPassword] = useState(false);
-    const [visiblePasswords, setVisiblePasswords] = useState({});
-    const [userForm, setUserForm] = useState({
-        username: '',
-        password: '',
-        role: 'viewer',
-        schoolId: localStorage.getItem('schoolId') || ''
+  const handleStartEditingField = (field) => {
+    setEditingFieldId(field._id);
+    setNewField({
+      key: field.key || field.fieldKey || '',
+      label: field.label || field.fieldName || '',
+      description: field.description || '',
+      category: field.category || 'General',
+      type: field.type || field.fieldType || 'text',
+      placeholder: field.placeholder || '',
+      helperText: field.helperText || '',
+      required: field.required || false,
+      unique: field.unique || false,
+      min: field.min !== undefined ? String(field.min) : '',
+      max: field.max !== undefined ? String(field.max) : '',
+      minLength: field.minLength !== undefined ? String(field.minLength) : '',
+      maxLength: field.maxLength !== undefined ? String(field.maxLength) : '',
+      validationPattern: field.validationPattern || '',
+      validationMessage: field.validationMessage || '',
+      defaultValue: field.defaultValue || '',
+      options: field.options || [],
+      lookup: field.lookup || {
+        entity: '',
+        displayField: 'name',
+        valueField: '_id',
+        multiple: false,
+        searchable: true
+      },
+      ui: field.ui || {
+        icon: '',
+        color: '',
+        width: 12
+      }
     });
-    
-    // School provisioning state
-    const [isEditingSchool, setIsEditingSchool] = useState(false);
-    const [editingSchoolId, setEditingSchoolId] = useState(null);
-    const [schoolForm, setSchoolForm] = useState({
-        imageUrl: '',
+  };
+
+  const handleAddFieldOption = () => {
+    if (!optionLabel || !optionValue) return;
+    setNewField({
+      ...newField,
+      options: [...newField.options, { label: optionLabel, value: optionValue }]
+    });
+    setOptionLabel('');
+    setOptionValue('');
+  };
+
+  const handleRemoveFieldOption = (idx) => {
+    setNewField({
+      ...newField,
+      options: newField.options.filter((_, i) => i !== idx)
+    });
+  };
+
+  const handleTestRegex = () => {
+    if (!newField.validationPattern) {
+      alert('⚠️ Enter a regex validation pattern first.');
+      return;
+    }
+    try {
+      new RegExp(newField.validationPattern);
+      alert('✅ Regular expression compiled successfully. Pattern is correct!');
+    } catch (err) {
+      alert(`❌ Invalid Regular Expression: ${err.message}`);
+    }
+  };
+
+  const handleArchiveField = async (id) => {
+    try {
+      await archiveFieldDefinition(id);
+      showNotification('Field archived.');
+      loadFields();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to archive field', 'error');
+    }
+  };
+
+  const handleActivateField = async (id) => {
+    try {
+      await activateFieldDefinition(id);
+      showNotification('Field activated.');
+      loadFields();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to activate field', 'error');
+    }
+  };
+
+  const handleDeleteDraftField = async (id) => {
+    if (!window.confirm('Delete draft field?')) return;
+    try {
+      await deleteFieldDefinition(id);
+      showNotification('Draft field deleted.');
+      loadFields();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to delete field', 'error');
+    }
+  };
+
+  // Template Handlers
+  const handleCreateTemplate = async (e) => {
+    e.preventDefault();
+    try {
+      if (editingTemplateId) {
+        await updateTemplate(editingTemplateId, newTemplate);
+        showNotification('Template updated successfully!');
+        setEditingTemplateId(null);
+      } else {
+        await createTemplate(newTemplate);
+        showNotification('Template created!');
+      }
+
+      setNewTemplate({
+        key: '',
+        label: '',
+        description: '',
+        entity: '',
+        scope: 'global',
+        schools: [],
+        fields: []
+      });
+      loadTemplates();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to save template', 'error');
+    }
+  };
+
+  const handleStartEditingTemplate = (tpl) => {
+    setEditingTemplateId(tpl._id);
+    setNewTemplate({
+      key: tpl.key || '',
+      label: tpl.label || '',
+      description: tpl.description || '',
+      entity: tpl.entity || '',
+      scope: tpl.scope || 'global',
+      schools: tpl.schools || [],
+      fields: (tpl.fields || []).map(tf => ({
+        fieldId: tf.fieldId?._id || tf.fieldId || '',
+        order: tf.order || 0,
+        required: tf.required || false,
+        hidden: tf.hidden || false,
+        readonly: tf.readonly || false,
+        width: tf.width || 12
+      }))
+    });
+  };
+
+  const handlePublishTemplate = async (id) => {
+    try {
+      await publishTemplate(id);
+      showNotification('Template published!');
+      loadTemplates();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to publish template', 'error');
+    }
+  };
+
+  const handleArchiveTemplate = async (id) => {
+    try {
+      await archiveTemplate(id);
+      showNotification('Template archived.');
+      loadTemplates();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to archive template', 'error');
+    }
+  };
+
+  const handleRestoreTemplate = async (id) => {
+    try {
+      await restoreTemplate(id);
+      showNotification('Template restored to draft.');
+      loadTemplates();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to restore template', 'error');
+    }
+  };
+
+  const handleDeleteTemplate = async (id) => {
+    if (!window.confirm('Delete template?')) return;
+    try {
+      await deleteTemplate(id);
+      showNotification('Template deleted.');
+      loadTemplates();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to delete template', 'error');
+    }
+  };
+
+  // Preview Layout Form
+  const handleLoadPreviewForm = async () => {
+    if (!previewTemplateId) return;
+    try {
+      const res = await getTemplateForm(previewTemplateId);
+      setPreviewForm(res.data.data);
+      setFormSubmittedData(null);
+    } catch (err) {
+      showNotification('Failed to load form blueprint', 'error');
+    }
+  };
+
+
+  // School Tenants Handlers
+  const handleCreateSchool = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        name: newSchool.name,
+        slug: newSchool.slug,
+        customDomain: newSchool.customDomain || undefined,
+        logoUrl: newSchool.logoUrl || undefined,
+        motto: newSchool.motto || undefined,
+        backgroundImage: newSchool.backgroundImage || undefined,
+        address: newSchool.address || undefined,
+        phoneNo: newSchool.phoneNo,
+        email: newSchool.email,
+        theme: {
+          themeName: newSchool.themeName
+        },
+        subscription: {
+          plan: newSchool.plan,
+          status: newSchool.subscriptionStatus
+        },
+        features: {
+          questionPaperModule: newSchool.questionPaperModule
+        }
+      };
+
+      await createMaster(payload);
+      showNotification('School tenant provisioned successfully!');
+      setNewSchool({
         name: '',
+        slug: '',
+        customDomain: '',
+        logoUrl: '',
+        motto: '',
+        backgroundImage: '',
         address: '',
         phoneNo: '',
         email: '',
-        theme: {
-            themeName: 'light'
-        },
-        subscriptionPlan: 'basic',
+        themeName: 'light',
+        plan: 'basic',
         subscriptionStatus: 'active',
-        featureQuestionPaper: true
-    });
+        questionPaperModule: true
+      });
+      loadSchools();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to create school tenant.', 'error');
+    }
+  };
 
-    // Dynamic field creation state
-    const [isEditingField, setIsEditingField] = useState(false);
-    const [editingFieldId, setEditingFieldId] = useState(null);
-    const [fieldForm, setFieldForm] = useState({
-        sno: '',
-        fieldKey: '',
-        fieldName: '',
-        fieldType: 'text',
-        optionsRaw: '',
-        required: false,
-        isUnique: false,
-        validationPattern: '',
-        validationMessage: '',
-        applicableSchools: [], // Stores Selected school IDs
-        applyToAll: true      // Toggle flag for global scope
-    });
+  const handleSetActiveSchool = async (school) => {
+    try {
+      await setMasterInUse(school._id);
+      localStorage.setItem('schoolSlug', school.slug);
+      showNotification(`Context switched to ${school.name} active view!`);
+      loadSchools();
+      window.location.reload();
+    } catch (err) {
+      showNotification('Failed to switch school context.', 'error');
+    }
+  };
 
-    // Regex tester state
-    const [regexTestString, setRegexTestString] = useState('');
-    const [regexTestResult, setRegexTestResult] = useState({ tested: false, isValidSyntax: true, isMatch: false, error: '' });
+  const handleDeleteSchool = async (id) => {
+    if (!window.confirm('Delete this school tenant permanently?')) return;
+    try {
+      await deleteMaster(id);
+      showNotification('School tenant deleted.');
+      loadSchools();
+    } catch (err) {
+      showNotification('Failed to delete school tenant.', 'error');
+    }
+  };
 
-    const themes = [
-        "light", "dark", "midnight-red", "Ocean", "Deep Ocean", "Earth", "Rose Blush",
-        "Sunset Peach", "Mint Cream", "Lavender Day", "Charcoal Cyan", "Dracula Midnight",
-        "Candy Pop", "Lemon Zest", "Watermelon Twist", "Sakura Bloom", "Grape Soda",
-        "Cherry Red", "Neon Orange", "Solar Yellow", "Tropical Green", "Electric Blue",
-        "Ultra Violet"
-    ];
+  // User accounts
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    try {
+      await devCreateUser({ ...newUser, schoolId: selectedSchoolForUsers });
+      showNotification('User account created!');
+      setNewUser({ username: '', password: '', role: 'viewer' });
+      loadUsers();
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Failed to create user', 'error');
+    }
+  };
 
-    // ─── DATA FETCHERS ───────────────────────────────────────────────────────
-    const fetchSchools = () => {
-        getAllMasters()
-            .then(res => setAllMasters(res.data))
-            .catch(err => console.error('Error fetching schools:', err.message));
-    };
+  const handleStartEditingUser = (user) => {
+    setEditingUserId(user._id);
+    setEditUserData({ password: user.password, role: user.role });
+  };
 
-    const fetchFields = () => {
-        getFieldDefinitions()
-            .then(res => setFieldDefs(res.data.data || []))
-            .catch(err => console.error('Error fetching dynamic fields:', err.message));
-    };
+  const handleSaveUserEdit = async (user) => {
+    try {
+      await devUpdateUser(user._id, {
+        username: user.username,
+        password: editUserData.password,
+        role: editUserData.role,
+        schoolId: selectedSchoolForUsers
+      });
+      showNotification('User details updated successfully!');
+      setEditingUserId(null);
+      loadUsers();
+    } catch (err) {
+      showNotification('Failed to update user details.', 'error');
+    }
+  };
 
-    useEffect(() => {
-        fetchSchools();
-        fetchFields();
-    }, []);
+  const togglePasswordVisibility = (userId) => {
+    setVisiblePasswords(prev => ({ ...prev, [userId]: !prev[userId] }));
+  };
 
-    const fetchUsers = (schoolId) => {
-        if (!schoolId) {
-            setUsersList([]);
-            return;
-        }
-        devGetUsers(schoolId)
-            .then(res => setUsersList(res.data || []))
-            .catch(err => {
-                console.error('Error fetching users:', err.message);
-                setUsersList([]);
-            });
-    };
+  const handleImpersonateUser = async (user) => {
+    try {
+      const res = await login({ username: user.username, password: user.password });
+      const { token } = res.data;
 
-    useEffect(() => {
-        if (activeTab === 'users') {
-            fetchUsers(selectedSchoolForUsers);
-        }
-    }, [activeTab, selectedSchoolForUsers]);
+      localStorage.setItem("originalIsDev", localStorage.getItem("isDev") || "true");
+      localStorage.setItem("originalUserRole", localStorage.getItem("userRole") || "");
+      localStorage.setItem("originalUserType", localStorage.getItem("userType") || "");
 
-    const handleSchoolSelectForUsers = (e) => {
-        const schoolId = e.target.value;
-        setSelectedSchoolForUsers(schoolId);
-        setUserForm(prev => ({ ...prev, schoolId }));
-    };
+      localStorage.setItem("token", token);
+      localStorage.setItem("isDev", "false");
+      localStorage.setItem("userRole", user.role);
+      localStorage.setItem("userType", user.role);
+      localStorage.setItem("isImpersonating", "true");
+      localStorage.setItem("impersonatedUsername", user.username);
+      localStorage.setItem("impersonatedRole", user.role);
 
-    const handleCreateUser = (e) => {
-        e.preventDefault();
-        if (!userForm.username || !userForm.password || !userForm.schoolId) {
-            alert('⚠️ Please fill all required fields');
-            return;
-        }
-        if (isEditingUser) {
-            devUpdateUser(editingUserId, userForm)
-                .then(() => {
-                    alert('🎉 User updated successfully!');
-                    handleResetUserForm();
-                    fetchUsers(selectedSchoolForUsers);
-                })
-                .catch(err => alert('❌ Error updating user: ' + (err.response?.data?.message || err.message)));
-        } else {
-            devCreateUser(userForm)
-                .then(() => {
-                    alert('🎉 User created successfully!');
-                    setUserForm(prev => ({ ...prev, username: '', password: '' }));
-                    fetchUsers(selectedSchoolForUsers);
-                })
-                .catch(err => alert('❌ Error creating user: ' + (err.response?.data?.message || err.message)));
-        }
-    };
+      alert(`Success! Logged in as ${user.username} (${user.role}). Redirecting...`);
+      window.location.href = "/";
+    } catch (err) {
+      showNotification('Failed to impersonate user: ' + (err.response?.data?.message || err.message), 'error');
+    }
+  };
 
-    const handleEditUserClick = (user) => {
-        setIsEditingUser(true);
-        setEditingUserId(user._id);
-        setUserForm({
-            username: user.username,
-            password: user.password,
-            role: user.role,
-            schoolId: user.schoolId
-        });
-    };
+  return (
+    <div className="developer-container" style={{ backgroundColor: 'var(--background-color)', color: 'var(--text-color)' }}>
+      {notification.message && (
+        <div className={`alert alert-${notification.type === 'success' ? 'success' : 'danger'} mb-4`} role="alert" style={{ borderRadius: '8px' }}>
+          <i className={`fa-solid ${notification.type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'} me-2`}></i>
+          {notification.message}
+        </div>
+      )}
 
-    const handleResetUserForm = () => {
-        setIsEditingUser(false);
-        setEditingUserId(null);
-        setUserForm({
-            username: '',
-            password: '',
-            role: 'viewer',
-            schoolId: selectedSchoolForUsers
-        });
-    };
+      {/* Tabs */}
+      {/* Tabs */}
+      <div className="tab-list-container overflow-auto">
+        {[
+          { key: 'entity_registry', label: 'Entity Registry', icon: 'fa-solid fa-list' },
+          { key: 'fields', label: 'Field Registry', icon: 'fa-solid fa-database' },
+          { key: 'templates', label: 'Templates', icon: 'fa-solid fa-file-invoice' },
+          { key: 'preview', label: 'Form Preview', icon: 'fa-solid fa-eye' },
+          { key: 'schools', label: 'School Tenants', icon: 'fa-solid fa-school' },
+          { key: 'users', label: 'User Accounts', icon: 'fa-solid fa-users' }
+        ].map(t => (
+          <button
+            key={t.key}
+            onClick={() => setActiveTab(t.key)}
+            className={`tab-trigger ${activeTab === t.key ? 'active' : ''}`}
+          >
+            <i className={t.icon + ' me-2'}></i>{t.label}
+          </button>
+        ))}
+      </div>
 
-    const togglePasswordVisibility = (userId) => {
-        setVisiblePasswords(prev => ({
-            ...prev,
-            [userId]: !prev[userId]
-        }));
-    };
+      {/* Tab 1: Entity Registry */}
+      {activeTab === 'entity_registry' && (
+        <div>
+          <h4 className="fw-bold mb-4"><i className="fa-solid fa-list me-2" style={{ color: 'var(--button-color)' }}></i>Entity Registry</h4>
 
-    const handleImpersonateUser = (user) => {
-        localStorage.setItem("isImpersonating", "true");
-        localStorage.setItem("impersonatedUsername", user.username);
-        localStorage.setItem("impersonatedRole", user.role);
-        
-        // Backup developer status
-        localStorage.setItem("originalIsDev", "true");
-        localStorage.setItem("originalUserRole", localStorage.getItem("userRole") || "");
-        localStorage.setItem("originalUserType", localStorage.getItem("userType") || "");
-        
-        // Override with target impersonation role properties
-        localStorage.setItem("isDev", "false");
-        localStorage.setItem("userRole", user.role);
-        localStorage.setItem("userType", user.role);
-        
-        alert(`🔑 Impersonating ${user.username} as ${user.role.toUpperCase()}. Redirecting to home...`);
-        window.location.href = "/";
-    };
+          <div className="row g-4">
+            {/* Left Side: Creation Form */}
+            <div className="col-lg-4">
+              <form onSubmit={handleCreateEntity} className="premium-card row g-3">
+                <div className="col-12">
+                  <label className="premium-label">Entity Key * (lowercase, e.g. student)</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    placeholder="student"
+                    value={newEntity.key}
+                    onChange={e => setNewEntity({ ...newEntity, key: e.target.value.toLowerCase() })}
+                    required
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Friendly Label *</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    placeholder="Student"
+                    value={newEntity.label}
+                    onChange={e => setNewEntity({ ...newEntity, label: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Mongo Collection Name *</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    placeholder="students"
+                    value={newEntity.collection}
+                    onChange={e => setNewEntity({ ...newEntity, collection: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Mongoose Model Name *</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    placeholder="Student"
+                    value={newEntity.model}
+                    onChange={e => setNewEntity({ ...newEntity, model: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Description</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    placeholder="Description of the entity's purpose"
+                    value={newEntity.description}
+                    onChange={e => setNewEntity({ ...newEntity, description: e.target.value })}
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Sidebar Grouping (Category)</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    value={newEntity.category}
+                    onChange={e => setNewEntity({ ...newEntity, category: e.target.value })}
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">UI Icon & Color</label>
+                  <div className="d-flex gap-2">
+                    <input
+                      type="text"
+                      className="form-control premium-input"
+                      placeholder="fa-user"
+                      value={newEntity.icon}
+                      onChange={e => setNewEntity({ ...newEntity, icon: e.target.value })}
+                    />
+                    <input
+                      type="color"
+                      className="form-control form-control-color premium-input"
+                      style={{ width: '60px' }}
+                      value={newEntity.color}
+                      onChange={e => setNewEntity({ ...newEntity, color: e.target.value })}
+                    />
+                  </div>
+                </div>
 
+                <div className="col-12">
+                  <div className="form-check form-switch pt-2">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={newEntity.allowTemplates}
+                      onChange={e => setNewEntity({ ...newEntity, allowTemplates: e.target.checked })}
+                    />
+                    <span className="small text-muted fw-semibold ms-1">Allow Templates</span>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="form-check form-switch">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={newEntity.allowLookup}
+                      onChange={e => setNewEntity({ ...newEntity, allowLookup: e.target.checked })}
+                    />
+                    <span className="small text-muted fw-semibold ms-1">Allow Lookup</span>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="form-check form-switch">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={newEntity.visibleInMenu}
+                      onChange={e => setNewEntity({ ...newEntity, visibleInMenu: e.target.checked })}
+                    />
+                    <span className="small text-muted fw-semibold ms-1">Visible In Menu</span>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="form-check form-switch">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={newEntity.system}
+                      onChange={e => setNewEntity({ ...newEntity, system: e.target.checked })}
+                    />
+                    <span className="small text-muted fw-semibold ms-1 text-danger">System Core</span>
+                  </div>
+                </div>
 
-
-
-    // ─── SCHOOL ACTIONS ──────────────────────────────────────────────────────
-    const handleSchoolChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        if (name.startsWith('theme.')) {
-            const themeKey = name.split('.')[1];
-            setSchoolForm(prev => ({
-                ...prev,
-                theme: {
-                    ...prev.theme,
-                    [themeKey]: value
-                }
-            }));
-        } else if (type === 'checkbox') {
-            setSchoolForm(prev => ({ ...prev, [name]: checked }));
-        } else {
-            setSchoolForm(prev => ({ ...prev, [name]: value }));
-        }
-    };
-
-    const handleSaveOrUpdateSchool = () => {
-        if (!schoolForm.name || !schoolForm.email || !schoolForm.phoneNo) {
-            return alert("Name, Email, and Phone Number are required fields.");
-        }
-        
-        // Map form parameters to Mongoose School Schema structure
-        const payload = {
-            name: schoolForm.name.trim(),
-            email: schoolForm.email.trim(),
-            phoneNo: schoolForm.phoneNo.trim(),
-            address: schoolForm.address.trim(),
-            logoUrl: schoolForm.imageUrl.trim(),
-            theme: {
-                themeName: schoolForm.theme.themeName
-            },
-            subscription: {
-                plan: schoolForm.subscriptionPlan,
-                status: schoolForm.subscriptionStatus
-            },
-            features: {
-                questionPaperModule: schoolForm.featureQuestionPaper
-            }
-        };
-
-        if (isEditingSchool) {
-            updateMaster(editingSchoolId, payload)
-                .then(() => {
-                    alert('✅ School Profile updated successfully!');
-                    handleResetSchoolForm();
-                    fetchSchools();
-                })
-                .catch(err => alert('Error updating school: ' + err.message));
-        } else {
-            // Include slug only during creation
-            payload.slug = schoolForm.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-            createMaster(payload)
-                .then(() => {
-                    alert('✅ New School Tenant registered successfully!');
-                    handleResetSchoolForm();
-                    fetchSchools();
-                })
-                .catch(err => alert('Error adding school: ' + err.message));
-        }
-    };
-
-    const handleEditSchoolClick = (school) => {
-        setIsEditingSchool(true);
-        setEditingSchoolId(school._id);
-        setSchoolForm({
-            name: school.name || '',
-            email: school.email || '',
-            phoneNo: school.phoneNo || '',
-            address: school.address || '',
-            imageUrl: school.logoUrl || school.imageUrl || '',
-            theme: {
-                themeName: school.theme?.themeName || 'light'
-            },
-            subscriptionPlan: school.subscription?.plan || 'basic',
-            subscriptionStatus: school.subscription?.status || 'active',
-            featureQuestionPaper: school.features?.hasOwnProperty('questionPaperModule') ? school.features.questionPaperModule : true
-        });
-        window.scrollTo({ top: 150, behavior: 'smooth' });
-    };
-
-    const handleResetSchoolForm = () => {
-        setIsEditingSchool(false);
-        setEditingSchoolId(null);
-        setSchoolForm({
-            imageUrl: '',
-            name: '',
-            address: '',
-            phoneNo: '',
-            email: '',
-            theme: {
-                themeName: 'light'
-            },
-            subscriptionPlan: 'basic',
-            subscriptionStatus: 'active',
-            featureQuestionPaper: true
-        });
-    };
-
-    const handleSetInUse = (id) => {
-        setMasterInUse(id)
-            .then(() => { alert("✅ School brand set to active."); fetchSchools(); })
-            .catch(() => alert("❌ Failed to set active."));
-    };
-
-    const handleDeleteSchool = (id) => {
-        if (window.confirm("⚠️ Are you sure you want to delete this school profile? All related tenant records will become inaccessible.")) {
-            apiDeleteMaster(id)
-                .then(() => { alert("🗑️ School profile deleted."); fetchSchools(); })
-                .catch((err) => { alert("❌ " + (err.response?.data?.error || err.response?.data?.message || err.message)); });
-        }
-    };
-
-    // ─── REGEX SYNTAX CHECKER & TESTER ───────────────────────────────────────
-    const validateRegexSyntax = (pattern) => {
-        if (!pattern) return { isValidSyntax: true, error: '' };
-        try {
-            new RegExp(pattern);
-            return { isValidSyntax: true, error: '' };
-        } catch (e) {
-            return { isValidSyntax: false, error: e.message };
-        }
-    };
-
-    const checkRegexResult = useMemo(() => {
-        const check = validateRegexSyntax(fieldForm.validationPattern);
-        if (!check.isValidSyntax) {
-            return { isValidSyntax: false, message: `❌ Invalid Regex Syntax: ${check.error}` };
-        }
-        if (fieldForm.validationPattern) {
-            return { isValidSyntax: true, message: '✅ Regex Syntax is Valid' };
-        }
-        return { isValidSyntax: true, message: '' };
-    }, [fieldForm.validationPattern]);
-
-    const handleTestRegex = () => {
-        const pattern = fieldForm.validationPattern;
-        if (!pattern) {
-            return setRegexTestResult({ tested: true, isValidSyntax: true, isMatch: false, error: 'No pattern provided' });
-        }
-        const syntaxCheck = validateRegexSyntax(pattern);
-        if (!syntaxCheck.isValidSyntax) {
-            return setRegexTestResult({ tested: true, isValidSyntax: false, isMatch: false, error: syntaxCheck.error });
-        }
-        try {
-            const rx = new RegExp(pattern);
-            const isMatch = rx.test(regexTestString);
-            setRegexTestResult({ tested: true, isValidSyntax: true, isMatch, error: '' });
-        } catch (err) {
-            setRegexTestResult({ tested: true, isValidSyntax: false, isMatch: false, error: err.message });
-        }
-    };
-
-    // ─── DUAL PICKLIST FOR SCHOOL SELECTION ──────────────────────────────────
-    const availableSchools = useMemo(() => {
-        return allMasters.filter(school => !fieldForm.applicableSchools.includes(school._id));
-    }, [allMasters, fieldForm.applicableSchools]);
-
-    const handleSelectSchool = (schoolId) => {
-        setFieldForm(prev => ({
-            ...prev,
-            applicableSchools: [...prev.applicableSchools, schoolId]
-        }));
-    };
-
-    const handleDeselectSchool = (schoolId) => {
-        setFieldForm(prev => ({
-            ...prev,
-            applicableSchools: prev.applicableSchools.filter(id => id !== schoolId)
-        }));
-    };
-
-    // ─── FIELD FORM HANDLERS ─────────────────────────────────────────────────
-    const handleFieldChange = (e) => {
-        const { name, value, type, checked } = e.target;
-        if (type === 'checkbox') {
-            setFieldForm(prev => ({ ...prev, [name]: checked }));
-        } else {
-            setFieldForm(prev => ({ ...prev, [name]: value }));
-        }
-    };
-
-    const handleSaveOrUpdateField = (e) => {
-        e.preventDefault();
-        const { sno, fieldKey, fieldName, fieldType, optionsRaw, required, isUnique, validationPattern, validationMessage, applicableSchools, applyToAll } = fieldForm;
-
-        if (!sno || !fieldKey || !fieldName) {
-            return alert("Sno, Field Key, and Field Name are required properties.");
-        }
-
-        if (validationPattern) {
-            const syntaxCheck = validateRegexSyntax(validationPattern);
-            if (!syntaxCheck.isValidSyntax) {
-                return alert(`❌ Cannot save. The validation regex syntax is invalid: ${syntaxCheck.error}`);
-            }
-        }
-
-        const optionsArray = optionsRaw ? optionsRaw.split(',').map(s => s.trim()).filter(Boolean) : [];
-        const payload = {
-            sno: Number(sno),
-            fieldKey: fieldKey.trim(),
-            fieldName: fieldName.trim(),
-            fieldType,
-            options: optionsArray,
-            required,
-            isUnique,
-            validationPattern: validationPattern.trim(),
-            validationMessage: validationMessage.trim(),
-            applicableSchools: applyToAll ? [] : applicableSchools
-        };
-
-        if (isEditingField) {
-            updateFieldDefinition(editingFieldId, payload)
-                .then(() => {
-                    alert('✅ Field definition updated successfully!');
-                    handleResetFieldForm();
-                    fetchFields();
-                })
-                .catch(err => alert('❌ Update failed: ' + (err.response?.data?.message || err.message)));
-        } else {
-            addFieldDefinition(payload)
-                .then(() => {
-                    alert('✅ Dynamic Field Definition registered successfully!');
-                    handleResetFieldForm();
-                    fetchFields();
-                })
-                .catch(err => alert('❌ Registration failed: ' + (err.response?.data?.message || err.message)));
-        }
-    };
-
-    const handleEditClick = (field) => {
-        setIsEditingField(true);
-        setEditingFieldId(field._id);
-        setFieldForm({
-            sno: field.sno || '',
-            fieldKey: field.fieldKey || '',
-            fieldName: field.fieldName || '',
-            fieldType: field.fieldType || 'text',
-            optionsRaw: field.options ? field.options.join(', ') : '',
-            required: field.required || false,
-            isUnique: field.isUnique || false,
-            validationPattern: field.validationPattern || '',
-            validationMessage: field.validationMessage || '',
-            applicableSchools: field.applicableSchools || [],
-            applyToAll: !field.applicableSchools || field.applicableSchools.length === 0
-        });
-        setRegexTestString('');
-        setRegexTestResult({ tested: false, isValidSyntax: true, isMatch: false, error: '' });
-        window.scrollTo({ top: 150, behavior: 'smooth' });
-    };
-
-    const handleResetFieldForm = () => {
-        setIsEditingField(false);
-        setEditingFieldId(null);
-        setFieldForm({
-            sno: '',
-            fieldKey: '',
-            fieldName: '',
-            fieldType: 'text',
-            optionsRaw: '',
-            required: false,
-            isUnique: false,
-            validationPattern: '',
-            validationMessage: '',
-            applicableSchools: [],
-            applyToAll: true
-        });
-        setRegexTestString('');
-        setRegexTestResult({ tested: false, isValidSyntax: true, isMatch: false, error: '' });
-    };
-
-    const handleToggleFieldStatus = (id, activeStatus) => {
-        updateFieldDefinition(id, { isActive: !activeStatus })
-            .then(() => {
-                alert('✅ Field status updated!');
-                fetchFields();
-            })
-            .catch(err => alert('❌ Error updating status: ' + err.message));
-    };
-
-    const handleDeleteField = (id) => {
-        if (window.confirm("⚠️ Deleting this definition will hide this field from all registration forms. Existing data on student documents remains intact in database. Proceed?")) {
-            deleteFieldDefinition(id)
-                .then(() => {
-                    alert('🗑️ Field definition removed successfully!');
-                    fetchFields();
-                })
-                .catch(err => alert('❌ Error deleting field: ' + err.message));
-        }
-    };
-
-    return (
-        <div className="developer-container text-start">
-
-            {/* Sub-Navigation Tabs Row */}
-            <div className="d-flex gap-2 mb-4 border-bottom pb-2">
-                <button 
-                    onClick={() => setActiveTab('schools')}
-                    className={`btn px-4 py-2 fw-semibold ${activeTab === 'schools' ? 'btn-primary' : 'btn-light text-muted'}`}
-                    style={{ borderRadius: '8px' }}
-                >
-                    <i className="fas fa-school me-2"></i>School Tenants ({allMasters.length})
-                </button>
-                <button 
-                    onClick={() => setActiveTab('fields')}
-                    className={`btn px-4 py-2 fw-semibold ${activeTab === 'fields' ? 'btn-success text-white' : 'btn-light text-muted'}`}
-                    style={{ borderRadius: '8px' }}
-                >
-                    <i className="fas fa-database me-2"></i>Registration Fields
-                </button>
-                <button 
-                    onClick={() => setActiveTab('users')}
-                    className={`btn px-4 py-2 fw-semibold ${activeTab === 'users' ? 'btn-info text-white' : 'btn-light text-muted'}`}
-                    style={{ borderRadius: '8px' }}
-                >
-                    <i className="fas fa-users me-2"></i>User Accounts
-                </button>
+                <div className="col-12 d-flex justify-content-end pt-2">
+                  <button type="submit" className="btn px-5 py-2 fw-bold text-white w-100" style={{ backgroundColor: 'var(--button-color)', border: 'none' }}><i className="fa-solid fa-plus me-1"></i>Add Entity</button>
+                </div>
+              </form>
             </div>
 
-            {/* TAB CONTENT: SCHOOL TENANTS */}
-            {activeTab === 'schools' && (
-                <div className="ov-animate-fade">
-
-                    <div className="row g-4 mb-4">
-                        <div className="col-12">
-                            <div className="premium-card">
-                                <div className={`card-header-gradient d-flex align-items-center justify-content-between ${isEditingSchool ? 'bg-warning text-dark' : 'bg-primary text-white'}`}>
-                                    <span className="fw-bold">
-                                        <i className={`fas ${isEditingSchool ? 'fa-edit' : 'fa-plus'} me-2`}></i>
-                                        {isEditingSchool ? `Edit School Profile: ${schoolForm.name}` : 'Provision New School Tenant'}
-                                    </span>
-                                    {isEditingSchool && (
-                                        <button className="btn btn-sm btn-outline-dark" onClick={handleResetSchoolForm}>
-                                            <i className="fas fa-times me-1"></i>Cancel Edit
-                                        </button>
-                                    )}
-                                </div>
-
-                                <div className="card-body p-4">
-                                    <div className="row g-3">
-                                        <div className="col-md-6">
-                                            <label className="premium-label">School Name</label>
-                                            <input type="text" className="form-control premium-input" name="name" value={schoolForm.name} onChange={handleSchoolChange} required />
-                                        </div>
-                                        <div className="col-md-6">
-                                            <label className="premium-label">Email Address</label>
-                                            <input type="email" className="form-control premium-input" name="email" value={schoolForm.email} onChange={handleSchoolChange} required />
-                                        </div>
-                                        <div className="col-md-6">
-                                            <label className="premium-label">Phone Number</label>
-                                            <input type="text" className="form-control premium-input" name="phoneNo" value={schoolForm.phoneNo} onChange={handleSchoolChange} required />
-                                        </div>
-                                        <div className="col-md-6">
-                                            <label className="premium-label">Physical Address</label>
-                                            <input type="text" className="form-control premium-input" name="address" value={schoolForm.address} onChange={handleSchoolChange} />
-                                        </div>
-                                        <div className="col-md-12">
-                                            <label className="premium-label">Logo URL</label>
-                                            <input type="text" className="form-control premium-input" name="imageUrl" value={schoolForm.imageUrl} onChange={handleSchoolChange} placeholder="https://domain.com/logo.png" />
-                                        </div>
-
-                                        {/* Dynamic Theme selection */}
-                                        <div className="col-md-4">
-                                            <label className="premium-label">Theme Layout</label>
-                                            <select className="form-select premium-input" name="theme.themeName" value={schoolForm.theme.themeName} onChange={handleSchoolChange}>
-                                                {themes.map((t) => (
-                                                    <option key={t} value={t}>{t.replace('-', ' ').toUpperCase()}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        {/* Subscription plan switcher */}
-                                        <div className="col-md-4">
-                                            <label className="premium-label">Subscription Plan</label>
-                                            <select className="form-select premium-input" name="subscriptionPlan" value={schoolForm.subscriptionPlan} onChange={handleSchoolChange}>
-                                                <option value="basic">Basic (Standard core options)</option>
-                                                <option value="premium">Premium (Upgraded options)</option>
-                                                <option value="enterprise">Enterprise (Unlimited options)</option>
-                                            </select>
-                                        </div>
-
-                                        {/* Subscription status switcher */}
-                                        <div className="col-md-4">
-                                            <label className="premium-label">Subscription Status</label>
-                                            <select className="form-select premium-input" name="subscriptionStatus" value={schoolForm.subscriptionStatus} onChange={handleSchoolChange}>
-                                                <option value="active">Active (Access allowed)</option>
-                                                <option value="suspended">Suspended (Access blocked)</option>
-                                            </select>
-                                        </div>
-
-                                        {/* Module permissions features */}
-                                        <div className="col-12 mt-2 pt-2 border-top">
-                                            <label className="premium-label mb-2">Module Access Permissions</label>
-                                            <div className="form-check">
-                                                <input 
-                                                    type="checkbox" 
-                                                    className="form-check-input" 
-                                                    id="featureQuestionPaper" 
-                                                    name="featureQuestionPaper" 
-                                                    checked={schoolForm.featureQuestionPaper} 
-                                                    onChange={handleSchoolChange} 
-                                                />
-                                                <label className="form-check-label fw-semibold text-dark" htmlFor="featureQuestionPaper">
-                                                    Enable Question Paper Module access
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="d-flex gap-3 mt-4 pt-3 border-top justify-content-end">
-                                        {isEditingSchool && (
-                                            <button type="button" className="btn btn-outline-secondary" onClick={handleResetSchoolForm}>
-                                                Cancel Edit
-                                            </button>
-                                        )}
-                                        <button type="button" className={`btn btn-premium ${isEditingSchool ? 'btn-premium-primary' : 'btn-premium-success'}`} onClick={handleSaveOrUpdateSchool}>
-                                            <i className={`fas ${isEditingSchool ? 'fa-edit' : 'fa-plus-circle'} me-1`}></i>
-                                            {isEditingSchool ? 'Update School Profile' : 'Provision School Profile'}
-                                        </button>
-                                    </div>
-                                </div>
+            {/* Right Side: Registered Entities Catalog */}
+            <div className="col-lg-8">
+              <div className="premium-card">
+                <h5 className="fw-bold mb-3"><i className="fa-solid fa-list-check me-2"></i>Registered Entities Catalog</h5>
+                <div className="table-responsive">
+                  <table className="table align-middle table-hover">
+                    <thead>
+                      <tr className="table-light">
+                        <th>Key / Model</th>
+                        <th>Friendly Label</th>
+                        <th>Collection</th>
+                        <th>Category</th>
+                        <th>Status</th>
+                        <th className="text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {entities.map(ent => (
+                        <tr key={ent._id}>
+                          <td>
+                            <div className="d-flex align-items-center">
+                              <span className="badge p-2 rounded-circle me-2" style={{ backgroundColor: ent.color || 'var(--button-color)', color: '#fff' }}>
+                                <i className={`fa-solid ${ent.icon || 'fa-cubes'}`}></i>
+                              </span>
+                              <div>
+                                <strong className="d-block">{ent.key}</strong>
+                                <span className="text-muted small">{ent.model}</span>
+                              </div>
                             </div>
-                        </div>
-                    </div>
-
-                    <h4 className="fw-bold text-dark mb-3">Active Directories</h4>
-                    <div className="row g-4">
-                        {allMasters.map((school) => {
-                            const isCurrentContext = localStorage.getItem('schoolId') === school._id;
-                            return (
-                                <div key={school._id} className="col-md-6 col-lg-4">
-                                    <div className={`premium-card h-100 ${isCurrentContext ? 'border-primary' : ''}`} style={isCurrentContext ? { borderTop: '4px solid #3b82f6' } : {}}>
-                                        <div className="card-body p-4 d-flex flex-column justify-content-between">
-                                            <div>
-                                                {/* Header Row with Logo */}
-                                                <div className="d-flex align-items-center gap-3 mb-3">
-                                                    <img 
-                                                        src={school.logoUrl || school.imageUrl || 'default.jpg'} 
-                                                        alt="logo" 
-                                                        className="rounded-circle border" 
-                                                        style={{ width: '48px', height: '48px', objectFit: 'cover', minWidth: '48px' }}
-                                                        onError={(e) => { e.target.src = 'https://placehold.co/100x100?text=School'; }}
-                                                    />
-                                                    <div className="overflow-hidden">
-                                                        <h5 className="fw-bold mb-0 text-truncate" style={{ color: '#1e293b' }}>
-                                                            {school.name}
-                                                        </h5>
-                                                        <span className="small text-muted font-monospace">{school.slug}</span>
-                                                    </div>
-                                                </div>
-
-                                                <div className="d-flex justify-content-between align-items-center mb-3">
-                                                    <span className={`badge ${school.subscription?.status === 'active' ? 'bg-success' : 'bg-danger'}`}>
-                                                        {school.subscription?.status === 'active' ? 'Active' : 'Suspended'}
-                                                    </span>
-                                                    <span className="badge bg-secondary text-uppercase">{school.subscription?.plan || 'basic'} Plan</span>
-                                                    {isCurrentContext && (
-                                                        <span className="badge bg-primary"><i className="fas fa-eye me-1"></i>Current View</span>
-                                                    )}
-                                                </div>
-
-                                                {/* Meta Info */}
-                                                <div className="small text-muted space-y-2 mb-4 border-top pt-2">
-                                                    <p className="mb-1 text-truncate"><i className="fas fa-envelope me-2 text-primary"></i>{school.email}</p>
-                                                    <p className="mb-1"><i className="fas fa-phone me-2 text-success"></i>{school.phoneNo}</p>
-                                                    <p className="mb-1 text-truncate"><i className="fas fa-map-marker-alt me-2 text-danger"></i>{school.address || 'No address specified'}</p>
-                                                    <p className="mb-1 font-monospace" style={{ fontSize: '0.75rem' }}><i className="fas fa-fingerprint me-2"></i>ID: {school._id}</p>
-                                                    <p className="mb-0 mt-2 small">Theme preset: <span className="badge bg-info">{school.theme?.themeName || 'light'}</span></p>
-                                                    <p className="mb-0 mt-1 small">Question Module: <span className="badge bg-dark">{school.features?.questionPaperModule ? 'Enabled' : 'Disabled'}</span></p>
-                                                </div>
-                                            </div>
-
-                                            <div className="d-flex flex-column gap-2 pt-3 border-top">
-                                                <button 
-                                                    className={`btn btn-sm w-100 fw-bold ${isCurrentContext ? 'btn-outline-primary disabled' : 'btn-primary'}`} 
-                                                    onClick={() => {
-                                                        localStorage.setItem('schoolSlug', school.slug || '');
-                                                        localStorage.setItem('schoolId', school._id || '');
-                                                        localStorage.setItem('schoolName', school.name || '');
-                                                        localStorage.setItem('schoolLogo', school.logoUrl || school.imageUrl || '');
-                                                        localStorage.setItem('theme', school.theme?.themeName || 'light');
-                                                        document.documentElement.setAttribute('data-theme', school.theme?.themeName || 'light');
-                                                        alert(`🔄 Context Switched to '${school.name}'! Redirecting...`);
-                                                        window.location.href = '/';
-                                                    }}
-                                                    disabled={isCurrentContext}
-                                                >
-                                                    <i className="fas fa-sign-in-alt me-1"></i>Switch to School View
-                                                </button>
-                                                <div className="d-flex gap-2">
-                                                    <button className="btn btn-sm btn-outline-primary w-100" onClick={() => handleEditSchoolClick(school)}>
-                                                        Edit Profile
-                                                    </button>
-                                                    {school.status !== 'active' && (
-                                                        <button className="btn btn-sm btn-outline-success w-100" onClick={() => handleSetInUse(school._id)}>
-                                                            Set Active
-                                                        </button>
-                                                    )}
-                                                    <button className="btn btn-sm btn-outline-danger w-100" onClick={() => handleDeleteSchool(school._id)}>
-                                                        Remove
-                                                    </button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
+                          </td>
+                          <td>{ent.label}</td>
+                          <td><code>{ent.collection}</code></td>
+                          <td><span className="status-pill draft">{ent.category}</span></td>
+                          <td>
+                            <span className={`status-pill ${ent.status || 'active'}`}>
+                              {ent.status}
+                            </span>
+                          </td>
+                          <td className="text-end">
+                            {ent.status === 'active' ? (
+                              <button onClick={() => handleArchiveEntity(ent._id)} className="btn-action-warning me-2"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
+                            ) : (
+                              <button onClick={() => handleActivateEntity(ent._id)} className="btn-action-success me-2"><i className="fa-solid fa-circle-check me-1"></i>Activate</button>
+                            )}
+                            <button onClick={() => handleDeleteEntity(ent._id)} className="btn-action-delete"><i className="fa-solid fa-trash me-1"></i>Delete</button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-            )}
-
-            {/* TAB CONTENT: REGISTRATION FIELDS */}
-            {activeTab === 'fields' && (
-                <div className="ov-animate-fade">
-
-                    {/* CREATE OR EDIT FIELD FORM CARD */}
-                    <div className="row g-4 mb-5">
-                        <div className="col-12">
-                            <div className="premium-card">
-                                <div className={`card-header-gradient d-flex align-items-center justify-content-between ${isEditingField ? 'bg-warning text-dark' : 'bg-success text-white'}`}>
-                                    <span className="fw-bold">
-                                        <i className={`fas ${isEditingField ? 'fa-edit' : 'fa-plus-circle'} me-2`}></i>
-                                        {isEditingField ? `Edit Field Definition: ${fieldForm.fieldName}` : 'Create New Input Field Definition'}
-                                    </span>
-                                    {isEditingField && (
-                                        <button className="btn btn-sm btn-outline-dark" onClick={handleResetFieldForm}>
-                                            <i className="fas fa-times me-1"></i>Cancel Edit
-                                        </button>
-                                    )}
-                                </div>
-
-                                <form onSubmit={handleSaveOrUpdateField} className="card-body p-4">
-                                    <div className="row g-3">
-                                        {/* Row 1: Keys */}
-                                        <div className="col-md-2">
-                                            <label className="premium-label">Sequence (SNo)</label>
-                                            <input type="number" className="form-control premium-input" name="sno" value={fieldForm.sno} onChange={handleFieldChange} placeholder="e.g. 10" required />
-                                        </div>
-                                        <div className="col-md-5">
-                                            <label className="premium-label">Field Key (Unique Identifier)</label>
-                                            <input 
-                                                type="text" 
-                                                className="form-control premium-input bg-light" 
-                                                name="fieldKey" 
-                                                value={fieldForm.fieldKey} 
-                                                onChange={handleFieldChange} 
-                                                placeholder="e.g. adharCard" 
-                                                disabled={isEditingField} // Immutable on edit
-                                                required 
-                                            />
-                                            {isEditingField && <span className="small text-muted font-monospace">Unique ID is immutable</span>}
-                                        </div>
-                                        <div className="col-md-5">
-                                            <label className="premium-label">Display Field Label</label>
-                                            <input type="text" className="form-control premium-input" name="fieldName" value={fieldForm.fieldName} onChange={handleFieldChange} placeholder="e.g. Aadhar Card Number" required />
-                                        </div>
-
-                                        {/* Row 2: Types */}
-                                        <div className="col-md-4">
-                                            <label className="premium-label">Input Type</label>
-                                            <select className="form-select premium-input" name="fieldType" value={fieldForm.fieldType} onChange={handleFieldChange}>
-                                                <option value="text">Text Box</option>
-                                                <option value="number">Numeric Box</option>
-                                                <option value="date">Date Picker</option>
-                                                <option value="select">Dropdown Menu (Select)</option>
-                                                <option value="textarea">Multi-line Text Area</option>
-                                                <option value="email">Email input</option>
-                                                <option value="phone">Phone number</option>
-                                            </select>
-                                        </div>
-
-                                        <div className="col-md-8">
-                                            <label className="premium-label">Dropdown Menu Options (Comma separated - only for Select type)</label>
-                                            <input 
-                                                type="text" 
-                                                className="form-control premium-input" 
-                                                name="optionsRaw" 
-                                                value={fieldForm.optionsRaw} 
-                                                onChange={handleFieldChange} 
-                                                placeholder="Option A, Option B, Option C" 
-                                                disabled={fieldForm.fieldType !== 'select'} 
-                                            />
-                                        </div>
-
-                                        {/* Row 3: Regex validation */}
-                                        <div className="col-md-6">
-                                            <label className="premium-label">Validation Regex Formula</label>
-                                            <div className="input-group">
-                                                <input type="text" className="form-control premium-input" style={{ borderTopRightRadius: 0, borderBottomRightRadius: 0 }} name="validationPattern" value={fieldForm.validationPattern} onChange={handleFieldChange} placeholder="e.g. ^[0-9]{12}$ (12 digit Aadhar)" />
-                                                <button type="button" className="btn btn-outline-primary" style={{ borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }} onClick={() => {
-                                                    const check = validateRegexSyntax(fieldForm.validationPattern);
-                                                    if (!fieldForm.validationPattern) {
-                                                        alert("ℹ️ Please enter a regex formula pattern first.");
-                                                    } else if (check.isValidSyntax) {
-                                                        alert("✅ Valid Regex Syntax! The formula is compiled successfully.");
-                                                    } else {
-                                                        alert(`❌ Invalid Regex Syntax!\nError: ${check.error}`);
-                                                    }
-                                                }}>Check Syntax</button>
-                                            </div>
-                                            {checkRegexResult.message && (
-                                                <div className={`small fw-bold mt-1 ${checkRegexResult.isValidSyntax ? 'text-success' : 'text-danger'}`}>
-                                                    {checkRegexResult.message}
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <div className="col-md-6">
-                                            <label className="premium-label">Validation Error Message</label>
-                                            <input type="text" className="form-control premium-input" name="validationMessage" value={fieldForm.validationMessage} onChange={handleFieldChange} placeholder="e.g. Invalid Aadhar number format." />
-                                        </div>
-
-                                        {/* Regex Testing Sandbox */}
-                                        {fieldForm.validationPattern && checkRegexResult.isValidSyntax && (
-                                            <div className="col-12 p-3 bg-light rounded border border-info mb-2">
-                                                <h6 className="fw-bold text-info mb-2"><i className="fas fa-flask me-1"></i>Regex Syntax & Tester Sandbox</h6>
-                                                <div className="row g-2 align-items-center">
-                                                    <div className="col-md-8">
-                                                        <input 
-                                                            type="text" 
-                                                            className="form-control premium-input" 
-                                                            value={regexTestString} 
-                                                            onChange={(e) => {
-                                                                setRegexTestString(e.target.value);
-                                                                setRegexTestResult({ tested: false, isValidSyntax: true, isMatch: false, error: '' });
-                                                            }} 
-                                                            placeholder="Type test string here (e.g. input text to validate)" 
-                                                        />
-                                                    </div>
-                                                    <div className="col-md-4">
-                                                        <button type="button" className="btn btn-outline-info w-100 fw-bold" onClick={handleTestRegex}>
-                                                            Check Regex Match
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                {regexTestResult.tested && (
-                                                    <div className={`mt-2 fw-bold small ${regexTestResult.isMatch ? 'text-success' : 'text-danger'}`}>
-                                                        {regexTestResult.isMatch ? '✅ MATCH SUCCESSFUL! The string fits the pattern.' : '❌ MATCH FAILED! The string does not fit the pattern.'}
-                                                    </div>
-                                                )}
-                                            </div>
-                                        )}
-
-                                        {/* Row 4: Dual Listbox / Multipicklist for Schools */}
-                                        <div className="col-12">
-                                            <div className="d-flex align-items-center justify-content-between mb-2">
-                                                <label className="premium-label mb-0">School Tenant Scope & Visibility</label>
-                                                <div className="form-check form-switch">
-                                                    <input 
-                                                        type="checkbox" 
-                                                        className="form-check-input" 
-                                                        id="applyToAll" 
-                                                        name="applyToAll" 
-                                                        checked={fieldForm.applyToAll} 
-                                                        onChange={(e) => setFieldForm(prev => ({ ...prev, applyToAll: e.target.checked }))} 
-                                                    />
-                                                    <label className="form-check-label fw-bold text-primary" htmlFor="applyToAll">Global (Visible to all schools)</label>
-                                                </div>
-                                            </div>
-
-                                            {!fieldForm.applyToAll && (
-                                                <div className="row mt-2 g-2">
-                                                    {/* Available Schools (Left Column) */}
-                                                    <div className="col-md-5">
-                                                        <div className="border rounded bg-white p-2">
-                                                            <div className="fw-bold small text-muted border-bottom pb-1 mb-2">Available Schools</div>
-                                                            <div className="overflow-auto" style={{ maxHeight: '150px' }}>
-                                                                {availableSchools.map(school => (
-                                                                    <div 
-                                                                        key={school._id} 
-                                                                        onClick={() => handleSelectSchool(school._id)} 
-                                                                        className="p-1 px-2 mb-1 rounded bg-light hover-select"
-                                                                        style={{ cursor: 'pointer', fontSize: '0.85rem' }}
-                                                                    >
-                                                                        <i className="fas fa-plus text-success me-2"></i>{school.name}
-                                                                    </div>
-                                                                ))}
-                                                                {availableSchools.length === 0 && (
-                                                                    <div className="small text-muted text-center p-3">All schools selected.</div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-
-                                                    {/* Middle indicator column */}
-                                                    <div className="col-md-2 d-flex flex-column align-items-center justify-content-center text-muted">
-                                                        <i className="fas fa-exchange-alt fa-lg d-none d-md-block"></i>
-                                                    </div>
-
-                                                    {/* Selected Schools (Right Column) */}
-                                                    <div className="col-md-5">
-                                                        <div className="border rounded bg-white p-2" style={{ borderLeft: '3px solid #10b981' }}>
-                                                            <div className="fw-bold small text-success border-bottom pb-1 mb-2">Selected Schools Scope</div>
-                                                            <div className="overflow-auto" style={{ maxHeight: '150px' }}>
-                                                                {fieldForm.applicableSchools.map(schoolId => {
-                                                                    const school = allMasters.find(s => s._id === schoolId);
-                                                                    return (
-                                                                        <div 
-                                                                            key={schoolId} 
-                                                                            onClick={() => handleDeselectSchool(schoolId)} 
-                                                                            className="p-1 px-2 mb-1 rounded bg-success-light hover-select"
-                                                                            style={{ cursor: 'pointer', fontSize: '0.85rem' }}
-                                                                        >
-                                                                            <i className="fas fa-times text-danger me-2"></i>{school ? school.name : schoolId}
-                                                                        </div>
-                                                                    );
-                                                                })}
-                                                                {fieldForm.applicableSchools.length === 0 && (
-                                                                    <div className="small text-muted text-center p-3">Select schools from Left.</div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        {/* Row 5: Flags Checkboxes */}
-                                        <div className="col-md-12 d-flex align-items-center gap-4 pt-2">
-                                            <div className="form-check">
-                                                <input type="checkbox" className="form-check-input" id="required" name="required" checked={fieldForm.required} onChange={handleFieldChange} />
-                                                <label className="form-check-label fw-semibold" htmlFor="required">Required input (Cannot be left empty)</label>
-                                            </div>
-                                            <div className="form-check">
-                                                <input type="checkbox" className="form-check-input" id="isUnique" name="isUnique" checked={fieldForm.isUnique} onChange={handleFieldChange} />
-                                                <label className="form-check-label fw-semibold" htmlFor="isUnique">Enforce unique values (No duplicates within the school)</label>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="d-flex mt-4 pt-3 border-top justify-content-end gap-2">
-                                        {isEditingField && (
-                                            <button type="button" className="btn btn-outline-secondary" onClick={handleResetFieldForm}>
-                                                Cancel Edit
-                                            </button>
-                                        )}
-                                        <button type="submit" className={`btn btn-premium ${isEditingField ? 'btn-premium-primary' : 'btn-premium-success'}`} disabled={fieldForm.validationPattern && !checkRegexResult.isValidSyntax}>
-                                            <i className={`fas ${isEditingField ? 'fa-edit' : 'fa-save'} me-1`}></i>
-                                            {isEditingField ? 'Update Field Definition' : 'Register Field Definition'}
-                                        </button>
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* TABLE CATALOG OF DYNAMIC FIELDS */}
-                    <h4 className="fw-bold text-dark mb-3">Field Definitions Catalog</h4>
-                    <div className="premium-card p-0 mb-4 overflow-hidden">
-                        <div className="table-responsive">
-                            <table className="table table-hover table-striped mb-0 align-middle">
-                                <thead className="table-dark">
-                                    <tr>
-                                        <th style={{ width: '60px' }}>SNo</th>
-                                        <th>Field Label</th>
-                                        <th>Machine Key</th>
-                                        <th>Field Type</th>
-                                        <th>School Scope</th>
-                                        <th className="text-center">Required</th>
-                                        <th className="text-center">Unique</th>
-                                        <th>Validation Formula</th>
-                                        <th className="text-center">Status</th>
-                                        <th className="text-center" style={{ width: '180px' }}>Actions</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {fieldDefs.map((field) => {
-                                        let scopeText = "All Schools";
-                                        if (field.applicableSchools && field.applicableSchools.length > 0) {
-                                            const names = field.applicableSchools.map(id => {
-                                                const match = allMasters.find(s => s._id === id);
-                                                return match ? match.name : id;
-                                            });
-                                            scopeText = names.join(', ');
-                                        }
-
-                                        return (
-                                            <tr key={field._id}>
-                                                <td className="fw-bold text-center">{field.sno}</td>
-                                                <td><strong>{field.fieldName}</strong></td>
-                                                <td><code>{field.fieldKey}</code></td>
-                                                <td><span className="badge bg-secondary text-uppercase">{field.fieldType}</span></td>
-                                                <td className="small" style={{ maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis' }}>{scopeText}</td>
-                                                <td className="text-center">{field.required ? <i className="fas fa-check-circle text-success"></i> : <i className="fas fa-times text-muted"></i>}</td>
-                                                <td className="text-center">{field.isUnique ? <i className="fas fa-check-circle text-info"></i> : <i className="fas fa-times text-muted"></i>}</td>
-                                                <td className="small">
-                                                    {field.validationPattern ? (
-                                                        <div>
-                                                            <code>{field.validationPattern}</code>
-                                                            <div className="text-muted small" style={{ fontSize: '0.75rem' }}>{field.validationMessage}</div>
-                                                        </div>
-                                                    ) : <span className="text-muted">None</span>}
-                                                </td>
-                                                <td className="text-center">
-                                                    {field.isActive ? (
-                                                        <span className="badge bg-success">Active</span>
-                                                    ) : (
-                                                        <span className="badge bg-danger">Disabled</span>
-                                                    )}
-                                                </td>
-                                                <td className="text-center">
-                                                    <div className="d-flex gap-2 justify-content-center">
-                                                        <button 
-                                                            className="btn btn-xs btn-outline-primary"
-                                                            onClick={() => handleEditClick(field)}
-                                                        >
-                                                            Edit
-                                                        </button>
-                                                        <button 
-                                                            className={`btn btn-xs ${field.isActive ? 'btn-outline-warning' : 'btn-outline-success'}`}
-                                                            onClick={() => handleToggleFieldStatus(field._id, field.isActive)}
-                                                        >
-                                                            {field.isActive ? 'Disable' : 'Enable'}
-                                                        </button>
-                                                        <button 
-                                                            className="btn btn-xs btn-outline-danger"
-                                                            onClick={() => handleDeleteField(field._id)}
-                                                        >
-                                                            Delete
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                    {fieldDefs.length === 0 && (
-                                        <tr>
-                                            <td colSpan="10" className="text-center text-muted p-4">No custom field definitions created yet.</td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {/* TAB CONTENT: USER ACCOUNTS */}
-            {activeTab === 'users' && (
-                <div className="ov-animate-fade">
-                    <div className="row g-4 mb-4">
-                        <div className="col-md-5">
-                            <div className="premium-card p-4 shadow-sm" style={{ borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.4)' }}>
-                                <h4 className="fw-bold mb-4 text-primary d-flex align-items-center justify-content-between">
-                                    <span>
-                                        <i className={`fas ${isEditingUser ? 'fa-edit' : 'fa-user-plus'} me-2`}></i>
-                                        {isEditingUser ? 'Edit User Account' : 'Create New User Account'}
-                                    </span>
-                                    {isEditingUser && (
-                                        <span className="badge bg-warning text-dark" style={{ fontSize: '0.75rem' }}>Edit Mode</span>
-                                    )}
-                                </h4>
-                                <form onSubmit={handleCreateUser}>
-                                    <div className="mb-3 text-start">
-                                        <label className="form-label fw-semibold text-muted">Select School Tenant *</label>
-                                        <select 
-                                            className="form-select"
-                                            value={selectedSchoolForUsers}
-                                            onChange={handleSchoolSelectForUsers}
-                                            required
-                                            disabled={isEditingUser}
-                                        >
-                                            <option value="">-- Choose School --</option>
-                                            {allMasters.map(school => (
-                                                <option key={school._id} value={school._id}>
-                                                    {school.name} ({school.slug})
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </div>
-                                    <div className="mb-3 text-start">
-                                        <label className="form-label fw-semibold text-muted">Username *</label>
-                                        <input 
-                                            type="text"
-                                            className="form-control"
-                                            placeholder="Enter username"
-                                            value={userForm.username}
-                                            onChange={e => setUserForm(prev => ({ ...prev, username: e.target.value }))}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="mb-3 text-start">
-                                        <label className="form-label fw-semibold text-muted">Password *</label>
-                                        <div className="input-group">
-                                            <input 
-                                                type={showFormPassword ? "text" : "password"}
-                                                className="form-control"
-                                                placeholder="Enter password"
-                                                value={userForm.password}
-                                                onChange={e => setUserForm(prev => ({ ...prev, password: e.target.value }))}
-                                                required
-                                            />
-                                            <button 
-                                                type="button" 
-                                                className="btn btn-outline-secondary"
-                                                onClick={() => setShowFormPassword(!showFormPassword)}
-                                                style={{ borderTopRightRadius: '8px', borderBottomRightRadius: '8px' }}
-                                            >
-                                                <i className={`fas ${showFormPassword ? 'fa-eye-slash' : 'fa-eye'}`}></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                    <div className="mb-3 text-start">
-                                        <label className="form-label fw-semibold text-muted">Role *</label>
-                                        <select 
-                                            className="form-select text-capitalize"
-                                            value={userForm.role}
-                                            onChange={e => setUserForm(prev => ({ ...prev, role: e.target.value }))}
-                                            required
-                                        >
-                                            <option value="viewer">Viewer</option>
-                                            <option value="qp-editor">QP-Editor</option>
-                                            <option value="admin">Admin</option>
-                                            <option value="payment-manager">Payment Manager</option>
-                                        </select>
-                                    </div>
-                                    <div className="d-flex flex-column gap-2 mt-4">
-                                        <button type="submit" className="btn btn-save w-100 fw-bold py-2" style={{ borderRadius: '8px' }}>
-                                            <i className="fas fa-save me-2"></i>
-                                            {isEditingUser ? 'Save Changes' : 'Create User Account'}
-                                        </button>
-                                        {isEditingUser && (
-                                            <button 
-                                                type="button" 
-                                                className="btn btn-light w-100 fw-bold py-2" 
-                                                style={{ borderRadius: '8px', border: '1px solid #cbd5e1' }}
-                                                onClick={handleResetUserForm}
-                                            >
-                                                Cancel Edit
-                                            </button>
-                                        )}
-                                    </div>
-                                </form>
-                            </div>
-                        </div>
-
-                        <div className="col-md-7">
-                            <div className="premium-card p-4 shadow-sm" style={{ borderRadius: '12px', border: '1px solid rgba(226, 232, 240, 0.4)', height: '100%', minHeight: '400px' }}>
-                                <h4 className="fw-bold mb-4 text-success d-flex align-items-center">
-                                    <i className="fas fa-users me-2"></i>Current Users
-                                </h4>
-                                
-                                <div className="mb-3 text-start">
-                                    <label className="form-label fw-semibold text-muted">Filter by School Context</label>
-                                    <select 
-                                        className="form-select border-success"
-                                        value={selectedSchoolForUsers}
-                                        onChange={handleSchoolSelectForUsers}
-                                    >
-                                        <option value="">-- Choose School --</option>
-                                        {allMasters.map(school => (
-                                            <option key={school._id} value={school._id}>
-                                                {school.name} ({school.slug})
-                                            </option>
-                                        ))}
-                                    </select>
-                                </div>
-
-                                <div className="table-responsive" style={{ maxHeight: '380px', overflowY: 'auto' }}>
-                                    <table className="table table-hover align-middle">
-                                        <thead className="table-light sticky-top">
-                                            <tr>
-                                                <th className="text-start">Username</th>
-                                                <th className="text-start">Role</th>
-                                                <th className="text-start">Password</th>
-                                                <th className="text-center">Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {usersList.map(user => (
-                                                <tr key={user._id}>
-                                                    <td className="text-start fw-semibold">{user.username}</td>
-                                                    <td className="text-start">
-                                                        <span className={`badge ${
-                                                            user.role === 'admin' ? 'bg-danger' :
-                                                            user.role === 'qp-editor' ? 'bg-warning text-dark' :
-                                                            user.role === 'payment-manager' ? 'bg-primary' :
-                                                            'bg-secondary'
-                                                        } text-uppercase`}>
-                                                            {user.role === 'admin' ? 'Admin' :
-                                                             user.role === 'qp-editor' ? 'QP-Editor' :
-                                                             user.role === 'payment-manager' ? 'Payment Manager' :
-                                                             user.role === 'viewer' ? 'Viewer' : user.role || 'Viewer'}
-                                                        </span>
-                                                    </td>
-                                                    <td className="text-start">
-                                                        <div className="d-flex align-items-center gap-2">
-                                                            <span className="font-monospace" style={{ fontSize: '0.85rem' }}>
-                                                                {visiblePasswords[user._id] ? user.password : '••••••••'}
-                                                            </span>
-                                                            <button 
-                                                                type="button"
-                                                                className="btn btn-xs btn-outline-secondary border-0 p-0"
-                                                                onClick={() => togglePasswordVisibility(user._id)}
-                                                                style={{ background: 'none' }}
-                                                            >
-                                                                <i className={`fas ${visiblePasswords[user._id] ? 'fa-eye-slash' : 'fa-eye'}`} style={{ fontSize: '0.85rem' }}></i>
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                    <td className="text-center">
-                                                        <div className="d-flex gap-2 justify-content-center">
-                                                            <button 
-                                                                className="btn btn-xs btn-outline-primary"
-                                                                onClick={() => handleEditUserClick(user)}
-                                                            >
-                                                                Edit
-                                                            </button>
-                                                            <button 
-                                                                className="btn btn-xs btn-outline-info"
-                                                                onClick={() => handleImpersonateUser(user)}
-                                                            >
-                                                                Login As
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {usersList.length === 0 && (
-                                                <tr>
-                                                    <td colSpan="4" className="text-center text-muted py-4">
-                                                        No users found for this school context.
-                                                    </td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+              </div>
+            </div>
+          </div>
         </div>
-    );
+      )}
+
+      {/* Tab 2: Field Registry */}
+      {activeTab === 'fields' && (
+        <div>
+          <h4 className="fw-bold mb-4"><i className="fa-solid fa-database me-2" style={{ color: 'var(--button-color)' }}></i>Global Field Registry</h4>
+
+          <div className="row g-4">
+            {/* Left Side: Form */}
+            <div className="col-lg-4">
+              <form onSubmit={handleCreateField} className="premium-card row g-3">
+                <div className="col-12">
+                  <label className="premium-label">Machine Key Name *</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    placeholder="mother_name"
+                    value={newField.key}
+                    onChange={e => setNewField({ ...newField, key: e.target.value })}
+                    required
+                    disabled={!!editingFieldId}
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Label Name *</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    placeholder="Mother Name"
+                    value={newField.label}
+                    onChange={e => setNewField({ ...newField, label: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Input UI Type *</label>
+                  <select
+                    className="form-select premium-input"
+                    value={newField.type}
+                    onChange={e => setNewField({ ...newField, type: e.target.value })}
+                    required
+                  >
+                    {["text", "textarea", "number", "currency", "date", "datetime", "time", "email", "phone", "password", "checkbox", "switch", "radio", "select", "multiselect", "lookup", "file", "image"].map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Category</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    value={newField.category}
+                    onChange={e => setNewField({ ...newField, category: e.target.value })}
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Description</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    value={newField.description}
+                    onChange={e => setNewField({ ...newField, description: e.target.value })}
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Placeholder</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    value={newField.placeholder}
+                    onChange={e => setNewField({ ...newField, placeholder: e.target.value })}
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Helper Text</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    value={newField.helperText}
+                    onChange={e => setNewField({ ...newField, helperText: e.target.value })}
+                  />
+                </div>
+
+                <div className="col-12">
+                  <div className="form-check form-switch pt-2">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={newField.required}
+                      onChange={e => setNewField({ ...newField, required: e.target.checked })}
+                    />
+                    <span className="small text-muted fw-semibold ms-1">Required Default</span>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <div className="form-check form-switch">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      checked={newField.unique}
+                      onChange={e => setNewField({ ...newField, unique: e.target.checked })}
+                    />
+                    <span className="small text-muted fw-semibold ms-1">Unique Check</span>
+                  </div>
+                </div>
+
+                {/* Conditional Value Bounds */}
+                {['number', 'currency', 'date', 'datetime', 'time'].includes(newField.type) && (
+                  <div className="col-12 border-top pt-2">
+                    <h6 className="small fw-bold text-muted mb-2">Value Bounds (Conditional)</h6>
+                    <div className="row g-2">
+                      <div className="col-6">
+                        <label className="premium-label">Min Value</label>
+                        <input
+                          type={newField.type === 'number' || newField.type === 'currency' ? 'number' : newField.type}
+                          className="form-control premium-input"
+                          value={newField.min}
+                          onChange={e => setNewField({ ...newField, min: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-6">
+                        <label className="premium-label">Max Value</label>
+                        <input
+                          type={newField.type === 'number' || newField.type === 'currency' ? 'number' : newField.type}
+                          className="form-control premium-input"
+                          value={newField.max}
+                          onChange={e => setNewField({ ...newField, max: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Conditional Length Constraints */}
+                {['text', 'textarea', 'email', 'phone', 'password'].includes(newField.type) && (
+                  <div className="col-12 border-top pt-2">
+                    <h6 className="small fw-bold text-muted mb-2">Length Constraints (Conditional)</h6>
+                    <div className="row g-2">
+                      <div className="col-6">
+                        <label className="premium-label">Min Characters</label>
+                        <input
+                          type="number"
+                          className="form-control premium-input"
+                          value={newField.minLength}
+                          onChange={e => setNewField({ ...newField, minLength: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-6">
+                        <label className="premium-label">Max Characters</label>
+                        <input
+                          type="number"
+                          className="form-control premium-input"
+                          value={newField.maxLength}
+                          onChange={e => setNewField({ ...newField, maxLength: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Validation Pattern */}
+                <div className="col-12 border-top pt-2">
+                  <label className="premium-label">Validation Regex Pattern</label>
+                  <div className="input-group">
+                    <input
+                      type="text"
+                      className="form-control premium-input"
+                      placeholder="^[A-Z]{3,5}$"
+                      value={newField.validationPattern}
+                      onChange={e => setNewField({ ...newField, validationPattern: e.target.value })}
+                    />
+                    <button
+                      type="button"
+                      onClick={handleTestRegex}
+                      className="btn btn-outline-secondary"
+                      style={{ borderTopRightRadius: '8px', borderBottomRightRadius: '8px' }}
+                    >
+                      <i className="fa-solid fa-vial"></i> Test
+                    </button>
+                  </div>
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Validation Error Message</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    placeholder="Must be between 3 and 5 uppercase letters."
+                    value={newField.validationMessage}
+                    onChange={e => setNewField({ ...newField, validationMessage: e.target.value })}
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Default Value (Optional)</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    placeholder="Default system value"
+                    value={newField.defaultValue}
+                    onChange={e => setNewField({ ...newField, defaultValue: e.target.value })}
+                  />
+                </div>
+
+                {/* Lookup Configuration */}
+                {newField.type === 'lookup' && (
+                  <div className="col-12 border-top pt-2">
+                    <h6 className="small fw-bold text-muted mb-2">Lookup Configuration</h6>
+                    <div className="row g-2">
+                      <div className="col-12">
+                        <label className="premium-label">Target Entity *</label>
+                        <select
+                          className="form-select premium-input"
+                          value={newField.lookup.entity}
+                          onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, entity: e.target.value } })}
+                          required
+                        >
+                          <option value="">-- Choose Target --</option>
+                          {entities.map(ent => (
+                            <option key={ent._id} value={ent.key}>{ent.label || ent.key}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-6">
+                        <label className="premium-label">Display Field *</label>
+                        <input
+                          type="text"
+                          className="form-control premium-input"
+                          value={newField.lookup.displayField}
+                          onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, displayField: e.target.value } })}
+                          required
+                        />
+                      </div>
+                      <div className="col-6">
+                        <label className="premium-label">Value Field *</label>
+                        <input
+                          type="text"
+                          className="form-control premium-input"
+                          value={newField.lookup.valueField}
+                          onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, valueField: e.target.value } })}
+                          required
+                        />
+                      </div>
+                      <div className="col-6">
+                        <div className="form-check pt-1">
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={newField.lookup.multiple}
+                            onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, multiple: e.target.checked } })}
+                          />
+                          <span className="small text-muted">Allow Multiple</span>
+                        </div>
+                      </div>
+                      <div className="col-6">
+                        <div className="form-check pt-1">
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={newField.lookup.searchable}
+                            onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, searchable: e.target.checked } })}
+                          />
+                          <span className="small text-muted">Searchable</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* UI Styling configurations */}
+                <div className="col-12 border-top pt-2">
+                  <h6 className="small fw-bold text-muted mb-2">UI Layout Styling</h6>
+                  <div className="row g-2">
+                    <div className="col-6">
+                      <label className="premium-label">FontAwesome Icon</label>
+                      <input
+                        type="text"
+                        className="form-control premium-input"
+                        placeholder="fa-font"
+                        value={newField.ui.icon}
+                        onChange={e => setNewField({ ...newField, ui: { ...newField.ui, icon: e.target.value } })}
+                      />
+                    </div>
+                    <div className="col-6">
+                      <label className="premium-label">Accent Color</label>
+                      <input
+                        type="color"
+                        className="form-control form-control-color premium-input w-100"
+                        value={newField.ui.color || '#cccccc'}
+                        onChange={e => setNewField({ ...newField, ui: { ...newField.ui, color: e.target.value } })}
+                      />
+                    </div>
+                    <div className="col-12">
+                      <label className="premium-label">Bootstrap Grid Column Width (1-12)</label>
+                      <input
+                        type="number"
+                        className="form-control premium-input"
+                        min="1"
+                        max="12"
+                        value={newField.ui.width}
+                        onChange={e => setNewField({ ...newField, ui: { ...newField.ui, width: parseInt(e.target.value) || 12 } })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Picklist Option Manager */}
+                {['select', 'multiselect', 'radio'].includes(newField.type) && (
+                  <div className="col-12 border-top pt-2">
+                    <h6 className="small fw-bold text-muted mb-2">Picklist Options</h6>
+                    <div className="row g-1 align-items-end mb-2">
+                      <div className="col-6">
+                        <input
+                          type="text"
+                          placeholder="Label (e.g. Yes)"
+                          className="form-control form-control-sm premium-input"
+                          value={optionLabel}
+                          onChange={e => setOptionLabel(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-6">
+                        <input
+                          type="text"
+                          placeholder="Value (e.g. Y)"
+                          className="form-control form-control-sm premium-input"
+                          value={optionValue}
+                          onChange={e => setOptionValue(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <button type="button" onClick={handleAddFieldOption} className="btn btn-sm btn-outline-secondary w-100 py-1 mb-2"><i className="fa-solid fa-plus me-1"></i>Add Option</button>
+                    <div className="d-flex flex-wrap gap-1">
+                      {newField.options.map((opt, idx) => (
+                        <span key={idx} className="badge bg-light text-dark border p-1 d-flex align-items-center gap-1 small">
+                          {opt.label} ({opt.value})
+                          <i onClick={() => handleRemoveFieldOption(idx)} className="fa-solid fa-xmark text-danger cursor-pointer ms-1"></i>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="col-12 d-flex justify-content-end gap-2 pt-2 border-top">
+                  {editingFieldId && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingFieldId(null);
+                        setNewField({
+                          key: '',
+                          label: '',
+                          description: '',
+                          category: 'General',
+                          type: 'text',
+                          placeholder: '',
+                          helperText: '',
+                          required: false,
+                          unique: false,
+                          min: '',
+                          max: '',
+                          minLength: '',
+                          maxLength: '',
+                          validationPattern: '',
+                          validationMessage: '',
+                          defaultValue: '',
+                          options: [],
+                          lookup: {
+                            entity: '',
+                            displayField: 'name',
+                            valueField: '_id',
+                            multiple: false,
+                            searchable: true
+                          },
+                          ui: {
+                            icon: '',
+                            color: '',
+                            width: 12
+                          }
+                        });
+                      }}
+                      className="btn btn-outline-secondary px-3 py-2 fw-semibold"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                  <button
+                    type="submit"
+                    className="btn px-4 py-2 fw-bold text-white w-100"
+                    style={{ backgroundColor: 'var(--button-color)', border: 'none' }}
+                  >
+                    {editingFieldId ? 'Save Changes' : 'Create Field'}
+                  </button>
+                </div>
+              </form>
+            </div>
+
+            {/* Right Side: Fields Catalog */}
+            <div className="col-lg-8">
+              <div className="premium-card">
+                <h5 className="fw-bold mb-3"><i className="fa-solid fa-list-check me-2"></i>Global Inputs Catalog</h5>
+
+                <div className="table-responsive">
+                  <table className="table align-middle table-hover">
+                    <thead>
+                      <tr className="table-light">
+                        <th style={{ width: '40px' }}></th>
+                        <th>Key</th>
+                        <th>Label</th>
+                        <th>Type</th>
+                        <th className="text-center">Required</th>
+                        <th className="text-center">Unique</th>
+                        <th>Regex Pattern</th>
+                        <th>Status</th>
+                        <th className="text-end">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {fields.map(f => {
+                        const isExpanded = !!expandedFieldIds[f._id];
+                        return (
+                          <React.Fragment key={f._id}>
+                            <tr>
+                              <td>
+                                <button
+                                  type="button"
+                                  onClick={() => setExpandedFieldIds(prev => ({ ...prev, [f._id]: !prev[f._id] }))}
+                                  className="btn btn-xs btn-light border py-1 px-2"
+                                >
+                                  <i className={`fa-solid ${isExpanded ? 'fa-chevron-down' : 'fa-chevron-right'}`}></i>
+                                </button>
+                              </td>
+                              <td className="fw-bold">{f.key}</td>
+                              <td>{f.label}</td>
+                              <td><span className="badge bg-light text-dark border">{f.type}</span></td>
+                              <td className="text-center">{f.required ? <span className="text-success fw-bold">✓</span> : <span className="text-danger fw-bold">✗</span>}</td>
+                              <td className="text-center">{f.unique ? <span className="text-success fw-bold">✓</span> : <span className="text-danger fw-bold">✗</span>}</td>
+                              <td>{f.validationPattern ? <code className="small text-muted">{f.validationPattern}</code> : <span className="text-muted small">-</span>}</td>
+                              <td><span className={`status-pill ${f.status}`}>{f.status}</span></td>
+                              <td className="text-end">
+                                <button onClick={() => handleStartEditingField(f)} className="btn-action-edit me-2"><i className="fa-solid fa-pen me-1"></i>Edit</button>
+                                {f.status === 'draft' && (
+                                  <>
+                                    <button onClick={() => handleActivateField(f._id)} className="btn-action-success me-2"><i className="fa-solid fa-check me-1"></i>Publish</button>
+                                    <button onClick={() => handleDeleteDraftField(f._id)} className="btn-action-delete"><i className="fa-solid fa-trash me-1"></i>Delete</button>
+                                  </>
+                                )}
+                                {f.status === 'active' && (
+                                  <button onClick={() => handleArchiveField(f._id)} className="btn-action-warning"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
+                                )}
+                              </td>
+                            </tr>
+                            {isExpanded && (
+                              <tr className="bg-light">
+                                <td colSpan="9" className="p-3">
+                                  <div className="card p-3 shadow-sm border-0" style={{ backgroundColor: '#fafafa', borderRadius: '6px' }}>
+                                    <h6 className="fw-bold mb-3 text-muted"><i className="fa-solid fa-circle-info me-2 text-primary"></i>Advanced Field Definition Details</h6>
+                                    <div className="row g-3 small text-dark">
+                                      <div className="col-md-3">
+                                        <strong>Category:</strong> <span className="text-muted d-block">{f.category || 'General'}</span>
+                                      </div>
+                                      <div className="col-md-3">
+                                        <strong>Description:</strong> <span className="text-muted d-block">{f.description || 'No description provided.'}</span>
+                                      </div>
+                                      <div className="col-md-3">
+                                        <strong>Placeholder:</strong> <span className="text-muted d-block">{f.placeholder || '-'}</span>
+                                      </div>
+                                      <div className="col-md-3">
+                                        <strong>Helper Text:</strong> <span className="text-muted d-block">{f.helperText || '-'}</span>
+                                      </div>
+                                      <div className="col-md-3">
+                                        <strong>Value Limits (Min / Max):</strong> <span className="text-muted d-block">Min: {f.min !== undefined ? f.min : '-'} | Max: {f.max !== undefined ? f.max : '-'}</span>
+                                      </div>
+                                      <div className="col-md-3">
+                                        <strong>Length Limits (Min / Max):</strong> <span className="text-muted d-block">Min: {f.minLength !== undefined ? f.minLength : '-'} | Max: {f.maxLength !== undefined ? f.maxLength : '-'}</span>
+                                      </div>
+                                      <div className="col-md-3">
+                                        <strong>Default Value:</strong> <span className="text-muted d-block">{f.defaultValue !== undefined && f.defaultValue !== null ? String(f.defaultValue) : '-'}</span>
+                                      </div>
+                                      <div className="col-md-3">
+                                        <strong>Validation Regex Error:</strong> <span className="text-muted d-block text-danger">{f.validationMessage || '-'}</span>
+                                      </div>
+                                      <div className="col-md-6 border-top pt-2">
+                                        <strong>UI Specs (Icon | Color | Grid Column Width):</strong>
+                                        <div className="pt-1">
+                                          <span className="badge bg-light text-dark border me-1"><i className={`fa-solid ${f.ui?.icon || 'fa-tag'} me-1`}></i>{f.ui?.icon || 'default'}</span>
+                                          <span className="badge bg-light text-dark border me-1" style={{ borderLeft: `4px solid ${f.ui?.color || '#ccc'}` }}>Color: {f.ui?.color || '#ccc'}</span>
+                                          <span className="badge bg-light text-dark border">Grid Width: {f.ui?.width || 12}/12</span>
+                                        </div>
+                                      </div>
+                                      {f.lookup && f.lookup.entity && (
+                                        <div className="col-md-6 border-top pt-2">
+                                          <strong>Lookup Configuration:</strong>
+                                          <div className="pt-1 small text-muted">
+                                            Entity: <code>{f.lookup.entity}</code> | Display: <code>{f.lookup.displayField}</code> | Value: <code>{f.lookup.valueField}</code>
+                                            <br />
+                                            Flags: Multiple ({f.lookup.multiple ? 'Yes' : 'No'}) | Searchable ({f.lookup.searchable ? 'Yes' : 'No'})
+                                          </div>
+                                        </div>
+                                      )}
+                                      {f.options && f.options.length > 0 && (
+                                        <div className="col-12 border-top pt-2">
+                                          <strong>Picklist Configured Options:</strong>
+                                          <div className="d-flex flex-wrap gap-1 pt-1">
+                                            {f.options.map((o, idx) => (
+                                              <span key={idx} className="badge bg-white text-dark border">
+                                                {o.label} (<code>{o.value}</code>)
+                                              </span>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+                              </tr>
+                            )}
+                          </React.Fragment>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab 3: Templates */}
+      {activeTab === 'templates' && (
+        <div className="">
+          <form onSubmit={handleCreateTemplate} className="premium-card row g-3 mb-5">
+            <h5 className="fw-bold text-muted mb-2">{editingTemplateId ? 'Edit Layout Template' : 'Build Layout Template'}</h5>
+            <div className="col-md-3 ">
+              <label className="premium-label">Template Unique Key *</label>
+              <input
+                type="text"
+                className="form-control premium-input"
+                placeholder="tpl_student_admission"
+                value={newTemplate.key}
+                onChange={e => setNewTemplate({ ...newTemplate, key: e.target.value })}
+                required
+                disabled={!!editingTemplateId}
+              />
+            </div>
+            <div className="col-md-3">
+              <label className="premium-label">Friendly Title *</label>
+              <input
+                type="text"
+                className="form-control premium-input"
+                placeholder="Student Admission Form"
+                value={newTemplate.label}
+                onChange={e => setNewTemplate({ ...newTemplate, label: e.target.value })}
+                required
+              />
+            </div>
+            <div className="col-md-3">
+              <label className="premium-label">Target Module Entity *</label>
+              <select
+                className="form-select premium-input"
+                value={newTemplate.entity}
+                onChange={e => setNewTemplate({ ...newTemplate, entity: e.target.value })}
+                required
+              >
+                <option value="">-- Choose Target Entity --</option>
+                {entities.map(ent => (
+                  <option key={ent._id} value={ent.key}>{ent.label || ent.key}</option>
+                ))}
+              </select>
+            </div>
+            <div className="col-md-3">
+              <label className="premium-label">Scope Scope</label>
+              <select
+                className="form-select premium-input"
+                value={newTemplate.scope}
+                onChange={e => setNewTemplate({ ...newTemplate, scope: e.target.value, schools: e.target.value === 'global' ? [] : newTemplate.schools })}
+              >
+                <option value="global">Global (All Tenants)</option>
+                <option value="selectedSchools">Selected Schools Only</option>
+              </select>
+            </div>
+            <div className="col-md-12">
+              <label className="premium-label">Description</label>
+              <input
+                type="text"
+                className="form-control premium-input"
+                placeholder="Brief description of the template"
+                value={newTemplate.description}
+                onChange={e => setNewTemplate({ ...newTemplate, description: e.target.value })}
+              />
+            </div>
+
+            {newTemplate.scope === 'selectedSchools' && (
+              <div className="col-12 bg-white p-3 rounded border">
+                <label className="premium-label">Choose Schools</label>
+                <div className="row g-2">
+                  {schools.map(s => {
+                    const isChecked = newTemplate.schools.includes(s._id);
+                    return (
+                      <div key={s._id} className="col-md-4">
+                        <div className="form-check">
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={isChecked}
+                            onChange={e => {
+                              if (e.target.checked) {
+                                setNewTemplate({ ...newTemplate, schools: [...newTemplate.schools, s._id] });
+                              } else {
+                                setNewTemplate({ ...newTemplate, schools: newTemplate.schools.filter(id => id !== s._id) });
+                              }
+                            }}
+                          />
+                          <label className="form-check-label small ms-1">{s.name}</label>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <div className="col-12 border-top pt-4">
+              <label className="premium-label fs-5 mb-3"><i className="fa-solid fa-gears me-2 text-primary"></i>Layout Fields Canvas & Configuration Workspace</label>
+
+              <div className="row g-4">
+                {/* Left Side: Available Fields Library */}
+                <div className="col-lg-4">
+                  <div className="card shadow-sm border p-3 bg-light" style={{ borderRadius: '8px' }}>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <h6 className="fw-bold mb-0 text-muted"><i className="fa-solid fa-folder-open me-2"></i>Inputs Library</h6>
+                      <span className="badge bg-secondary">{fields.length} available</span>
+                    </div>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm mb-3"
+                      placeholder="Search inputs library by name or key..."
+                      value={fieldFilterText}
+                      onChange={e => setFieldFilterText(e.target.value)}
+                    />
+
+                    <div style={{ maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
+                      {fields.filter(f =>
+                        f.label.toLowerCase().includes(fieldFilterText.toLowerCase()) ||
+                        f.key.toLowerCase().includes(fieldFilterText.toLowerCase())
+                      ).map(f => {
+                        const isSelected = newTemplate.fields.some(tf => tf.fieldId === f._id);
+                        return (
+                          <div key={f._id} className="d-flex align-items-center justify-content-between p-2 mb-2 bg-white rounded border border-light shadow-xs hover-bg-light transition-02">
+                            <div className="overflow-hidden me-2">
+                              <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>{f.label}</div>
+                              <div className="text-muted text-truncate" style={{ fontSize: '0.72rem', fontFamily: 'monospace' }}>{f.key}</div>
+                            </div>
+                            <div className="d-flex align-items-center gap-2">
+                              <span className="badge bg-light text-dark border small" style={{ fontSize: '10px' }}>{f.type}</span>
+                              {isSelected ? (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setNewTemplate({
+                                      ...newTemplate,
+                                      fields: newTemplate.fields.filter(tf => tf.fieldId !== f._id)
+                                    });
+                                  }}
+                                  className="btn btn-xs btn-outline-danger py-1 px-2"
+                                  title="Remove from layout"
+                                  style={{ fontSize: '10px' }}
+                                >
+                                  <i className="fa-solid fa-minus"></i>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const nextOrder = newTemplate.fields.length + 1;
+                                    setNewTemplate({
+                                      ...newTemplate,
+                                      fields: [...newTemplate.fields, { fieldId: f._id, order: nextOrder, required: f.required, hidden: false, readonly: false, width: f.ui?.width || 12 }]
+                                    });
+                                  }}
+                                  className="btn btn-xs btn-outline-primary py-1 px-2"
+                                  title="Add to layout"
+                                  style={{ fontSize: '10px' }}
+                                >
+                                  <i className="fa-solid fa-plus"></i>
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Side: Configured Layout Canvas */}
+                <div className="col-lg-8">
+                  <div className="card shadow-sm border p-3 bg-white" style={{ borderRadius: '8px', minHeight: '400px' }}>
+                    <h6 className="fw-bold text-muted mb-3"><i className="fa-solid fa-list-check me-2"></i>Active Form Layout Canvas ({newTemplate.fields.length} elements selected)</h6>
+
+                    {newTemplate.fields.length === 0 ? (
+                      <div className="d-flex flex-column align-items-center justify-content-center text-muted" style={{ height: '300px' }}>
+                        <i className="fa-solid fa-arrows-to-dot fa-3x mb-3 text-secondary"></i>
+                        <p className="fw-semibold">No elements selected yet</p>
+                        <p className="small text-center px-4" style={{ maxWidth: '300px' }}>Click the <span className="text-primary fw-bold">[+] Add</span> buttons in the library on the left to add fields to this form blueprint.</p>
+                      </div>
+                    ) : (
+                      <div className="table-responsive">
+                        <table className="table align-middle table-sm" style={{ fontSize: '12px' }}>
+                          <thead>
+                            <tr className="table-light">
+                              <th style={{ width: '80px' }}>Order</th>
+                              <th>Field Label</th>
+                              <th>Input Type</th>
+                              <th className="text-center" style={{ width: '85px' }}>Width</th>
+                              <th className="text-center" style={{ width: '70px' }}>Req</th>
+                              <th className="text-center" style={{ width: '70px' }}>Hide</th>
+                              <th className="text-center" style={{ width: '70px' }}>Read</th>
+                              <th className="text-end" style={{ width: '120px' }}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {newTemplate.fields
+                              .map(tf => {
+                                const fObj = fields.find(f => f._id === tf.fieldId);
+                                return { ...tf, fObj };
+                              })
+                              .filter(item => !!item.fObj)
+                              .sort((a, b) => a.order - b.order)
+                              .map((tf, index, arr) => {
+                                return (
+                                  <tr key={tf.fieldId}>
+                                    <td>
+                                      <input
+                                        type="number"
+                                        className="form-control form-control-sm text-center py-0 px-1"
+                                        value={tf.order}
+                                        style={{ height: '24px', fontSize: '11px' }}
+                                        onChange={e => {
+                                          const val = parseInt(e.target.value) || 0;
+                                          const updated = newTemplate.fields.map(item =>
+                                            item.fieldId === tf.fieldId ? { ...item, order: val } : item
+                                          );
+                                          setNewTemplate({ ...newTemplate, fields: updated });
+                                        }}
+                                      />
+                                    </td>
+                                    <td>
+                                      <span className="fw-bold text-dark">{tf.fObj.label}</span>
+                                      <span className="text-muted d-block font-monospace" style={{ fontSize: '9px' }}>{tf.fObj.key}</span>
+                                    </td>
+                                    <td>
+                                      <span className="badge bg-light text-dark border">{tf.fObj.type}</span>
+                                    </td>
+                                    <td>
+                                      <select
+                                        className="form-select form-select-sm py-0 px-1 text-center"
+                                        value={tf.width || 12}
+                                        style={{ height: '24px', fontSize: '11px', minWidth: '75px' }}
+                                        onChange={e => {
+                                          const val = parseInt(e.target.value) || 12;
+                                          const updated = newTemplate.fields.map(item =>
+                                            item.fieldId === tf.fieldId ? { ...item, width: val } : item
+                                          );
+                                          setNewTemplate({ ...newTemplate, fields: updated });
+                                        }}
+                                      >
+                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(w => (
+                                          <option key={w} value={w}>Col-{w}</option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td className="text-center">
+                                      <input
+                                        type="checkbox"
+                                        className="form-check-input"
+                                        checked={tf.required}
+                                        onChange={e => {
+                                          const updated = newTemplate.fields.map(item =>
+                                            item.fieldId === tf.fieldId ? { ...item, required: e.target.checked } : item
+                                          );
+                                          setNewTemplate({ ...newTemplate, fields: updated });
+                                        }}
+                                      />
+                                    </td>
+                                    <td className="text-center">
+                                      <input
+                                        type="checkbox"
+                                        className="form-check-input"
+                                        checked={tf.hidden}
+                                        onChange={e => {
+                                          const updated = newTemplate.fields.map(item =>
+                                            item.fieldId === tf.fieldId ? { ...item, hidden: e.target.checked } : item
+                                          );
+                                          setNewTemplate({ ...newTemplate, fields: updated });
+                                        }}
+                                      />
+                                    </td>
+                                    <td className="text-center">
+                                      <input
+                                        type="checkbox"
+                                        className="form-check-input"
+                                        checked={tf.readonly}
+                                        onChange={e => {
+                                          const updated = newTemplate.fields.map(item =>
+                                            item.fieldId === tf.fieldId ? { ...item, readonly: e.target.checked } : item
+                                          );
+                                          setNewTemplate({ ...newTemplate, fields: updated });
+                                        }}
+                                      />
+                                    </td>
+                                    <td className="text-end">
+                                      <div className="btn-group btn-group-sm">
+                                        <button
+                                          type="button"
+                                          disabled={index === 0}
+                                          onClick={() => {
+                                            const prevItem = arr[index - 1];
+                                            const updated = newTemplate.fields.map(item => {
+                                              if (item.fieldId === tf.fieldId) return { ...item, order: prevItem.order };
+                                              if (item.fieldId === prevItem.fieldId) return { ...item, order: tf.order };
+                                              return item;
+                                            });
+                                            setNewTemplate({ ...newTemplate, fields: updated });
+                                          }}
+                                          className="btn btn-xs btn-outline-secondary py-0 px-2"
+                                          title="Move Up"
+                                        >
+                                          <i className="fa-solid fa-arrow-up"></i>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          disabled={index === arr.length - 1}
+                                          onClick={() => {
+                                            const nextItem = arr[index + 1];
+                                            const updated = newTemplate.fields.map(item => {
+                                              if (item.fieldId === tf.fieldId) return { ...item, order: nextItem.order };
+                                              if (item.fieldId === nextItem.fieldId) return { ...item, order: tf.order };
+                                              return item;
+                                            });
+                                            setNewTemplate({ ...newTemplate, fields: updated });
+                                          }}
+                                          className="btn btn-xs btn-outline-secondary py-0 px-2"
+                                          title="Move Down"
+                                        >
+                                          <i className="fa-solid fa-arrow-down"></i>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            setNewTemplate({
+                                              ...newTemplate,
+                                              fields: newTemplate.fields.filter(item => item.fieldId !== tf.fieldId)
+                                            });
+                                          }}
+                                          className="btn btn-xs btn-outline-danger py-0 px-2"
+                                          title="Remove Field"
+                                        >
+                                          <i className="fa-solid fa-trash"></i>
+                                        </button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="col-12 d-flex justify-content-end gap-2">
+              {editingTemplateId && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setEditingTemplateId(null);
+                    setNewTemplate({
+                      key: '',
+                      label: '',
+                      description: '',
+                      entity: '',
+                      scope: 'global',
+                      schools: [],
+                      fields: []
+                    });
+                  }}
+                  className="btn btn-outline-secondary px-4 py-2 fw-semibold"
+                >
+                  Cancel Edit
+                </button>
+              )}
+              <button
+                type="submit"
+                className="btn px-5 py-2 fw-bold text-white"
+                style={{ backgroundColor: 'var(--button-color)', border: 'none' }}
+              >
+                {editingTemplateId ? (
+                  <><i className="fa-solid fa-floppy-disk me-1"></i>Save Changes</>
+                ) : (
+                  <><i className="fa-solid fa-plus me-1"></i>Create Template</>
+                )}
+              </button>
+            </div>
+          </form>
+
+          <div className="table-responsive">
+            <table className="table align-middle table-hover">
+              <thead>
+                <tr className="table-light">
+                  <th>Key</th>
+                  <th>Title</th>
+                  <th>Entity</th>
+                  <th>Scope</th>
+                  <th>Fields Count</th>
+                  <th>Status</th>
+                  <th className="text-end">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {templates.map(t => (
+                  <tr key={t._id}>
+                    <td className="fw-bold">{t.key}</td>
+                    <td>{t.label}</td>
+                    <td><span className="status-pill active">{t.entity}</span></td>
+                    <td><span className="status-pill draft">{t.scope}</span></td>
+                    <td>{t.fields?.length || 0} fields</td>
+                    <td><span className={`status-pill ${t.status}`}>{t.status}</span></td>
+                    <td className="text-end">
+                      <button onClick={() => handleStartEditingTemplate(t)} className="btn-action-edit me-2"><i className="fa-solid fa-pen me-1"></i>Edit</button>
+                      {t.status === 'draft' && (
+                        <>
+                          <button onClick={() => handlePublishTemplate(t._id)} className="btn-action-success me-2"><i className="fa-solid fa-check me-1"></i>Publish</button>
+                          <button onClick={() => handleDeleteTemplate(t._id)} className="btn-action-delete"><i className="fa-solid fa-trash me-1"></i>Delete</button>
+                        </>
+                      )}
+                      {t.status === 'active' && (
+                        <button onClick={() => handleArchiveTemplate(t._id)} className="btn-action-warning"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
+                      )}
+                      {t.status === 'archived' && (
+                        <button onClick={() => handleRestoreTemplate(t._id)} className="btn-action-neutral"><i className="fa-solid fa-rotate-left me-1"></i>Restore</button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      )
+      }
+
+      {/* Tab 4: Form Preview */}
+      {
+        activeTab === 'preview' && (
+          <div className="premium-card p-4 bg-white mb-4">
+            <h4 className="fw-bold text-dark mb-4"><i className="fa-solid fa-eye me-2" style={{ color: 'var(--button-color)' }}></i>Dynamic Form Preview</h4>
+
+            <div className="row g-3 align-items-end mb-5 border-bottom pb-4">
+              <div className="col-md-9">
+                <label className="premium-label">Select Active Template</label>
+                <select
+                  className="form-select premium-input"
+                  value={previewTemplateId}
+                  onChange={e => setPreviewTemplateId(e.target.value)}
+                >
+                  <option value="">-- Choose Template --</option>
+                  {templates.filter(t => t.status === 'active').map(t => (
+                    <option key={t._id} value={t._id}>{t.label} ({t.entity})</option>
+                  ))}
+                </select>
+              </div>
+              <div className="col-md-3">
+                <button onClick={handleLoadPreviewForm} className="btn w-100 py-2 fw-bold" style={{ backgroundColor: 'var(--button-color)', color: '#fff', border: 'none' }}><i className="fa-solid fa-rotate me-1"></i>Render Layout</button>
+              </div>
+            </div>
+
+            {previewForm && (
+              <div className="row g-4">
+                <div className="col-md-6 premium-card">
+                  <DynamicForm
+                    template={previewForm}
+                    mode="preview"
+                    onSubmit={setFormSubmittedData}
+                  />
+                </div>
+
+                <div className="col-md-6 bg-light p-4 rounded border">
+                  <h5 className="fw-bold mb-3 text-muted">Submitted Form Payload</h5>
+                  {formSubmittedData ? (
+                    <pre className="bg-dark text-success p-3 rounded" style={{ fontSize: '13px', fontFamily: 'monospace' }}>
+                      {JSON.stringify(formSubmittedData, null, 2)}
+                    </pre>
+                  ) : (
+                    <p className="text-muted small">Submit the form preview to see dynamic key-value payload outputs.</p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+        )
+      }
+
+      {/* Tab 5: School Tenants */}
+      {
+        activeTab === 'schools' && (
+          <div className="ov-animate-fade">
+            <div className="row g-4">
+              {/* Left Column: Form Setup */}
+              <div className="col-md-7">
+                <h4 className="fw-bold text-dark mb-4">
+                  <i className="fa-solid fa-circle-plus me-2" style={{ color: 'var(--button-color)' }}></i>Register School Tenant
+                </h4>
+                <form onSubmit={handleCreateSchool} className="premium-card row g-3">
+                  <div className="col-md-6">
+                    <label className="premium-label">School Name *</label>
+                    <input
+                      type="text"
+                      className="form-control premium-input"
+                      value={newSchool.name}
+                      onChange={e => setNewSchool({ ...newSchool, name: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="premium-label">Subdomain Slug *</label>
+                    <input
+                      type="text"
+                      className="form-control premium-input"
+                      value={newSchool.slug}
+                      onChange={e => setNewSchool({ ...newSchool, slug: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="premium-label">Custom Domain</label>
+                    <input
+                      type="text"
+                      className="form-control premium-input"
+                      value={newSchool.customDomain}
+                      placeholder="e.g. schoolname.com"
+                      onChange={e => setNewSchool({ ...newSchool, customDomain: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="premium-label">Logo Image URL</label>
+                    <input
+                      type="text"
+                      className="form-control premium-input"
+                      value={newSchool.logoUrl}
+                      onChange={e => setNewSchool({ ...newSchool, logoUrl: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="premium-label">Motto / Slogan</label>
+                    <input
+                      type="text"
+                      className="form-control premium-input"
+                      value={newSchool.motto}
+                      onChange={e => setNewSchool({ ...newSchool, motto: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="premium-label">Hero Background Image URL</label>
+                    <input
+                      type="text"
+                      className="form-control premium-input"
+                      value={newSchool.backgroundImage}
+                      onChange={e => setNewSchool({ ...newSchool, backgroundImage: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="premium-label">Email Address *</label>
+                    <input
+                      type="email"
+                      className="form-control premium-input"
+                      value={newSchool.email}
+                      onChange={e => setNewSchool({ ...newSchool, email: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="col-md-6">
+                    <label className="premium-label">Contact Phone No *</label>
+                    <input
+                      type="text"
+                      className="form-control premium-input"
+                      value={newSchool.phoneNo}
+                      onChange={e => setNewSchool({ ...newSchool, phoneNo: e.target.value })}
+                      required
+                    />
+                  </div>
+                  <div className="col-12">
+                    <label className="premium-label">Address</label>
+                    <input
+                      type="text"
+                      className="form-control premium-input"
+                      value={newSchool.address}
+                      onChange={e => setNewSchool({ ...newSchool, address: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-4">
+                    <label className="premium-label">Active Theme</label>
+                    <select
+                      className="form-select premium-input"
+                      value={newSchool.themeName}
+                      onChange={e => setNewSchool({ ...newSchool, themeName: e.target.value })}
+                    >
+                      <option value="light">Light</option>
+                      <option value="dark">Dark</option>
+                      <option value="midnight">Midnight</option>
+                      <option value="emerald">Emerald</option>
+                      <option value="crimson">Crimson</option>
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="premium-label">Plan Tier</label>
+                    <select
+                      className="form-select premium-input"
+                      value={newSchool.plan}
+                      onChange={e => setNewSchool({ ...newSchool, plan: e.target.value })}
+                    >
+                      <option value="basic">Basic Plan</option>
+                      <option value="premium">Premium Pro</option>
+                      <option value="enterprise">Enterprise</option>
+                    </select>
+                  </div>
+                  <div className="col-md-4">
+                    <label className="premium-label">Status</label>
+                    <select
+                      className="form-select premium-input"
+                      value={newSchool.subscriptionStatus}
+                      onChange={e => setNewSchool({ ...newSchool, subscriptionStatus: e.target.value })}
+                    >
+                      <option value="active">Active</option>
+                      <option value="suspended">Suspended</option>
+                    </select>
+                  </div>
+                  <div className="col-12">
+                    <div className="form-check form-switch pt-2">
+                      <input
+                        type="checkbox"
+                        className="form-check-input"
+                        checked={newSchool.questionPaperModule}
+                        onChange={e => setNewSchool({ ...newSchool, questionPaperModule: e.target.checked })}
+                      />
+                      <label className="form-check-label fw-bold text-muted ms-1 small">Enable Question Paper Module</label>
+                    </div>
+                  </div>
+                  <div className="col-12 d-flex justify-content-end pt-2">
+                    <button type="submit" className="btn px-5 py-2 fw-bold text-white" style={{ backgroundColor: 'var(--button-color)', border: 'none' }}>
+                      <i className="fa-solid fa-plus me-2"></i>Provision School Tenant
+                    </button>
+                  </div>
+                </form>
+              </div>
+
+              {/* Right Column: Real-Time Preview */}
+              <div className="col-md-5">
+                <div className="premium-card p-4 bg-white mb-4 shadow sticky-top" style={{ top: '20px' }}>
+                  <h4 className="fw-bold text-muted mb-4"><i className="fa-solid fa-eye me-2"></i>Live Theme Card Preview</h4>
+                  <div className="premium-card bg-white overflow-hidden border shadow-lg" style={{ borderTop: `6px solid ${newSchool.themeName === 'emerald' ? '#10b981' : newSchool.themeName === 'crimson' ? '#ef4444' : newSchool.themeName === 'midnight' ? '#6366f1' : newSchool.themeName === 'dark' ? '#1e293b' : '#fe4f2d'}` }}>
+                    {newSchool.backgroundImage ? (
+                      <div style={{ backgroundImage: `url(${newSchool.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center', height: '120px' }} />
+                    ) : (
+                      <div className="bg-light" style={{ height: '120px' }} />
+                    )}
+                    <div className="p-4 position-relative">
+                      <div className="bg-white rounded-circle p-2 shadow position-absolute" style={{ width: '60px', height: '60px', top: '-30px', left: '20px', border: '1px solid #ddd', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                        {newSchool.logoUrl ? <img src={newSchool.logoUrl} alt="Logo" className="img-fluid" /> : <i className="fa-solid fa-school text-muted fs-4"></i>}
+                      </div>
+                      <div className="pt-4">
+                        <h5 className="fw-bold text-dark mb-1">{newSchool.name || 'School Name'}</h5>
+                        <p className="text-muted small mb-2"><code>{newSchool.slug || 'slug'}.localhost</code></p>
+                        {newSchool.motto && <p className="text-muted small italic mb-3">"{newSchool.motto}"</p>}
+                        <div className="border-top py-2 my-2 text-muted small">
+                          <div className="d-flex justify-content-between mb-1">
+                            <span>Custom Domain:</span>
+                            <span className="fw-bold text-dark">{newSchool.customDomain || 'None'}</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span>Plan level:</span>
+                            <span className="badge bg-light text-primary border">{newSchool.plan.toUpperCase()}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* List School Tenants */}
+            <h4 className="fw-bold text-dark mt-4 mb-3">Provisioned School Tenants</h4>
+            <div className="row g-4">
+              {schools.map(s => {
+                const activeSlug = localStorage.getItem('schoolSlug');
+                const isCurrentlyActive = s.slug === activeSlug;
+                return (
+                  <div key={s._id} className="col-md-6 col-lg-4">
+                    <div className="premium-card bg-white position-relative shadow-sm" style={{ borderTop: `5px solid ${s.theme?.themeName === 'emerald' ? '#10b981' : s.theme?.themeName === 'crimson' ? '#ef4444' : s.theme?.themeName === 'midnight' ? '#6366f1' : '#0f172a'}` }}>
+                      {isCurrentlyActive && (
+                        <div className="position-absolute top-0 end-0 m-3">
+                          <span className="badge bg-success-light text-success fw-bold px-2 py-1" style={{ fontSize: '11px', borderRadius: '4px' }}>
+                            <i className="fa-solid fa-circle-check me-1"></i>Active Context
+                          </span>
+                        </div>
+                      )}
+                      <div className="p-4">
+                        <div className="d-flex align-items-center mb-3">
+                          <div className="bg-light rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style={{ width: '50px', height: '50px', border: '1px solid #e2e8f0' }}>
+                            {s.logoUrl ? (
+                              <img src={s.logoUrl} alt={s.name} className="img-fluid" style={{ maxHeight: '100%' }} />
+                            ) : (
+                              <i className="fa-solid fa-school text-muted fs-4"></i>
+                            )}
+                          </div>
+                          <div>
+                            <h5 className="fw-bold mb-0 text-dark text-truncate" style={{ maxWidth: '150px' }}>{s.name}</h5>
+                            <code className="small text-muted">{s.slug}.localhost</code>
+                          </div>
+                        </div>
+                        {s.motto && <p className="text-muted small italic mb-3">"{s.motto}"</p>}
+                        <div className="small border-top border-bottom py-2 my-2 text-muted">
+                          <div className="d-flex justify-content-between mb-1">
+                            <span>Domain:</span>
+                            <span className="fw-semibold text-dark">{s.customDomain || 'Default Slug'}</span>
+                          </div>
+                          <div className="d-flex justify-content-between mb-1">
+                            <span>Theme:</span>
+                            <span className="badge bg-light text-dark border">{s.theme?.themeName || 'light'}</span>
+                          </div>
+                          <div className="d-flex justify-content-between">
+                            <span>Subscription:</span>
+                            <span className="badge bg-info-light text-info">{s.subscription?.plan || 'basic'}</span>
+                          </div>
+                        </div>
+                        <div className="d-flex gap-2 pt-2">
+                          <button
+                            onClick={() => handleSetActiveSchool(s)}
+                            disabled={isCurrentlyActive}
+                            className="btn flex-grow-1 py-2 fw-semibold"
+                            style={{
+                              backgroundColor: isCurrentlyActive ? 'transparent' : 'var(--button-color)',
+                              color: isCurrentlyActive ? 'var(--text-color)' : '#fff',
+                              border: isCurrentlyActive ? '1px solid #ccc' : 'none'
+                            }}
+                          >
+                            <i className="fa-solid fa-circle-play me-1"></i>Set In Use
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSchool(s._id)}
+                            className="btn btn-outline-danger px-3"
+                          >
+                            <i className="fa-solid fa-trash"></i>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )
+      }
+
+      {/* Tab 6: User Accounts */}
+      {
+        activeTab === 'users' && (
+          <div className="premium-card p-4 bg-white mb-4">
+            <h4 className="fw-bold text-dark mb-4"><i className="fa-solid fa-users me-2" style={{ color: 'var(--button-color)' }}></i>User Accounts</h4>
+
+            <div className="mb-4">
+              <label className="premium-label">Select Tenant Context</label>
+              <select
+                className="form-select premium-input"
+                value={selectedSchoolForUsers}
+                onChange={e => setSelectedSchoolForUsers(e.target.value)}
+              >
+                {schools.map(s => (
+                  <option key={s._id} value={s._id}>{s.name} ({s.slug})</option>
+                ))}
+              </select>
+            </div>
+
+            <form onSubmit={handleCreateUser} className="developer-form row g-3 mb-5">
+              <h5 className="fw-bold text-muted mb-2">Create Tenant User Account</h5>
+              <div className="col-md-4">
+                <label className="premium-label">Username</label>
+                <input
+                  type="text"
+                  className="form-control premium-input"
+                  value={newUser.username}
+                  onChange={e => setNewUser({ ...newUser, username: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="premium-label">Password</label>
+                <input
+                  type="password"
+                  className="form-control premium-input"
+                  value={newUser.password}
+                  onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                  required
+                />
+              </div>
+              <div className="col-md-4">
+                <label className="premium-label">Role</label>
+                <select
+                  className="form-select premium-input"
+                  value={newUser.role}
+                  onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+                >
+                  <option value="viewer">Viewer</option>
+                  <option value="admin">Admin</option>
+                  <option value="payment-manager">Payment Manager</option>
+                  <option value="student-enrollment">Student Enrollment Officer</option>
+                </select>
+              </div>
+              <div className="col-12 d-flex justify-content-end">
+                <button type="submit" className="btn px-4 py-2 fw-bold text-white" style={{ backgroundColor: 'var(--button-color)', border: 'none' }}><i className="fa-solid fa-plus me-1"></i>Create User Account</button>
+              </div>
+            </form>
+
+            <div className="table-responsive">
+              <table className="table align-middle table-hover">
+                <thead>
+                  <tr className="table-light">
+                    <th>Username</th>
+                    <th>Password</th>
+                    <th>Role</th>
+                    <th className="text-end">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(u => {
+                    const isEditing = editingUserId === u._id;
+                    return (
+                      <tr key={u._id}>
+                        <td className="fw-bold">{u.username}</td>
+                        <td>
+                          {isEditing ? (
+                            <input
+                              type="text"
+                              className="form-control form-control-sm premium-input"
+                              value={editUserData.password}
+                              onChange={e => setEditUserData({ ...editUserData, password: e.target.value })}
+                            />
+                          ) : (
+                            <div className="d-flex align-items-center gap-2">
+                              <span>{visiblePasswords[u._id] ? u.password : '••••••••'}</span>
+                              <button onClick={() => togglePasswordVisibility(u._id)} className="btn btn-xs btn-light py-1 border"><i className={`fa-solid ${visiblePasswords[u._id] ? 'fa-eye-slash' : 'fa-eye'}`}></i></button>
+                            </div>
+                          )}
+                        </td>
+                        <td>
+                          {isEditing ? (
+                            <select
+                              className="form-select form-select-sm premium-input"
+                              value={editUserData.role}
+                              onChange={e => setEditUserData({ ...editUserData, role: e.target.value })}
+                            >
+                              <option value="viewer">Viewer</option>
+                              <option value="admin">Admin</option>
+                              <option value="payment-manager">Payment Manager</option>
+                              <option value="student-enrollment">Student Enrollment Officer</option>
+                            </select>
+                          ) : (
+                            <span className="badge bg-light text-dark border">{u.role}</span>
+                          )}
+                        </td>
+                        <td className="text-end">
+                          {isEditing ? (
+                            <>
+                              <button onClick={() => handleSaveUserEdit(u)} className="btn btn-sm btn-outline-success me-2 fw-semibold px-3"><i className="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                              <button onClick={() => setEditingUserId(null)} className="btn btn-sm btn-outline-secondary fw-semibold px-3">Cancel</button>
+                            </>
+                          ) : (
+                            <>
+                              <button onClick={() => handleStartEditingUser(u)} className="btn btn-sm btn-outline-primary me-2 fw-semibold"><i className="fa-solid fa-pen me-1"></i>Edit</button>
+                              <button onClick={() => handleImpersonateUser(u)} className="btn btn-sm text-white py-1 px-3 fw-semibold" style={{ backgroundColor: 'var(--button-color)', border: 'none' }}><i className="fa-solid fa-user-secret me-2"></i>Login As</button>
+                            </>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )
+      }
+    </div >
+  );
 }

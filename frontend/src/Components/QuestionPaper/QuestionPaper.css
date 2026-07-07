@@ -14,6 +14,7 @@
     width: 100%;
     padding: 20px;
     background-color: var(--background-color);
+    color: var(--text-color);
     display: flex;
     flex-direction: column;
     gap: 20px;
@@ -24,26 +25,34 @@
 .QuestionPaper .QuestionPaper-Page-Content {
     height: 100vh - 41px;
     overflow: scroll;
+    color: var(--text-color);
 }
 
 .question-paper-selection {
     background-color: var(--background-color);
+    color: var(--text-color);
 }
 
 .question-paper-selection select,
 .question-paper-selection input {
     border-radius: 15px;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.359);
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.05);
+    background-color: var(--card-bg-color, white);
+    color: var(--text-color, black);
+    border: 1.5px solid var(--border-color, #cbd5e1);
+    padding: 6px 12px;
+    outline: none;
 }
 
 .question-paper-selection .btn {
     border-radius: 7px;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.359);
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.05);
 }
 
 .question-paper-selection label {
     font-family: 'Times New Roman', Times, serif;
-    border-bottom: 0.5px solid gray;
+    border-bottom: 0.5px solid var(--border-color, gray);
+    color: var(--text-color);
     font-size: larger;
     font-weight: bolder;
 }
@@ -60,12 +69,15 @@
 .questions-list p {
     font-family: 'Times New Roman', Times, serif;
     font-size: 15px;
+    color: var(--text-color);
 }
 
 .print-container {
     padding: 1rem;
     font-family: "Times New Roman", Times, serif !important;
     font-size: 16px;
+    color: #000000 !important; /* Printing always black */
+    background-color: #ffffff !important; /* Printing always white */
 }
 
 .fade-in {
