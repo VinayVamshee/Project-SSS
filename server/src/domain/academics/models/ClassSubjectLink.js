@@ -13,6 +13,6 @@ const classSubjectLinkSchema = new mongoose.Schema({
       required: true,
     }
   ]
-}, { collection: 'class-subjects' });
+}, { collection: 'classsubjectlinks' });
 
 module.exports = mongoose.model('ClassSubjectLink', classSubjectLinkSchema);

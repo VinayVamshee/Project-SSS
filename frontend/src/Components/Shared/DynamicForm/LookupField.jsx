@@ -1,117 +1,206 @@
-import React, { useState, useCallback, useEffect } from 'react';
-import DynamicField from './DynamicField';
-import './DynamicForm.css';
+import React, {
+  useState,
+  useEffect,
+  useRef,
+  useCallback
+} from "react";
 
-/**
- * DynamicForm — The single reusable form engine for the entire application.
- *
- * Props:
- *   template      – The template object from getTemplateForm API
- *                    { template: { key, label }, fields: [...] }
- *   mode          – "preview" | "create" | "edit" | "readonly"
- *   initialValues – Pre-populated field values (for edit mode)
- *   onSubmit      – Callback receiving the form payload on submit
- *   submitLabel   – Custom submit button text (optional)
- *   className     – Additional CSS class for the form wrapper (optional)
- */
-export default function DynamicForm({
-  template,
-  mode = 'preview',
-  initialValues = {},
-  onSubmit,
-  submitLabel,
-  className = ''
+import { lookup as lookupAPI } from "../../../API";
+
+export default function LookupField({
+  fieldKey,
+  lookup,
+  value,
+  onChange,
+  readOnly
 }) {
-  const [formData, setFormData] = useState(() => {
-    // Merge initialValues with any defaultValue from field definitions
-    const defaults = {};
-    if (template?.fields) {
-      template.fields.forEach(f => {
-        if (f.defaultValue !== undefined && f.defaultValue !== '') {
-          defaults[f.key] = f.defaultValue;
-        }
-      });
-    }
-    return { ...defaults, ...initialValues };
-  });
 
-  // Reset form when template changes
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [records, setRecords] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  const wrapperRef = useRef(null);
+  const debounceRef = useRef(null);
+
+  const entityName = lookup?.entity || "records";
+
+  const fetchRecords = useCallback(async (text = "") => {
+
+    setLoading(true);
+
+    try {
+
+      const res = await lookupAPI(fieldKey, text);
+
+      const data = res.data?.data || res.data || [];
+
+      setRecords(Array.isArray(data) ? data : []);
+
+    } catch (err) {
+
+      console.error(err);
+
+      setRecords([]);
+
+    } finally {
+
+      setLoading(false);
+
+    }
+
+  }, [fieldKey]);
+
   useEffect(() => {
-    const defaults = {};
-    if (template?.fields) {
-      template.fields.forEach(f => {
-        if (f.defaultValue !== undefined && f.defaultValue !== '') {
-          defaults[f.key] = f.defaultValue;
-        }
-      });
-    }
-    setFormData({ ...defaults, ...initialValues });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [template]);
 
-  const isReadOnly = mode === 'readonly';
+    if (!open) return;
 
-  const handleFieldChange = useCallback((key, value) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
+    fetchRecords("");
+
+  }, [open, fetchRecords]);
+
+  useEffect(() => {
+
+    const handler = (e) => {
+
+      if (
+        wrapperRef.current &&
+        !wrapperRef.current.contains(e.target)
+      ) {
+
+        setOpen(false);
+
+      }
+
+    };
+
+    document.addEventListener("mousedown", handler);
+
+    return () =>
+      document.removeEventListener("mousedown", handler);
+
   }, []);
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (onSubmit) {
-      onSubmit(formData);
-    }
+  const handleSearch = (e) => {
+
+    const value = e.target.value;
+
+    setSearch(value);
+
+    if (debounceRef.current)
+      clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(() => {
+
+      fetchRecords(value);
+
+    }, 300);
+
   };
 
-  if (!template || !template.fields) {
-    return null;
-  }
+  const handleSelect = (record) => {
 
-  const fields = template.fields;
+  onChange(record.value);
 
-  // Derive submit button label
-  const btnLabel = submitLabel
-    || (mode === 'preview' ? 'Test Submit Form'
-      : mode === 'create' ? 'Create'
-        : mode === 'edit' ? 'Save Changes'
-          : 'Submit');
+  setSearch(record.label);
+
+  setOpen(false);
+
+};
+
+  const handleClear = () => {
+
+  onChange("");
+
+  setSearch("");
+
+  setRecords([]);
+
+};
 
   return (
-    <form
-      className={`dynamic-form ${className}`}
-      onSubmit={handleSubmit}
-      noValidate
-    >
-      <div className="row g-3">
-        {fields.map(field => {
-          // Skip hidden fields in readonly mode display
-          if (field.hidden && mode !== 'preview') return null;
+    <div className="df-lookup" ref={wrapperRef}>
+      <div className="df-lookup-input-wrapper">
+        <input
+          type="text"
+          className="df-input df-lookup-input"
+          placeholder={`Search ${entityName}...`}
+          value={search}
+          readOnly={readOnly}
+          onFocus={() => !readOnly && setOpen(true)}
+          onChange={handleSearch}
+          onClick={() => !readOnly && setOpen(true)}
+        />
 
-          return (
-            <div
-              key={field.fieldId || field.key}
-              className={`col-${field.width || 12} dynamic-form__field-wrapper`}
-              style={field.hidden ? { display: 'none' } : undefined}
-            >
-              <DynamicField
-                field={field}
-                value={formData[field.key]}
-                onChange={handleFieldChange}
-                readOnly={isReadOnly || field.readonly}
-                mode={mode}
-              />
-            </div>
-          );
-        })}
+        {!readOnly && value && (
+          <i
+            className="fa-solid fa-xmark df-lookup-clear"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleClear();
+            }}
+          />
+        )}
+
+        {!readOnly && (
+          <i
+            className={`fa-solid ${open ? "fa-chevron-up" : "fa-chevron-down"
+              } df-lookup-arrow`}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen((prev) => !prev);
+            }}
+          />
+        )}
       </div>
 
-      {/* Submit button — hidden in readonly mode */}
-      {!isReadOnly && (
-        <div className="col-12 pt-3">
-          <button type="submit" className="df-submit-btn">
-            {btnLabel}
-          </button>
+      {open && (
+        <div className="df-lookup-dropdown">
+          {/* Search Box */}
+          <div className="df-lookup-search">
+            <input
+              type="text"
+              className="df-input"
+              placeholder={`Search ${entityName}...`}
+              value={search}
+              onChange={handleSearch}
+              autoFocus
+            />
+          </div>
+
+          {/* Results */}
+          <div className="df-lookup-list">
+            {loading && (
+              <div className="df-lookup-loading">
+                <div className="df-spinner" />
+              </div>
+            )}
+
+            {!loading && records.length === 0 && (
+              <div className="df-lookup-empty">
+                No {entityName} found
+              </div>
+            )}
+
+            {!loading &&
+              records.map((record) => (
+                <div
+                  key={record.value}
+                  className={`df-lookup-item ${value === record.value ? "active" : ""
+                    }`}
+                  onClick={() => handleSelect(record)}
+                >
+                  <span>{record.label}</span>
+
+                  {value === record.value && (
+                    <i className="fa-solid fa-check" />
+                  )}
+                </div>
+              ))}
+          </div>
         </div>
       )}
-    </form>
+    </div>
   );
+
 }

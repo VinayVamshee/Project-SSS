@@ -150,7 +150,7 @@ export const updateSubject = (id, payload) => api.put(`/updateSubject/${id}`, pa
 export const deleteSubject = (id) => api.delete(`/deleteSubject/${id}`);
 
 // ─── Class-Subject Links ──────────────────────────────────────────────────────
-export const getClassSubjects = () => api.get('/class-subjects');
+export const getClassSubjects = () => api.get('/classsubjectlinks');
 export const linkClassSubject = (payload) => api.post('/ClassSubjectLink', payload);
 
 // ─── Chapters ─────────────────────────────────────────────────────────────────
@@ -200,7 +200,7 @@ export const archiveEntity = (id) => api.patch(`/api/metadata/entities/${id}/arc
 export const activateEntity = (id) => api.patch(`/api/metadata/entities/${id}/activate`);
 export const deleteEntity = (id) => api.delete(`/api/metadata/entities/${id}`);
 
-export const lookup = (field, search = "") => api.get("/api/metadata/lookup", { params: { field, search }});
+export const lookup = (field, search = "") => api.get("/api/metadata/lookup", { params: { field, search } });
 
 // ─── Templates ───────────────────────────────────────────────────────────────
 export const getTemplates = () => api.get('/api/metadata/templates');

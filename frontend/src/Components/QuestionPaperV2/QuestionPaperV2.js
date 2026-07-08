@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import axios from 'axios';
 import api from '../../API';
 import { useNavigate } from 'react-router-dom';
 import { useReactToPrint } from 'react-to-print';
@@ -51,15 +50,15 @@ export default function QuestionPaperV2() {
     // ==========================================
     // GLOBAL UI STATE (Toast, Loaders, Modals)
     // ==========================================
+    const [viewMode, setViewMode] = useState('list'); // 'list' | 'builder' | 'preview'
     const [message, setMessage] = useState("");
     const [uploading, setUploading] = useState(false);
     const [previewImageUrl, setPreviewImageUrl] = useState("");
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
     const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-    const [isCreateQPModalOpen, setIsCreateQPModalOpen] = useState(false);
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
-    const [isSelectInstructionsModalOpen, setIsSelectInstructionsModalOpen] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
+    const [isViewSelectedDrawerOpen, setIsViewSelectedDrawerOpen] = useState(false);
 
     const showMessage = useCallback((msg) => {
         setMessage(msg);
@@ -72,11 +71,19 @@ export default function QuestionPaperV2() {
         formData.append('image', file);
         setUploading(true);
         try {
-            const res = await axios.post('https://api.imgbb.com/1/upload', formData);
-            return res.data.data.display_url;
+            const res = await fetch('https://api.imgbb.com/1/upload', {
+                method: 'POST',
+                body: formData
+            });
+            const data = await res.json();
+            if (data.success && (data.data?.display_url || data.data?.url)) {
+                return data.data.display_url || data.data.url;
+            } else {
+                throw new Error(data.error?.message || "Upload failed");
+            }
         } catch (err) {
             console.error('Image upload failed', err);
-            showMessage('Image upload failed');
+            showMessage('Image upload failed: ' + err.message);
             throw err;
         } finally {
             setUploading(false);
@@ -103,7 +110,7 @@ export default function QuestionPaperV2() {
             try {
                 const cRes = await api.get('/getClasses').catch(err => ({ data: { classes: [] } }));
                 const sRes = await api.get('/getSubjects').catch(err => ({ data: { subjects: [] } }));
-                const csRes = await api.get('/class-subjects').catch(err => ({ data: { data: [] } }));
+                const csRes = await api.get('/classsubjectlinks').catch(err => ({ data: { data: [] } }));
                 const chRes = await api.get('/chapters').catch(err => ({ data: { data: [] } }));
 
                 setClasses(cRes.data.classes || []);
@@ -206,8 +213,7 @@ export default function QuestionPaperV2() {
     // QP CREATION SELECTION STATE
     // ==========================================
     const [selectedQuestions, setSelectedQuestions] = useState([]);
-    const [questionPaperSections, setQuestionPaperSections] = useState([]);
-    const [activeSectionIndex, setActiveSectionIndex] = useState(null);
+    const questionPaperSections = [];
 
     const getAllQuestionIds = useCallback((questionsList) => {
         const ids = [];
@@ -251,7 +257,7 @@ export default function QuestionPaperV2() {
             });
     }, [questions, searchText, filterType, filterMarks, sortOrder, selectedQuestions]);
 
-    const [fullWidthImagesMap, setFullWidthImagesMap] = useState({});
+    const [imageSizesMap, setImageSizesMap] = useState({});
     const [addAnsLine, setAddAnsLine] = useState([]);
 
     // ==========================================
@@ -576,23 +582,8 @@ export default function QuestionPaperV2() {
 
                             if (isChecked) {
                                 setSelectedQuestions(prev => [...new Set([...prev, ...toAdd])]);
-                                if (activeSectionIndex !== null && questionPaperSections[activeSectionIndex]) {
-                                    setQuestionPaperSections(prev => {
-                                        const updated = [...prev];
-                                        const existingIds = updated[activeSectionIndex].questionIds || [];
-                                        updated[activeSectionIndex].questionIds = [...new Set([...existingIds, ...toAdd])];
-                                        return updated;
-                                    });
-                                }
                             } else {
                                 setSelectedQuestions(prev => prev.filter(id => !toAdd.includes(id)));
-                                if (activeSectionIndex !== null && questionPaperSections[activeSectionIndex]) {
-                                    setQuestionPaperSections(prev => {
-                                        const updated = [...prev];
-                                        updated[activeSectionIndex].questionIds = (updated[activeSectionIndex].questionIds || []).filter(id => !toAdd.includes(id));
-                                        return updated;
-                                    });
-                                }
                             }
                         }}
                     />
@@ -601,7 +592,6 @@ export default function QuestionPaperV2() {
                     {level === 0 ? `Q${i + 1}.` : `${toRoman(i)}.`}
                 </strong>
                 <div style={{ flex: 1 }}>
-                    <span style={{ fontSize: '0.82rem', color: '#6b7280', marginRight: '4px' }}>[{q.questionId}]</span>
                     <div className="question-content" style={{ display: 'inline-block' }} dangerouslySetInnerHTML={{ __html: q.questionText }} />
                 </div>
             </div>
@@ -648,23 +638,10 @@ export default function QuestionPaperV2() {
                     <img
                         src={q.questionImage}
                         alt="Question"
-                        className={`qpv2-question-img ${fullWidthImagesMap[q.questionId] ? 'full' : 'thumbnail'}`}
-                        style={{ width: fullWidthImagesMap[q.questionId] ? '100%' : '80px', height: 'auto', maxHeight: '120px', borderRadius: '4px', cursor: 'pointer', border: '1px solid #e1e5eb' }}
-                        onClick={() => { if (!fullWidthImagesMap[q.questionId]) setPreviewImageUrl(q.questionImage) }}
+                        className="qpv2-question-img thumbnail"
+                        style={{ width: '80px', height: 'auto', maxHeight: '120px', borderRadius: '4px', cursor: 'pointer', border: '1px solid #e1e5eb' }}
+                        onClick={() => setPreviewImageUrl(q.questionImage)}
                     />
-                    <div style={{ marginTop: '4px' }}>
-                        <label className="qpv2-switch-wrapper">
-                            <div className="qpv2-switch">
-                                <input
-                                    type="checkbox"
-                                    checked={!!fullWidthImagesMap[q.questionId]}
-                                    onChange={(e) => setFullWidthImagesMap(prev => ({ ...prev, [q.questionId]: e.target.checked }))}
-                                />
-                                <span className="qpv2-slider"></span>
-                            </div>
-                            <span className="qpv2-switch-label">Full width</span>
-                        </label>
-                    </div>
                 </div>
             )}
 
@@ -768,9 +745,9 @@ export default function QuestionPaperV2() {
                             if (e.target.files[0]) updateField('questionImage', await uploadToImgBB(e.target.files[0]));
                         }} />
                         {data.questionImage && (
-                            <div className="qpv2-d-flex qpv2-gap-2" style={{ marginTop: '6px' }}>
-                                <button className="qpv2-btn-outline" onClick={() => setPreviewImageUrl(data.questionImage)}>View</button>
-                                <button className="qpv2-btn-danger" onClick={() => updateField('questionImage', '')}>Remove</button>
+                            <div style={{ marginTop: '8px', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '8px', display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', background: '#f8fafc' }}>
+                                <img src={data.questionImage} alt="Uploaded preview" style={{ maxHeight: '240px', maxWidth: '100%', borderRadius: '4px', objectFit: 'contain' }} />
+                                <button type="button" className="qpv2-btn-danger qpv2-btn-sm" style={{ padding: '4px 8px', fontSize: '0.75rem' }} onClick={() => updateField('questionImage', '')}>Remove Image</button>
                             </div>
                         )}
                     </div>
@@ -790,7 +767,12 @@ export default function QuestionPaperV2() {
                                     <input type="file" className="qpv2-form-control" onChange={async e => {
                                         if (e.target.files[0]) updateOption(i, 'imageUrl', await uploadToImgBB(e.target.files[0]));
                                     }} />
-                                    {opt.imageUrl && <div className="qpv2-d-flex qpv2-gap-2" style={{ marginTop: '4px' }}><button className="qpv2-btn-outline qpv2-btn-sm" onClick={() => setPreviewImageUrl(opt.imageUrl)}>View</button><button className="qpv2-btn-danger qpv2-btn-sm" onClick={() => updateOption(i, 'imageUrl', '')}>Remove</button></div>}
+                                    {opt.imageUrl && (
+                                        <div style={{ marginTop: '6px', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px', display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px', background: '#f8fafc' }}>
+                                            <img src={opt.imageUrl} alt="Option preview" style={{ maxHeight: '150px', maxWidth: '100%', borderRadius: '4px', objectFit: 'contain' }} />
+                                            <button type="button" className="qpv2-btn-danger qpv2-btn-sm" style={{ padding: '2px 6px', fontSize: '0.7rem' }} onClick={() => updateOption(i, 'imageUrl', '')}>Remove</button>
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -813,6 +795,12 @@ export default function QuestionPaperV2() {
                                         <input type="file" className="qpv2-form-control" onChange={async e => {
                                             if (e.target.files[0]) updatePair(i, side, 'Image', await uploadToImgBB(e.target.files[0]));
                                         }} />
+                                        {p[`${side}Image`] && (
+                                            <div style={{ marginTop: '6px', border: '1px solid #e2e8f0', borderRadius: '6px', padding: '6px', display: 'inline-flex', flexDirection: 'column', alignItems: 'flex-start', gap: '6px', background: '#f8fafc' }}>
+                                                <img src={p[`${side}Image`]} alt="Pair preview" style={{ maxHeight: '150px', maxWidth: '100%', borderRadius: '4px', objectFit: 'contain' }} />
+                                                <button type="button" className="qpv2-btn-danger qpv2-btn-sm" style={{ padding: '2px 6px', fontSize: '0.7rem' }} onClick={() => updatePair(i, side, 'Image', '')}>Remove</button>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -880,184 +868,611 @@ export default function QuestionPaperV2() {
                 </div>
             )}
 
-            <div className="SearchFilter">
-                {/* Class Dropdown */}
-                <div>
-                    <select className="form-select shadow-sm" value={selectedClass} onChange={onClassChange}>
-                        <option value="">-- Select Class --</option>
-                        {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
-                    </select>
-                </div>
-
-                {/* Subject Dropdown */}
-                <div>
-                    <select className="form-select shadow-sm" value={selectedSubject} onChange={onSubjectChange} disabled={!selectedClass}>
-                        <option value="">-- Select Subject --</option>
-                        {filteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-                    </select>
-                </div>
-
-                {/* Chapter Dropdown */}
-                <div>
-                    <select className="form-select shadow-sm" value={selectedChapter} onChange={onChapterChange} disabled={!selectedSubject}>
-                        <option value="">-- Select Chapter --</option>
-                        {chapterList.map((ch, idx) => <option key={idx} value={ch._id}>{ch.name}</option>)}
-                    </select>
-                </div>
-
-                {/* Action Buttons */}
-                <button className="btn" disabled={!hasWriteAccess} onClick={() => setIsAddModalOpen(true)}>
-                    <i className="fas fa-plus me-2"></i>Add Question
-                </button>
-                <button className="btn" disabled={selectedQuestions.length === 0} onClick={() => setIsTransferModalOpen(true)}>
-                    ✈️ Transfer ({selectedQuestions.length})
-                </button>
-                <button className="btn" disabled={!hasWriteAccess} onClick={() => setIsTemplateModalOpen(true)}>
-                    <i className="fas fa-book me-2"></i>Templates
-                </button>
-                <button className="btn" onClick={() => setIsCreateQPModalOpen(true)}>
-                    📝 Create Question Paper
-                </button>
-                <button className="btn" disabled={!hasWriteAccess} onClick={() => handleDownloadFiltered()}>
-                    <i className="fa-solid fa-download me-2"></i>Download QB
-                </button>
-            </div>
-
-            <div className="qpv2-content-area qpv2-animate-fade" style={{ animationDelay: '0.1s' }}>
-                {!selectedClass || !selectedSubject || !selectedChapter ? (
-                    <div className="qpv2-empty-state">
-                        <i className="fas fa-folder-open qpv2-empty-icon"></i>
-                        <div className="qpv2-empty-text">Select a Class, Subject, and Chapter to view questions.</div>
-                    </div>
-                ) : (
-                    <>
-                        <div className="qpv2-d-flex qpv2-gap-3 qpv2-align-center" style={{ marginBottom: '14px', flexWrap: 'wrap' }}>
-                            <input type="text" className="qpv2-input" style={{ flex: 1, minWidth: '200px' }} placeholder="Search question text or ID..." value={searchText} onChange={e => setSearchText(e.target.value)} />
-                            <select className="qpv2-select" style={{ width: '130px', minWidth: 'unset' }} value={filterType} onChange={e => setFilterType(e.target.value)}>
-                                <option value="">All Types</option>
-                                <option value="MCQ">MCQ</option>
-                                <option value="Descriptive">Descriptive</option>
-                                <option value="Match">Match</option>
-                                <option value="sub-question">Sub-Questions</option>
+            {viewMode === 'list' && (
+                <>
+                    <div className="SearchFilter">
+                        {/* Class Dropdown */}
+                        <div>
+                            <select className="form-select shadow-sm" value={selectedClass} onChange={onClassChange}>
+                                <option value="">-- Select Class --</option>
+                                {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
                             </select>
-                            <input type="number" className="qpv2-input" style={{ width: '90px', minWidth: 'unset' }} placeholder="Marks" value={filterMarks} onChange={e => setFilterMarks(e.target.value)} />
-                            <select className="qpv2-select" style={{ width: '140px', minWidth: 'unset' }} value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
-                                <option value="qId">Sort: ID (Asc)</option>
-                                <option value="desc">Sort: High to Low</option>
-                                <option value="asc">Sort: Low to High</option>
-                            </select>
-
-                            <label className="qpv2-switch-wrapper" style={{ marginLeft: 'auto' }}>
-                                <div className="qpv2-switch">
-                                    <input
-                                        type="checkbox"
-                                        checked={selectedQuestions.length > 0 && selectedQuestions.length === getAllQuestionIds(questions).length}
-                                        onChange={(e) => {
-                                            setSelectedQuestions(e.target.checked ? getAllQuestionIds(questions) : []);
-                                        }}
-                                    />
-                                    <span className="qpv2-slider"></span>
-                                </div>
-                                <span className="qpv2-switch-label" style={{ fontWeight: 600 }}>
-                                    Select All ({selectedQuestions.length}/{getAllQuestionIds(questions).length})
-                                </span>
-                            </label>
                         </div>
-                        {filteredAndSortedQuestions.length === 0 ? (
-                            <div className="qpv2-empty-state" style={{ padding: '20px' }}>
-                                <i className="fas fa-search qpv2-empty-icon" style={{ fontSize: '1.5rem' }}></i>
-                                <div className="qpv2-empty-text">No questions found matching your criteria.</div>
+
+                        {/* Subject Dropdown */}
+                        <div>
+                            <select className="form-select shadow-sm" value={selectedSubject} onChange={onSubjectChange} disabled={!selectedClass}>
+                                <option value="">-- Select Subject --</option>
+                                {filteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                            </select>
+                        </div>
+
+                        {/* Chapter Dropdown */}
+                        <div>
+                            <select className="form-select shadow-sm" value={selectedChapter} onChange={onChapterChange} disabled={!selectedSubject}>
+                                <option value="">-- Select Chapter --</option>
+                                {chapterList.map((ch, idx) => <option key={idx} value={ch._id}>{ch.name}</option>)}
+                            </select>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <button className="btn" disabled={!hasWriteAccess} onClick={() => setIsAddModalOpen(true)}>
+                            <i className="fas fa-plus me-2"></i>Add Question
+                        </button>
+                        <button className="btn" disabled={selectedQuestions.length === 0} onClick={() => setIsTransferModalOpen(true)}>
+                            ✈️ Transfer ({selectedQuestions.length})
+                        </button>
+                        <button className="btn" disabled={!hasWriteAccess} onClick={() => setIsTemplateModalOpen(true)}>
+                            <i className="fas fa-book me-2"></i>Templates
+                        </button>
+                        <button className="btn" onClick={() => setViewMode('builder')}>
+                            📝 Create Question Paper
+                        </button>
+                        <button className="btn" disabled={!hasWriteAccess} onClick={() => handleDownloadFiltered()}>
+                            <i className="fa-solid fa-download me-2"></i>Download QB
+                        </button>
+                    </div>
+
+                    <div className="qpv2-content-area qpv2-animate-fade" style={{ animationDelay: '0.1s' }}>
+                        {!selectedClass || !selectedSubject || !selectedChapter ? (
+                            <div className="qpv2-empty-state">
+                                <i className="fas fa-folder-open qpv2-empty-icon"></i>
+                                <div className="qpv2-empty-text">Select a Class, Subject, and Chapter to view questions.</div>
                             </div>
                         ) : (
-                            <div className="qpv2-question-list">
-                                {filteredAndSortedQuestions.map((q, i) => renderQuestionBlock(q, i))}
-                            </div>
-                        )}
-                    </>
-                )}
-            </div>
+                            <>
+                                <div className="qpv2-d-flex qpv2-gap-3 qpv2-align-center" style={{ marginBottom: '14px', flexWrap: 'wrap' }}>
+                                    <input type="text" className="qpv2-input" style={{ flex: 1, minWidth: '200px' }} placeholder="Search question text or ID..." value={searchText} onChange={e => setSearchText(e.target.value)} />
+                                    <select className="qpv2-select" style={{ width: '130px', minWidth: 'unset' }} value={filterType} onChange={e => setFilterType(e.target.value)}>
+                                        <option value="">All Types</option>
+                                        <option value="MCQ">MCQ</option>
+                                        <option value="Descriptive">Descriptive</option>
+                                        <option value="Match">Match</option>
+                                        <option value="sub-question">Sub-Questions</option>
+                                    </select>
+                                    <input type="number" className="qpv2-input" style={{ width: '90px', minWidth: 'unset' }} placeholder="Marks" value={filterMarks} onChange={e => setFilterMarks(e.target.value)} />
+                                    <select className="qpv2-select" style={{ width: '140px', minWidth: 'unset' }} value={sortOrder} onChange={e => setSortOrder(e.target.value)}>
+                                        <option value="qId">Sort: ID (Asc)</option>
+                                        <option value="desc">Sort: High to Low</option>
+                                        <option value="asc">Sort: Low to High</option>
+                                    </select>
 
-            {/* Transfer Questions Modal */}
-            {isTransferModalOpen && (
-                <div className="qpv2-modal-overlay" onClick={() => setIsTransferModalOpen(false)}>
-                    <div className="qpv2-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '450px' }}>
-                        <div className="qpv2-modal-header">
-                            <h4>✈️ Transfer Selected Questions</h4>
-                            <button className="qpv2-modal-close" onClick={() => setIsTransferModalOpen(false)}>&times;</button>
-                        </div>
-                        <div className="qpv2-modal-body">
-                            <p style={{ fontSize: '0.85rem', color: '#4b5563', marginBottom: '12px' }}>
-                                Moving <strong>{selectedQuestions.length}</strong> selected questions to a new location.
-                            </p>
-                            <div className="qpv2-form-wrapper">
-                                <div className="qpv2-form-group">
-                                    <label className="qpv2-form-label">Destination Class</label>
-                                    <select className="qpv2-form-control" value={transferDestClass} onChange={onTransferClassChange}>
-                                        <option value="">-- Select Class --</option>
-                                        {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
-                                    </select>
+                                    <label className="qpv2-switch-wrapper" style={{ marginLeft: 'auto' }}>
+                                        <div className="qpv2-switch">
+                                            <input
+                                                type="checkbox"
+                                                checked={selectedQuestions.length > 0 && selectedQuestions.length === getAllQuestionIds(questions).length}
+                                                onChange={(e) => {
+                                                    setSelectedQuestions(e.target.checked ? getAllQuestionIds(questions) : []);
+                                                }}
+                                            />
+                                            <span className="qpv2-slider"></span>
+                                        </div>
+                                        <span className="qpv2-switch-label" style={{ fontWeight: 600 }}>
+                                            Select All ({selectedQuestions.length}/{getAllQuestionIds(questions).length})
+                                        </span>
+                                    </label>
                                 </div>
-                                <div className="qpv2-form-group">
-                                    <label className="qpv2-form-label">Destination Subject</label>
-                                    <select className="qpv2-form-control" value={transferDestSubject} onChange={onTransferSubjectChange} disabled={!transferDestClass}>
-                                        <option value="">-- Select Subject --</option>
-                                        {transferFilteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="qpv2-form-group">
-                                    <label className="qpv2-form-label">Destination Chapter</label>
-                                    <select className="qpv2-form-control" value={transferDestChapter} onChange={e => setTransferDestChapter(e.target.value)} disabled={!transferDestSubject}>
-                                        <option value="">-- Select Chapter --</option>
-                                        {transferChapterList.map((ch, idx) => <option key={idx} value={ch._id}>{ch.name}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-                        </div>
-                        <div className="qpv2-modal-footer">
-                            <button className="qpv2-btn-outline" onClick={() => setIsTransferModalOpen(false)}>Cancel</button>
-                            <button className="qpv2-btn-primary" onClick={handleTransferQuestions} disabled={questionUploading}>
-                                Confirm Transfer
+                                {filteredAndSortedQuestions.length === 0 ? (
+                                    <div className="qpv2-empty-state" style={{ padding: '20px' }}>
+                                        <i className="fas fa-search qpv2-empty-icon" style={{ fontSize: '1.5rem' }}></i>
+                                        <div className="qpv2-empty-text">No questions found matching your criteria.</div>
+                                    </div>
+                                ) : (
+                                    <div className="qpv2-question-list">
+                                        {filteredAndSortedQuestions.map((q, i) => renderQuestionBlock(q, i))}
+                                    </div>
+                                )}
+                            </>
+                        )}
+                    </div>
+                </>
+            )}
+
+            {viewMode === 'builder' && (
+                <div className="qpv2-builder-page qpv2-animate-fade">
+                    <div className="qpv2-page-header">
+                        <div className="qpv2-action-group">
+                            <button className="qpv2-btn-outline" onClick={() => setViewMode('list')}>
+                                <i className="fas fa-arrow-left me-1"></i> Exit Builder
+                            </button>
+                            <button className="qpv2-btn-secondary" onClick={() => setIsViewSelectedDrawerOpen(true)}>
+                                👁️ View Selected ({selectedQuestions.length})
                             </button>
                         </div>
                     </div>
+
+                    <div className="qpv2-builder-filters" style={{ display: 'flex', gap: '12px', width: '100%', marginBottom: '10px' }}>
+                        <select className="form-select shadow-sm" value={selectedClass} onChange={onClassChange} style={{ flex: 1 }}>
+                            <option value="">-- Class --</option>
+                            {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
+                        </select>
+                        <select className="form-select shadow-sm" value={selectedSubject} onChange={onSubjectChange} disabled={!selectedClass} style={{ flex: 1 }}>
+                            <option value="">-- Subject --</option>
+                            {filteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                        </select>
+                        <select className="form-select shadow-sm" value={selectedChapter} onChange={onChapterChange} disabled={!selectedSubject} style={{ flex: 1 }}>
+                            <option value="">-- Chapter --</option>
+                            {chapterList.map((ch, idx) => <option key={idx} value={ch._id}>{ch.name}</option>)}
+                        </select>
+                    </div>
+
+                    <div className="qpv2-content-area" style={{ flex: 1, minHeight: '60vh' }}>
+                        {questions.length > 0 ? (
+                            <div className="qpv2-question-list">
+                                {filteredAndSortedQuestions.map((q, i) => renderQuestionBlock(q, i))}
+                            </div>
+                        ) : (
+                            <div className="text-center py-5 text-muted">Select a Class, Subject, and Chapter to list questions.</div>
+                        )}
+                    </div>
+
+                    <div className="qpv2-builder-footer mt-4 d-flex justify-content-end gap-3" style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '16px' }}>
+                        <button className="qpv2-btn-outline" onClick={() => setViewMode('list')}>Cancel</button>
+                        <button className="qpv2-btn-primary" onClick={() => setViewMode('preview')}>
+                            Select Instructions & Live Preview <i className="fas fa-arrow-right ms-1"></i>
+                        </button>
+                    </div>
                 </div>
             )}
 
-            {isAddModalOpen && (
-                <div className="qpv2-modal-overlay" onClick={() => setIsAddModalOpen(false)}>
-                    <div className="qpv2-modal-content" onClick={e => e.stopPropagation()}>
+            {viewMode === 'preview' && (
+                <div className="qpv2-preview-page qpv2-animate-fade">
+                    <div className="qpv2-preview-split-container">
+                        {/* Left Side: Setup Parameters */}
+                        <div className="qpv2-preview-left-controls">
+                            {/* Templates Selector Section FIRST */}
+                            <div className="qpv2-preview-control-section">
+                                <h5>1. Heading Templates</h5>
+                                <div className="qpv2-form-group">
+                                    <label className="qpv2-form-label">Select a School Template Preset</label>
+                                    <div className="qpv2-d-flex" style={{ gap: '8px', flexWrap: 'wrap' }}>
+                                        {templates.map(t => {
+                                            const isSelected = selectedSchoolName === t.schoolName && selectedAddress === t.address && selectedExamTitle === t.examTitle;
+                                            return (
+                                                <div key={t._id} onClick={() => {
+                                                    setSelectedSchoolName(t.schoolName || '');
+                                                    setSelectedAddress(t.address || '');
+                                                    setSelectedExamTitle(t.examTitle || '');
+                                                    if (t.logo) setSelectedLogo(t.logo);
+                                                }} style={{
+                                                    flex: '1 1 120px',
+                                                    padding: '8px 10px',
+                                                    border: `2px solid ${isSelected ? 'var(--button-color)' : 'rgba(0,0,0,0.08)'}`,
+                                                    borderRadius: '8px',
+                                                    cursor: 'pointer',
+                                                    fontSize: '0.75rem',
+                                                    backgroundColor: isSelected ? 'rgba(254, 79, 45, 0.04)' : '#ffffff'
+                                                }}>
+                                                    <strong>{t.schoolName}</strong>
+                                                    <div className="text-muted" style={{ fontSize: '0.7rem' }}>{t.examTitle}</div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Heading Input Fields Section SECOND */}
+                            <div className="qpv2-preview-control-section">
+                                <h5>2. Heading Details & Parameters</h5>
+                                <div className="qpv2-form-group">
+                                    <label className="qpv2-form-label">School Logo</label>
+                                    <input type="file" accept="image/*" className="form-control" onChange={async e => {
+                                        if (e.target.files[0]) {
+                                            const url = await uploadToImgBB(e.target.files[0]);
+                                            setSelectedLogo(url);
+                                        }
+                                    }} style={{ borderRadius: '8px' }} />
+                                    {selectedLogo && (
+                                        <div style={{ marginTop: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                            <img src={selectedLogo} alt="Logo" style={{ height: '40px', objectFit: 'contain' }} />
+                                            <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => setSelectedLogo('')}>Remove</button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="qpv2-form-group">
+                                    <label className="qpv2-form-label">School Name</label>
+                                    <input className="form-control" value={selectedSchoolName} onChange={e => setSelectedSchoolName(e.target.value)} style={{ borderRadius: '8px' }} />
+                                </div>
+                                <div className="qpv2-form-group">
+                                    <label className="qpv2-form-label">Address</label>
+                                    <input className="form-control" value={selectedAddress} onChange={e => setSelectedAddress(e.target.value)} style={{ borderRadius: '8px' }} />
+                                </div>
+                                <div className="qpv2-form-group">
+                                    <label className="qpv2-form-label">Exam Title</label>
+                                    <input className="form-control" value={selectedExamTitle} onChange={e => setSelectedExamTitle(e.target.value)} style={{ borderRadius: '8px' }} />
+                                </div>
+                                <div className="row g-2">
+                                    <div className="col-4">
+                                        <label className="qpv2-form-label">Date</label>
+                                        <input type="date" className="form-control" value={examDate} onChange={e => setExamDate(e.target.value)} style={{ borderRadius: '8px' }} />
+                                    </div>
+                                    <div className="col-4">
+                                        <label className="qpv2-form-label">Duration</label>
+                                        <input type="text" className="form-control" placeholder="e.g. 3 Hours" value={examTime} onChange={e => setExamTime(e.target.value)} style={{ borderRadius: '8px' }} />
+                                    </div>
+                                    <div className="col-4">
+                                        <label className="qpv2-form-label">Max Marks</label>
+                                        <input type="number" className="form-control" value={maxMarks} onChange={e => setMaxMarks(e.target.value)} style={{ borderRadius: '8px' }} />
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Instructions Setup Section THIRD */}
+                            <div className="qpv2-preview-control-section">
+                                <h5>3. Instructions Checklist</h5>
+                                <div className="qpv2-form-group">
+                                    <div className="qpv2-instructions-checklist" style={{ border: '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', padding: '10px' }}>
+                                        {Array.from(new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== ''))).map((instruction, i) => {
+                                            const checked = selectedInstructions.includes(instruction);
+                                            return (
+                                                <div key={i} className={`qpv2-instruction-item ${checked ? 'checked' : ''}`} onClick={() => {
+                                                    toggleInstruction(instruction);
+                                                }}>
+                                                    <span style={{ fontSize: '0.85rem', color: '#1e293b' }}>{instruction}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Question Images Scale Section FOURTH */}
+                            {selectedQuestions.some(id => globalQuestionMap[id]?.questionImage) && (
+                                <div className="qpv2-preview-control-section">
+                                    <h5>4. Question Images Scaling</h5>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                                        {selectedQuestions.filter(id => globalQuestionMap[id]?.questionImage).map((id) => {
+                                            const currentSize = imageSizesMap[id] || '120px';
+                                            const actualQIndex = selectedQuestions.indexOf(id);
+                                            return (
+                                                <div key={id} style={{ display: 'flex', flexDirection: 'column', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9', gap: '6px' }}>
+                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                                            Q{actualQIndex + 1} Image Size
+                                                        </span>
+                                                        <span className="badge bg-secondary" style={{ fontSize: '0.75rem' }}>
+                                                            {currentSize}
+                                                        </span>
+                                                    </div>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                        <span style={{ fontSize: '0.7rem', color: '#64748b' }}>50px</span>
+                                                        <input
+                                                            type="range"
+                                                            min="50"
+                                                            max="600"
+                                                            step="10"
+                                                            value={currentSize.endsWith('%') ? 600 : parseInt(currentSize, 10) || 120}
+                                                            onChange={e => {
+                                                                const val = e.target.value === '600' ? '100%' : `${e.target.value}px`;
+                                                                setImageSizesMap(prev => ({ ...prev, [id]: val }));
+                                                            }}
+                                                            style={{ flex: 1, accentColor: 'var(--button-color)', cursor: 'pointer' }}
+                                                        />
+                                                        <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Full</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Right Side: Live Document Print Preview */}
+                        <div className="qpv2-preview-right-document">
+                            <div className="qpv2-live-paper-outer">
+                                <div className="qpv2-live-paper-card">
+                                    <PrintQuestionPaper
+                                        sections={questionPaperSections}
+                                        questionMap={globalQuestionMap}
+                                        selectedQuestions={selectedQuestions}
+                                        imageSizesMap={imageSizesMap}
+                                        addAnsLine={addAnsLine}
+                                        schoolLogo={selectedLogo}
+                                        schoolName={selectedSchoolName}
+                                        address={selectedAddress}
+                                        examTitle={selectedExamTitle}
+                                        examDate={examDate}
+                                        examTime={examTime}
+                                        maxMarks={maxMarks}
+                                        instructions={selectedInstructions}
+                                        selectedClass={classes.find(c => c._id === selectedClass)?.class || ''}
+                                        selectedSubject={subjects.find(s => s._id === selectedSubject)?.name || ''}
+                                    />
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Bottom Right Sticky Footer */}
+                    <div className="qpv2-builder-footer mt-4 d-flex justify-content-end gap-3" style={{ borderTop: '1px solid rgba(0,0,0,0.08)', paddingTop: '16px' }}>
+                        <button className="qpv2-btn-outline" onClick={() => setViewMode('builder')}>
+                            <i className="fas fa-arrow-left me-1"></i> Back to Builder
+                        </button>
+                        <button className="qpv2-btn-primary" onClick={handlePrint} disabled={!canDownload}>
+                            <i className="fas fa-download me-1"></i> Download PDF
+                        </button>
+                    </div>
+                </div>
+            )}
+
+            {/* Slide-over Drawers Backdrop Overlay */}
+            <div className={`qpv2-drawer-overlay ${(isTransferModalOpen || isAddModalOpen || isEditModalOpen || isViewSelectedDrawerOpen) ? 'show' : ''}`} onClick={() => {
+                setIsTransferModalOpen(false);
+                setIsAddModalOpen(false);
+                setIsEditModalOpen(false);
+                setIsViewSelectedDrawerOpen(false);
+            }}></div>
+
+            {/* View Selected Questions Drawer */}
+            <div className={`qpv2-drawer ${isViewSelectedDrawerOpen ? 'open' : ''}`} style={{ width: '650px' }}>
+                <div className="qpv2-drawer-header">
+                    <h4>👁️ Selected Questions ({selectedQuestions.length})</h4>
+                    <button className="qpv2-drawer-close" onClick={() => setIsViewSelectedDrawerOpen(false)}>&times;</button>
+                </div>
+                <div className="qpv2-drawer-body">
+                    <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '16px' }}>
+                        Questions listed below are ordered exactly in the chronological sequence you selected them.
+                    </p>
+                    <div className="qpv2-question-list">
+                        {selectedQuestions.map((qId, idx) => {
+                            const questionObj = globalQuestionMap[qId];
+                            if (!questionObj) return null;
+                            return (
+                                <div key={qId} className="qpv2-question-card" style={{ marginBottom: '12px', padding: '14px', backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.08)' }}>
+                                    <div className="qpv2-question-header" style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px', marginBottom: '8px' }}>
+                                        <div className="qpv2-question-meta">
+                                            <span className="qpv2-badge qpv2-badge-marks">{questionObj.questionMarks}M</span>
+                                            <span className="qpv2-badge qpv2-badge-type">{questionObj.questionType}</span>
+                                            <span className="qpv2-badge qpv2-badge-id">ID: {questionObj.questionId}</span>
+                                        </div>
+                                        <button className="btn-close" style={{ fontSize: '10px' }} onClick={() => {
+                                            setSelectedQuestions(prev => prev.filter(id => id !== qId));
+                                        }}></button>
+                                    </div>
+                                    <div className="qpv2-question-title">
+                                        <strong style={{ marginRight: '6px' }}>Q{idx + 1}.</strong>
+                                        <div style={{ flex: 1 }} dangerouslySetInnerHTML={{ __html: questionObj.questionText }} />
+                                    </div>
+                                    {questionObj.questionImage && (
+                                        <div style={{ marginTop: '8px', paddingLeft: '28px' }}>
+                                            <img src={questionObj.questionImage} alt="Question" style={{ maxHeight: '100px', objectFit: 'contain', borderRadius: '4px' }} />
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                        {selectedQuestions.length === 0 && (
+                            <div className="text-center py-5 text-muted">No questions selected yet. Check questions from the list!</div>
+                        )}
+                    </div>
+                </div>
+                <div className="qpv2-drawer-footer">
+                    <button className="qpv2-btn-primary" onClick={() => setIsViewSelectedDrawerOpen(false)}>Close View</button>
+                </div>
+            </div>
+
+            {/* Transfer Questions Drawer */}
+            <div className={`qpv2-drawer ${isTransferModalOpen ? 'open' : ''}`} style={{ width: '480px' }}>
+                <div className="qpv2-drawer-header">
+                    <h4>✈️ Transfer Selected Questions</h4>
+                    <button className="qpv2-drawer-close" onClick={() => setIsTransferModalOpen(false)}>&times;</button>
+                </div>
+                <div className="qpv2-drawer-body">
+                    <p style={{ fontSize: '0.85rem', color: '#4b5563', marginBottom: '16px' }}>
+                        Moving <strong>{selectedQuestions.length}</strong> selected questions to a new location.
+                    </p>
+                    <div className="qpv2-form-wrapper">
+                        <div className="qpv2-form-group">
+                            <label className="qpv2-form-label">Destination Class</label>
+                            <select className="qpv2-form-control" value={transferDestClass} onChange={onTransferClassChange}>
+                                <option value="">-- Select Class --</option>
+                                {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
+                            </select>
+                        </div>
+                        <div className="qpv2-form-group">
+                            <label className="qpv2-form-label">Destination Subject</label>
+                            <select className="qpv2-form-control" value={transferDestSubject} onChange={onTransferSubjectChange} disabled={!transferDestClass}>
+                                <option value="">-- Select Subject --</option>
+                                {transferFilteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                            </select>
+                        </div>
+                        <div className="qpv2-form-group">
+                            <label className="qpv2-form-label">Destination Chapter</label>
+                            <select className="qpv2-form-control" value={transferDestChapter} onChange={e => setTransferDestChapter(e.target.value)} disabled={!transferDestSubject}>
+                                <option value="">-- Select Chapter --</option>
+                                {transferChapterList.map((ch, idx) => <option key={idx} value={ch._id}>{ch.name}</option>)}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div className="qpv2-drawer-footer">
+                    <button className="qpv2-btn-outline" onClick={() => setIsTransferModalOpen(false)}>Cancel</button>
+                    <button className="qpv2-btn-primary" onClick={handleTransferQuestions} disabled={questionUploading}>
+                        Confirm Transfer
+                    </button>
+                </div>
+            </div>
+
+            {/* Add New Question Drawer */}
+            <div className={`qpv2-drawer ${isAddModalOpen ? 'open' : ''}`}>
+                <div className="qpv2-drawer-header">
+                    <h4><i className="fas fa-plus-circle text-primary"></i> Add New Question</h4>
+                    <button className="qpv2-drawer-close" onClick={() => setIsAddModalOpen(false)}>&times;</button>
+                </div>
+                <div className="qpv2-drawer-body">
+                    {renderQuestionForm(newQuestion, setNewQuestion, false)}
+                </div>
+                <div className="qpv2-drawer-footer">
+                    <button className="qpv2-btn-outline" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
+                    <button className="qpv2-btn-primary" onClick={handleAddQuestion} disabled={questionUploading}>Save Question</button>
+                </div>
+            </div>
+
+            {/* Edit Question Drawer */}
+            <div className={`qpv2-drawer ${(isEditModalOpen && editQuestionData) ? 'open' : ''}`}>
+                <div className="qpv2-drawer-header">
+                    <h4><i className="fas fa-edit text-primary"></i> Edit Question</h4>
+                    <button className="qpv2-drawer-close" onClick={() => setIsEditModalOpen(false)}>&times;</button>
+                </div>
+                <div className="qpv2-drawer-body">
+                    {editQuestionData && renderQuestionForm(editQuestionData, setEditQuestionData, true)}
+                </div>
+                <div className="qpv2-drawer-footer">
+                    <button className="qpv2-btn-outline" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
+                    <button className="qpv2-btn-primary" onClick={handleEditSubmit} disabled={questionUploading}>Update Question</button>
+                </div>
+            </div>
+
+            {isTemplateModalOpen && (
+                <div className="qpv2-modal-overlay" onClick={() => setIsTemplateModalOpen(false)}>
+                    <div className="qpv2-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '750px' }}>
                         <div className="qpv2-modal-header">
-                            <h4><i className="fas fa-plus-circle text-primary"></i> Add New Question</h4>
-                            <button className="qpv2-modal-close" onClick={() => setIsAddModalOpen(false)}>&times;</button>
+                            <h4>Instruction Templates Editor</h4>
+                            <button className="qpv2-modal-close" onClick={() => setIsTemplateModalOpen(false)}>&times;</button>
                         </div>
                         <div className="qpv2-modal-body">
-                            {renderQuestionForm(newQuestion, setNewQuestion, false)}
-                        </div>
-                        <div className="qpv2-modal-footer">
-                            <button className="qpv2-btn-outline" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
-                            <button className="qpv2-btn-primary" onClick={handleAddQuestion} disabled={questionUploading}>Save Question</button>
+                            <div className="qpv2-form-grid" style={{ marginBottom: '16px' }}>
+                                <div className="qpv2-form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label className="qpv2-form-label">School Logo</label>
+                                    <input type="file" accept="image/*" className="form-control" onChange={async e => {
+                                        if (e.target.files[0]) {
+                                            const url = await uploadToImgBB(e.target.files[0]);
+                                            setNewTemplate(t => ({ ...t, logo: url }));
+                                        }
+                                    }} style={{ borderRadius: '8px' }} />
+                                    {newTemplate.logo && (
+                                        <div style={{ marginTop: '6px' }}>
+                                            <img src={newTemplate.logo} alt="Logo" style={{ height: '40px', objectFit: 'contain' }} />
+                                            <button className="qpv2-btn-danger qpv2-btn-sm" style={{ marginLeft: '10px' }} onClick={() => setNewTemplate(t => ({ ...t, logo: '' }))}>Remove</button>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="qpv2-form-group">
+                                    <label className="qpv2-form-label">School Name</label>
+                                    <input className="form-control" value={newTemplate.schoolName} onChange={e => setNewTemplate({ ...newTemplate, schoolName: e.target.value })} style={{ borderRadius: '8px' }} />
+                                </div>
+                                <div className="qpv2-form-group">
+                                    <label className="qpv2-form-label">Address</label>
+                                    <input className="form-control" value={newTemplate.address || ''} onChange={e => setNewTemplate({ ...newTemplate, address: e.target.value })} style={{ borderRadius: '8px' }} />
+                                </div>
+                                <div className="qpv2-form-group" style={{ gridColumn: 'span 2' }}>
+                                    <label className="qpv2-form-label">Exam Title</label>
+                                    <input className="form-control" value={newTemplate.examTitle} onChange={e => setNewTemplate({ ...newTemplate, examTitle: e.target.value })} style={{ borderRadius: '8px' }} />
+                                </div>
+                            </div>
+                            <div className="qpv2-d-flex qpv2-justify-between" style={{ marginBottom: '10px' }}>
+                                <h5 style={{ margin: 0, fontWeight: 600, fontSize: '0.9rem' }}>Instructions</h5>
+                                <button className="qpv2-btn-secondary" onClick={() => setNewTemplate({ ...newTemplate, instructions: [...newTemplate.instructions, ''] })}>Add Instruction</button>
+                            </div>
+                            {newTemplate.instructions.map((inst, idx) => (
+                                <div key={idx} className="qpv2-d-flex qpv2-gap-2" style={{ marginBottom: '6px' }}>
+                                    <input className="form-control" style={{ flex: 1, borderRadius: '8px' }} value={inst} onChange={e => {
+                                        const insts = [...newTemplate.instructions]; insts[idx] = e.target.value; setNewTemplate({ ...newTemplate, instructions: insts });
+                                    }} placeholder={`Instruction ${idx + 1}`} />
+                                    <button className="qpv2-btn-danger" onClick={() => {
+                                        setNewTemplate(t => ({ ...t, instructions: t.instructions.filter((_, i) => i !== idx) }));
+                                    }}>&times;</button>
+                                </div>
+                            ))}
+                            <button className="qpv2-btn-primary mt-2" onClick={saveTemplate}>Save Template</button>
+
+                            <hr style={{ margin: '20px 0', borderColor: '#e1e5eb' }} />
+                            <h5 style={{ fontWeight: 600, marginBottom: '10px', fontSize: '0.9rem' }}>Existing Templates</h5>
+                            <div className="qpv2-d-flex" style={{ flexWrap: 'wrap', gap: '10px' }}>
+                                {templates.map(t => (
+                                    <div key={t._id} style={{ border: '1px solid #e1e5eb', borderRadius: '6px', padding: '10px', background: '#f9fbfc', flex: '1 1 220px' }}>
+                                        <div className="qpv2-d-flex qpv2-justify-between qpv2-align-center">
+                                            <div>
+                                                <strong>{t.schoolName}</strong>
+                                                <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{t.examTitle}</div>
+                                            </div>
+                                            <div className="qpv2-d-flex qpv2-gap-2">
+                                                <button className="qpv2-icon-btn edit" disabled={!hasWriteAccess} onClick={() => setNewTemplate(t)}><i className="fas fa-edit"></i></button>
+                                                <button className="qpv2-icon-btn delete" disabled={!canDelete} onClick={() => handleDeleteTemplate(t._id)}><i className="fas fa-trash"></i></button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
             )}
 
-            {isEditModalOpen && editQuestionData && (
-                <div className="qpv2-modal-overlay" onClick={() => setIsEditModalOpen(false)}>
-                    <div className="qpv2-modal-content" onClick={e => e.stopPropagation()}>
-                        <div className="qpv2-modal-header">
-                            <h4><i className="fas fa-edit text-primary"></i> Edit Question</h4>
-                            <button className="qpv2-modal-close" onClick={() => setIsEditModalOpen(false)}>&times;</button>
+            {/* Transfer Questions Drawer */}
+            <div className={`qpv2-drawer ${isTransferModalOpen ? 'open' : ''}`} style={{ width: '480px' }}>
+                <div className="qpv2-drawer-header">
+                    <h4>✈️ Transfer Selected Questions</h4>
+                    <button className="qpv2-drawer-close" onClick={() => setIsTransferModalOpen(false)}>&times;</button>
+                </div>
+                <div className="qpv2-drawer-body">
+                    <p style={{ fontSize: '0.85rem', color: '#4b5563', marginBottom: '16px' }}>
+                        Moving <strong>{selectedQuestions.length}</strong> selected questions to a new location.
+                    </p>
+                    <div className="qpv2-form-wrapper">
+                        <div className="qpv2-form-group">
+                            <label className="qpv2-form-label">Destination Class</label>
+                            <select className="qpv2-form-control" value={transferDestClass} onChange={onTransferClassChange}>
+                                <option value="">-- Select Class --</option>
+                                {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
+                            </select>
                         </div>
-                        <div className="qpv2-modal-body">
-                            {renderQuestionForm(editQuestionData, setEditQuestionData, true)}
+                        <div className="qpv2-form-group">
+                            <label className="qpv2-form-label">Destination Subject</label>
+                            <select className="qpv2-form-control" value={transferDestSubject} onChange={onTransferSubjectChange} disabled={!transferDestClass}>
+                                <option value="">-- Select Subject --</option>
+                                {transferFilteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                            </select>
                         </div>
-                        <div className="qpv2-modal-footer">
-                            <button className="qpv2-btn-outline" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
-                            <button className="qpv2-btn-primary" onClick={handleEditSubmit} disabled={questionUploading}>Update Question</button>
+                        <div className="qpv2-form-group">
+                            <label className="qpv2-form-label">Destination Chapter</label>
+                            <select className="qpv2-form-control" value={transferDestChapter} onChange={e => setTransferDestChapter(e.target.value)} disabled={!transferDestSubject}>
+                                <option value="">-- Select Chapter --</option>
+                                {transferChapterList.map((ch, idx) => <option key={idx} value={ch._id}>{ch.name}</option>)}
+                            </select>
                         </div>
                     </div>
                 </div>
-            )}
+                <div className="qpv2-drawer-footer">
+                    <button className="qpv2-btn-outline" onClick={() => setIsTransferModalOpen(false)}>Cancel</button>
+                    <button className="qpv2-btn-primary" onClick={handleTransferQuestions} disabled={questionUploading}>
+                        Confirm Transfer
+                    </button>
+                </div>
+            </div>
+
+            {/* Add New Question Drawer */}
+            <div className={`qpv2-drawer ${isAddModalOpen ? 'open' : ''}`}>
+                <div className="qpv2-drawer-header">
+                    <h4><i className="fas fa-plus-circle text-primary"></i> Add New Question</h4>
+                    <button className="qpv2-drawer-close" onClick={() => setIsAddModalOpen(false)}>&times;</button>
+                </div>
+                <div className="qpv2-drawer-body">
+                    {renderQuestionForm(newQuestion, setNewQuestion, false)}
+                </div>
+                <div className="qpv2-drawer-footer">
+                    <button className="qpv2-btn-outline" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
+                    <button className="qpv2-btn-primary" onClick={handleAddQuestion} disabled={questionUploading}>Save Question</button>
+                </div>
+            </div>
+
+            {/* Edit Question Drawer */}
+            <div className={`qpv2-drawer ${(isEditModalOpen && editQuestionData) ? 'open' : ''}`}>
+                <div className="qpv2-drawer-header">
+                    <h4><i className="fas fa-edit text-primary"></i> Edit Question</h4>
+                    <button className="qpv2-drawer-close" onClick={() => setIsEditModalOpen(false)}>&times;</button>
+                </div>
+                <div className="qpv2-drawer-body">
+                    {editQuestionData && renderQuestionForm(editQuestionData, setEditQuestionData, true)}
+                </div>
+                <div className="qpv2-drawer-footer">
+                    <button className="qpv2-btn-outline" onClick={() => setIsEditModalOpen(false)}>Cancel</button>
+                    <button className="qpv2-btn-primary" onClick={handleEditSubmit} disabled={questionUploading}>Update Question</button>
+                </div>
+            </div>
 
             {isTemplateModalOpen && (
                 <div className="qpv2-modal-overlay" onClick={() => setIsTemplateModalOpen(false)}>
@@ -1135,178 +1550,6 @@ export default function QuestionPaperV2() {
                 </div>
             )}
 
-            {isCreateQPModalOpen && (
-                <div className="qpv2-modal-overlay" onClick={() => setIsCreateQPModalOpen(false)}>
-                    <div className="qpv2-modal-content fullscreen" onClick={e => e.stopPropagation()}>
-                        <div className="qpv2-modal-header">
-                            <h4>📝 Create Question Paper - Builder</h4>
-                            <button className="qpv2-modal-close" onClick={() => setIsCreateQPModalOpen(false)}>&times;</button>
-                        </div>
-                        <div className="qpv2-modal-body" style={{ background: '#f4f6f8' }}>
-                            <div className="qpv2-toolbar-card" style={{ marginBottom: '12px' }}>
-                                <div className="qpv2-filter-group">
-                                    <select className="qpv2-select" value={selectedClass} onChange={onClassChange}>
-                                        <option value="">-- Class --</option>
-                                        {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
-                                    </select>
-                                    <select className="qpv2-select" value={selectedSubject} onChange={onSubjectChange} disabled={!selectedClass}>
-                                        <option value="">-- Subject --</option>
-                                        {filteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-                                    </select>
-                                    <select className="qpv2-select" value={selectedChapter} onChange={onChapterChange} disabled={!selectedSubject}>
-                                        <option value="">-- Chapter --</option>
-                                        {chapterList.map((ch, idx) => <option key={idx} value={ch._id}>{ch.name}</option>)}
-                                    </select>
-                                </div>
-                                <div className="qpv2-filter-group">
-                                    <select className="qpv2-select" value={activeSectionIndex !== null ? activeSectionIndex : ''} onChange={e => setActiveSectionIndex(parseInt(e.target.value))}>
-                                        <option value="">-- Assign to Section --</option>
-                                        {questionPaperSections.map((sec, idx) => <option key={idx} value={idx}>{sec.title}</option>)}
-                                    </select>
-                                    <button className="qpv2-btn-secondary" onClick={() => {
-                                        setQuestionPaperSections([...questionPaperSections, { title: `Section ${String.fromCharCode(65 + questionPaperSections.length)}`, questionIds: [] }]);
-                                        setActiveSectionIndex(questionPaperSections.length);
-                                    }}>➕ Add Section</button>
-                                </div>
-                            </div>
-
-                            <div className="qpv2-content-area">
-                                {questions.length > 0 && (
-                                    <>
-                                        <div className="qpv2-d-flex qpv2-justify-between qpv2-align-center" style={{ marginBottom: '10px' }}>
-                                            <h5 style={{ margin: 0, fontSize: '0.9rem' }}>Available Questions</h5>
-                                            <label className="qpv2-switch-wrapper">
-                                                <div className="qpv2-switch">
-                                                    <input type="checkbox" checked={selectedQuestions.length > 0 && selectedQuestions.length === getAllQuestionIds(questions).length} onChange={(e) => {
-                                                        setSelectedQuestions(e.target.checked ? getAllQuestionIds(questions) : []);
-                                                    }} />
-                                                    <span className="qpv2-slider"></span>
-                                                </div>
-                                                <span className="qpv2-switch-label">Select All</span>
-                                            </label>
-                                        </div>
-                                        <div className="qpv2-question-list">
-                                            {filteredAndSortedQuestions.map((q, i) => renderQuestionBlock(q, i))}
-                                        </div>
-                                    </>
-                                )}
-                            </div>
-                        </div>
-                        <div className="qpv2-modal-footer">
-                            <button className="qpv2-btn-outline" onClick={() => setIsCreateQPModalOpen(false)}>Cancel</button>
-                            <button className="qpv2-btn-primary" onClick={() => setIsSelectInstructionsModalOpen(true)}>
-                                <i className="fas fa-sliders-h" style={{ marginRight: '6px' }}></i> Select Instructions & Download
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            {isSelectInstructionsModalOpen && (
-                <div className="qpv2-modal-overlay" style={{ zIndex: 1100 }} onClick={() => setIsSelectInstructionsModalOpen(false)}>
-                    <div className="qpv2-modal-content" onClick={e => e.stopPropagation()} style={{ maxWidth: '700px' }}>
-                        <div className="qpv2-modal-header">
-                            <h4><i className="fas fa-sliders-h text-primary" style={{ marginRight: '6px' }}></i> Select Question Paper Details</h4>
-                            <button className="qpv2-modal-close" onClick={() => setIsSelectInstructionsModalOpen(false)}>&times;</button>
-                        </div>
-                        <div className="qpv2-modal-body">
-
-                            <div className="qpv2-section-card">
-                                <h6 style={{ marginBottom: '10px', fontWeight: 600, fontSize: '0.85rem' }}>Heading Details (Select a Template)</h6>
-                                <div className="qpv2-d-flex" style={{ gap: '10px', flexWrap: 'wrap', marginBottom: '14px' }}>
-                                    {templates.map(t => {
-                                        const isSelected = selectedSchoolName === t.schoolName && selectedAddress === t.address && selectedExamTitle === t.examTitle;
-                                        return (
-                                            <div key={t._id} onClick={() => {
-                                                setSelectedSchoolName(t.schoolName);
-                                                setSelectedAddress(t.address);
-                                                setSelectedExamTitle(t.examTitle);
-                                                if (t.logo) setSelectedLogo(t.logo);
-                                            }} style={{
-                                                flex: '1 1 180px',
-                                                padding: '8px',
-                                                border: `2px solid ${isSelected ? 'var(--button-color)' : '#e1e5eb'}`,
-                                                borderRadius: '6px',
-                                                cursor: 'pointer',
-                                                background: isSelected ? '#f0f7ff' : '#fff'
-                                            }}>
-                                                {t.logo && <img src={t.logo} alt="Logo" style={{ height: '30px', objectFit: 'contain', marginBottom: '4px' }} />}
-                                                <div style={{ fontWeight: 600, color: '#1f2937', fontSize: '0.8rem' }}>{t.schoolName}</div>
-                                                <div style={{ fontSize: '0.75rem', color: '#6b7280' }}>{t.address}</div>
-                                                <div style={{ fontSize: '0.75rem', color: 'var(--button-color)', marginTop: '2px' }}>{t.examTitle}</div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
-                                <div className="qpv2-form-grid">
-                                    <div className="qpv2-form-group">
-                                        <label className="qpv2-form-label">School Name</label>
-                                        <select className="qpv2-form-control" value={selectedSchoolName} onChange={e => setSelectedSchoolName(e.target.value)}>
-                                            <option value="">-- Select --</option>
-                                            {[...new Set(templates.map(t => t.schoolName))].map((n, i) => <option key={i} value={n}>{n}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="qpv2-form-group">
-                                        <label className="qpv2-form-label">Address</label>
-                                        <select className="qpv2-form-control" value={selectedAddress} onChange={e => setSelectedAddress(e.target.value)}>
-                                            <option value="">-- Select --</option>
-                                            {[...new Set(templates.map(t => t.address))].map((a, i) => <option key={i} value={a}>{a}</option>)}
-                                        </select>
-                                    </div>
-                                    <div className="qpv2-form-group">
-                                        <label className="qpv2-form-label">Exam Title</label>
-                                        <select className="qpv2-form-control" value={selectedExamTitle} onChange={e => setSelectedExamTitle(e.target.value)}>
-                                            <option value="">-- Select --</option>
-                                            {[...new Set(templates.map(t => t.examTitle))].map((t, i) => <option key={i} value={t}>{t}</option>)}
-                                        </select>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="qpv2-section-card">
-                                <div className="qpv2-d-flex qpv2-justify-between qpv2-align-center" style={{ marginBottom: '10px' }}>
-                                    <h6 style={{ margin: 0, fontWeight: 600, fontSize: '0.85rem' }}>Select Instructions</h6>
-                                    <label className="qpv2-switch-wrapper">
-                                        <div className="qpv2-switch">
-                                            <input type="checkbox" onChange={(e) => {
-                                                const all = Array.from(new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== '')));
-                                                setSelectedInstructions(e.target.checked ? all : []);
-                                            }} checked={selectedInstructions.length === Array.from(new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== ''))).length && selectedInstructions.length > 0} />
-                                            <span className="qpv2-slider"></span>
-                                        </div>
-                                        <span className="qpv2-switch-label">Select All</span>
-                                    </label>
-                                </div>
-                                <div className="qpv2-form-grid" style={{ gridTemplateColumns: '1fr' }}>
-                                    {Array.from(new Set(templates.flatMap(t => t.instructions).filter(i => i.trim() !== ''))).map((instruction, i) => (
-                                        <div key={i} className="qpv2-d-flex qpv2-align-center qpv2-gap-2">
-                                            <input type="checkbox" className="qpv2-question-checkbox" checked={selectedInstructions.includes(instruction)} onChange={() => toggleInstruction(instruction)} id={`inst-${i}`} style={{ marginTop: 0 }} />
-                                            <label htmlFor={`inst-${i}`} style={{ fontSize: '0.82rem', color: '#4b5563', cursor: 'pointer' }}>{instruction}</label>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="qpv2-section-card">
-                                <h6 style={{ marginBottom: '10px', fontWeight: 600, fontSize: '0.85rem' }}>Exam Details</h6>
-                                <div className="qpv2-form-grid">
-                                    <div className="qpv2-form-group"><input className="qpv2-form-control" placeholder="Exam Date" value={examDate} onChange={e => setExamDate(e.target.value)} /></div>
-                                    <div className="qpv2-form-group"><input className="qpv2-form-control" placeholder="Exam Time" value={examTime} onChange={e => setExamTime(e.target.value)} /></div>
-                                    <div className="qpv2-form-group"><input className="qpv2-form-control" placeholder="Max Marks" value={maxMarks} onChange={e => setMaxMarks(e.target.value)} /></div>
-                                </div>
-                            </div>
-
-                        </div>
-                        <div className="qpv2-modal-footer">
-                            <button className="qpv2-btn-outline" onClick={() => setIsSelectInstructionsModalOpen(false)}>Cancel</button>
-                            <button className="qpv2-btn-primary" onClick={handlePrint} disabled={!canDownload}>
-                                <i className="fas fa-download" style={{ marginRight: '6px' }}></i> Download PDF
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-
             {previewImageUrl && (
                 <div className="qpv2-modal-overlay" style={{ zIndex: 3000, background: 'rgba(0,0,0,0.8)' }} onClick={() => setPreviewImageUrl("")}>
                     <div style={{ position: 'relative' }}>
@@ -1322,7 +1565,7 @@ export default function QuestionPaperV2() {
                     sections={questionPaperSections}
                     questionMap={globalQuestionMap}
                     selectedQuestions={selectedQuestions}
-                    fullWidthImagesMap={fullWidthImagesMap}
+                    imageSizesMap={imageSizesMap}
                     schoolLogo={selectedLogo}
                     schoolName={selectedSchoolName}
                     address={selectedAddress}

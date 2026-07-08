@@ -6,38 +6,31 @@ import './Navigation.css';
 
 
 export default function Navigation() {
-    const themes = [
-        // Base Themes
-        "light",
-        "dark",
-
-        // Colored Themes
-        "midnight-red",
-        "Ocean",
-        "Deep Ocean",
-        "Earth",
-        "Rose Blush",
-        "Sunset Peach",
-        "Mint Cream",
-        "Lavender Day",
-        "Charcoal Cyan",
-        "Dracula Midnight",
-
-        // Soft Vibrant Themes
-        "Candy Pop",
-        "Lemon Zest",
-        "Watermelon Twist",
-        "Sakura Bloom",
-        "Grape Soda",
-
-        // Bright Solid Themes (Softened)
-        "Cherry Red",
-        "Neon Orange",
-        "Solar Yellow",
-        "Tropical Green",
-        "Electric Blue",
-        "Ultra Violet"
-    ];
+   const themes = [
+    "light",
+    "Dark",
+    "Liquid Glass",
+    "Crystal Glass",
+    "Neo Glass",
+    "Aurora Glass",
+    "Moonlight Glass",
+    "Ocean",
+    "Deep Ocean",
+    "Earth",
+    "Sunset Peach",
+    "Mint Cream",
+    "Lavender Day",
+    "Lemon Zest",
+    "Charcoal Cyan",
+    "Dracula Midnight",
+    "Cherry Red",
+    "Electric Blue",
+    "Tropical Green",
+    "Ultra Violet",
+    "Emerald Pro",
+    "Royal Indigo",
+    "Crimson Wine"
+];
 
     const [theme, setTheme] = useState(localStorage.getItem("theme") || "light");
 

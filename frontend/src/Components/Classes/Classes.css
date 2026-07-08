@@ -2,134 +2,343 @@
 
 .ClassesPage {
     width: 100%;
-    padding: 20px;
+    padding: 30px;
     background-color: var(--background-color);
     min-height: 100vh;
+    box-sizing: border-box;
+    position: relative;
+    overflow-x: hidden;
 }
 
-/* Sidebar: Class Buttons */
-.Classes {
+/* Header Section */
+.ClassesHeader {
     display: flex;
-    flex-direction: column;
-    gap: 10px;
-}
-
-.Classes .Class {
-    background-color: var(--card-bg-color, white);
-    color: var(--text-color, black);
-    border: 1.5px solid var(--border-color, #e2e8f0);
-    border-radius: 6px;
-    padding: 10px 15px;
-    box-shadow: 0px 3px 6px rgba(0, 0, 0, 0.05);
-    transition: all 0.2s ease-in-out;
-    text-align: center;
-}
-
-.Classes .Class:hover {
-    cursor: pointer;
-    background-color: var(--button-color);
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
-}
-
-.Classes .active {
-    background-color: var(--button-color);
-    color: white;
-    font-weight: bold;
-    box-shadow: 0px 5px 8px rgba(0, 0, 0, 0.5);
-}
-
-/* Subjects Button (Extra) */
-.SubjectsButton {
-    background-color: var(--button-color);
-    color: white;
-    border-radius: 5px;
-    padding: 10px 15px;
-    text-align: center;
-    transition: 0.3s ease-in-out;
-    box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.15);
-    font-weight: bold;
-}
-
-.SubjectsButton:hover {
-    background-color: var(--button-hover);
-    cursor: pointer;
-}
-
-.Class-Subjects {
-    padding: 10px;
-}
-
-/* Tables - Class Subjects & Exams */
-.Class-Subjects table,
-.Subjects table {
-    width: 100%;
-    border-collapse: collapse;
-}
-
-.Class-Subjects table th,
-.Subjects table th {
-    background-color: var(--button-color);
-    color: white;
-    padding: 8px;
-    text-align: left;
-}
-
-.Class-Subjects table td,
-.Subjects table td {
-    border: 1px solid var(--border-color, #ccc);
-    padding: 8px;
-    color: var(--text-color);
-}
-
-.Class-Subjects table tr:nth-child(even),
-.Subjects table tr:nth-child(even) {
-    background-color: var(--table-header-bg, #f9f9f9);
-}
-
-/* Form Inputs */
-.Subjects form,
-.Class-Subjects form {
-    display: flex;
-    gap: 10px;
-    flex-wrap: wrap;
+    justify-content: space-between;
     align-items: center;
-    margin-bottom: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 30px;
+    gap: 20px;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    padding-bottom: 20px;
 }
 
-.Subjects form input,
-.Class-Subjects form input {
-    flex: 1;
-    padding: 5px 10px;
-    border: 1.5px solid var(--border-color, #ccc);
-    border-radius: 4px;
-    background-color: var(--card-bg-color, #fff);
-    color: var(--text-color, #000);
+.HeaderTitle h2 {
+    font-size: 1.8rem;
+    font-weight: 700;
+    color: var(--text-color, #0f172a);
+    margin: 0 0 5px 0;
 }
 
-.Subjects form .btn,
-.Class-Subjects form .btn {
-    background-color: var(--button-color);
-    color: white;
-    border: none;
-    padding: 6px 12px;
-    border-radius: 4px;
-    transition: 0.2s;
-}
-
-.Subjects form .btn:hover,
-.Class-Subjects form .btn:hover {
-    background-color: var(--button-hover);
-}
-
-/* Table Responsiveness */
-.Class-Subjects table,
-.Subjects table {
+.HeaderTitle p {
+    color: var(--neutral-button-color, #64748b);
+    margin: 0;
     font-size: 0.95rem;
 }
 
-/* Optional card tweaks if needed */
-.card-header {
+/* 2-Column Dashboard Layout */
+.ClassesGrid {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    gap: 30px;
+}
+
+@media (max-width: 992px) {
+    .ClassesGrid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Sidebar Section */
+.SidebarCard {
+    background-color: var(--card-bg-color, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 12px;
+    padding: 20px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+    height: fit-content;
+}
+
+.SidebarCard h4 {
+    font-size: 1.1rem;
     font-weight: 600;
+    margin-bottom: 15px;
+    color: var(--text-color, #1e293b);
+}
+
+.ClassList {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 500px;
+    overflow-y: auto;
+    padding-right: 5px;
+}
+
+.ClassListItem {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    width: 100%;
+    padding: 12px 16px;
+    background-color: var(--table-header-bg, #f8fafc);
+    border: 1px solid var(--border-color, #cbd5e1);
+    color: var(--text-color, #334155);
+    border-radius: 8px;
+    font-weight: 500;
+    text-align: left;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.ClassListItem:hover {
+    border-color: var(--button-color);
+    background-color: var(--card-bg-color, #ffffff);
+    transform: translateX(4px);
+}
+
+.ClassListItem.active {
+    background-color: var(--button-color);
+    color: #ffffff;
+    border-color: var(--button-color);
+    box-shadow: 0 4px 12px rgba(254, 79, 45, 0.15);
+}
+
+/* Content Panel Area */
+.ContentPanel {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.OnboardingCard {
+    background-color: var(--card-bg-color, #ffffff);
+    border: 2px dashed var(--border-color, #cbd5e1);
+    border-radius: 12px;
+    padding: 60px 40px;
+    text-align: center;
+    color: var(--neutral-button-color, #64748b);
+}
+
+.OnboardingCard i {
+    font-size: 3rem;
+    color: var(--button-color);
+    margin-bottom: 20px;
+    opacity: 0.8;
+}
+
+.OnboardingCard h4 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-color, #1e293b);
+    margin-bottom: 10px;
+}
+
+/* Premium Card Panels */
+.ClassDetailsCard {
+    background-color: var(--card-bg-color, #ffffff);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 12px;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    overflow: hidden;
+}
+
+.CardHeader {
+    padding: 20px 24px;
+    background-color: var(--table-header-bg, #f8fafc);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.CardHeader h3 {
+    font-size: 1.2rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-color, #1e293b);
+}
+
+.CardHeaderBadge {
+    background-color: var(--button-color);
+    color: #ffffff;
+    font-size: 0.8rem;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 100px;
+}
+
+.CardBody {
+    padding: 24px;
+}
+
+/* Modern Minimal Tables (No scrollbar limits for subjects) */
+.MinimalTable {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.MinimalTable th {
+    background-color: var(--table-header-bg, #f8fafc);
+    color: var(--neutral-button-color, #64748b);
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    padding: 14px 20px;
+    border-bottom: 2px solid var(--border-color, #e2e8f0);
+}
+
+.MinimalTable td {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    color: var(--text-color, #334155);
+    font-size: 0.95rem;
+}
+
+.MinimalTable tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.MinimalTable tbody tr:hover td {
+    background-color: var(--table-header-bg, #f8fafc);
+}
+
+/* Premium Slide-over Drawer Panel */
+.ChapterDrawer {
+    position: fixed;
+    top: 0;
+    right: 0;
+    width: 460px;
+    height: 100vh;
+    background-color: var(--card-bg-color, #ffffff);
+    z-index: 1050;
+    box-shadow: -10px 0 35px rgba(0, 0, 0, 0.12);
+    display: flex;
+    flex-direction: column;
+    transform: translateX(100%);
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.ChapterDrawer.open {
+    transform: translateX(0);
+}
+
+@media (max-width: 576px) {
+    .ChapterDrawer {
+        width: 100%;
+    }
+}
+
+.DrawerHeader {
+    padding: 24px;
+    background-color: var(--table-header-bg, #f8fafc);
+    border-bottom: 1px solid var(--border-color, #e2e8f0);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.DrawerHeader h4 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    margin: 0;
+    color: var(--text-color, #0f172a);
+}
+
+.DrawerHeader p {
+    font-size: 0.85rem;
+    color: var(--neutral-button-color, #64748b);
+    margin: 4px 0 0 0;
+}
+
+.DrawerCloseBtn {
+    background: transparent;
+    border: none;
+    font-size: 1.25rem;
+    color: var(--neutral-button-color, #64748b);
+    cursor: pointer;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s;
+}
+
+.DrawerCloseBtn:hover {
+    color: var(--delete-button-color, #ef4444);
+    background-color: rgba(239, 68, 68, 0.1);
+}
+
+.DrawerBody {
+    padding: 24px;
+    flex: 1;
+    overflow-y: auto;
+}
+
+/* Drawer Backdrop Overlay */
+.DrawerOverlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(15, 23, 42, 0.4);
+    backdrop-filter: blur(2px);
+    z-index: 1040;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s, visibility 0.3s;
+}
+
+.DrawerOverlay.show {
+    opacity: 1;
+    visibility: visible;
+}
+
+/* Bullet Items in Drawer (No scrollbars) */
+.ChapterItemCard {
+    background-color: var(--table-header-bg, #f8fafc);
+    border: 1px solid var(--border-color, #e2e8f0);
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    display: flex;
+    gap: 12px;
+    align-items: center;
+}
+
+.ChapterItemCard:last-child {
+    margin-bottom: 0;
+}
+
+.ChapterItemNum {
+    background-color: var(--border-color, #cbd5e1);
+    color: var(--text-color, #334155);
+    font-weight: 700;
+    font-size: 0.8rem;
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.ChapterItemText {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--text-color, #0f172a);
+}
+
+.btn-outline-primary {
+    color: var(--button-color);
+    border-color: var(--button-color);
+}
+.btn-outline-primary:hover {
+    background-color: var(--button-color);
+    border-color: var(--button-color);
+    color: #ffffff;
 }

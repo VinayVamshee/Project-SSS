@@ -19,7 +19,7 @@ router.delete('/deleteSubject/:id', classController.deleteSubject);
 
 // Link
 router.post('/ClassSubjectLink', classController.classSubjectLink);
-router.get('/class-subjects', classController.getClassSubjects);
+router.get('/classsubjectlinks', classController.getClassSubjects);
 
 // Academic Years
 router.post('/AddAcademicYear', classController.addAcademicYear);

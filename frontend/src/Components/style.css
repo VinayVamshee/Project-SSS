@@ -1616,3 +1616,804 @@ hr{
         box-shadow .2s;
 
 }
+
+/* ==========================================================
+   GLASS AURORA
+========================================================== */
+
+/* ==========================================================
+   LIQUID AURORA GLASS
+========================================================== */
+
+[data-theme="Liquid Glass"]{
+
+    /* ==========================================================
+       BACKGROUND
+    ========================================================== */
+
+    --background-color:
+        radial-gradient(circle at 12% 18%, #7dd3fc 0%, transparent 28%),
+        radial-gradient(circle at 88% 12%, #c084fc 0%, transparent 28%),
+        radial-gradient(circle at 75% 88%, #5eead4 0%, transparent 30%),
+        radial-gradient(circle at 15% 82%, #f9a8d4 0%, transparent 28%),
+        linear-gradient(
+            135deg,
+            #eef6ff 0%,
+            #e8f0ff 28%,
+            #edf5ff 52%,
+            #f4ecff 75%,
+            #eefbff 100%
+        );
+
+    /* ==========================================================
+       GLASS SURFACES
+    ========================================================== */
+
+    --sidebar-bg:rgba(255,255,255,.14);
+
+    --navbar-bg:rgba(255,255,255,.12);
+
+    --card-bg-color:rgba(255,255,255,.18);
+
+    --modal-bg-color:rgba(255,255,255,.24);
+
+    --table-bg-color:rgba(255,255,255,.12);
+
+    --tab-bg-color:rgba(255,255,255,.10);
+
+    --dropdown-bg:rgba(255,255,255,.18);
+
+    /* ==========================================================
+       TEXT
+    ========================================================== */
+
+    --heading-color:#162033;
+
+    --text-color:#243244;
+
+    --text-secondary:#4b6077;
+
+    --text-muted:#70839b;
+
+    /* ==========================================================
+       PRIMARY
+    ========================================================== */
+
+    --primary-color:#8b5cf6;
+
+    --primary-hover:#7c3aed;
+
+    --primary-active:#6d28d9;
+
+    /* ==========================================================
+       BUTTONS
+    ========================================================== */
+
+    --button-color:rgba(139,92,246,.70);
+
+    --button-hover:rgba(124,58,237,.82);
+
+    --button-active:rgba(109,40,217,.95);
+
+    --button-text:#ffffff;
+
+    /* ==========================================================
+       INPUTS
+    ========================================================== */
+
+    --input-bg-color:rgba(255,255,255,.12);
+
+    --input-text-color:#1e293b;
+
+    --input-placeholder-color:#73849a;
+
+    --input-border-color:rgba(255,255,255,.30);
+
+    --input-hover-border:rgba(255,255,255,.55);
+
+    --input-focus-border:#8b5cf6;
+
+    --input-focus-shadow:rgba(139,92,246,.18);
+
+    /* ==========================================================
+       TABLES
+    ========================================================== */
+
+    --table-header-bg:rgba(255,255,255,.18);
+
+    --table-row-hover:rgba(255,255,255,.14);
+
+    --table-border:rgba(255,255,255,.15);
+
+    /* ==========================================================
+       TABS
+    ========================================================== */
+
+    --tab-background:rgba(255,255,255,.12);
+
+    --tab-hover:rgba(255,255,255,.25);
+
+    --tab-active:rgba(139,92,246,.85);
+
+    --tab-text:#344256;
+
+    --tab-active-text:#ffffff;
+
+    /* ==========================================================
+       BORDERS
+    ========================================================== */
+
+    --border-color:rgba(255,255,255,.22);
+
+    --card-border:rgba(255,255,255,.26);
+
+    --card-hover-border:rgba(255,255,255,.55);
+
+    /* ==========================================================
+       SHADOWS
+    ========================================================== */
+
+    --shadow-sm:
+        0 4px 18px rgba(31,38,135,.05);
+
+    --shadow-md:
+        0 12px 32px rgba(31,38,135,.08);
+
+    --shadow-lg:
+        0 25px 60px rgba(31,38,135,.15);
+
+    --card-shadow:
+        0 10px 30px rgba(31,38,135,.08),
+        inset 0 1px rgba(255,255,255,.35);
+
+    --card-hover-shadow:
+        0 25px 60px rgba(31,38,135,.16),
+        inset 0 1px rgba(255,255,255,.45);
+
+    /* ==========================================================
+       SCROLLBAR
+    ========================================================== */
+
+    --scrollbar-thumb:rgba(255,255,255,.35);
+
+    --scrollbar-track:transparent;
+
+}
+
+/* ==========================================================
+   CRYSTAL GLASS
+========================================================== */
+
+[data-theme="Crystal Glass"]{
+
+    /* Background */
+    --background-color:
+        radial-gradient(circle at 10% 20%, #ffffff 0%, transparent 28%),
+        radial-gradient(circle at 90% 15%, #dbeafe 0%, transparent 30%),
+        radial-gradient(circle at 80% 85%, #ede9fe 0%, transparent 28%),
+        radial-gradient(circle at 15% 90%, #cffafe 0%, transparent 30%),
+        linear-gradient(135deg,#fdfdff 0%,#eef5ff 40%,#f6f2ff 75%,#f8fdff 100%);
+
+    /* Glass */
+    --sidebar-bg:rgba(255,255,255,.22);
+    --navbar-bg:rgba(255,255,255,.18);
+    --card-bg-color:rgba(255,255,255,.20);
+    --modal-bg-color:rgba(255,255,255,.30);
+    --table-bg-color:rgba(255,255,255,.16);
+    --tab-bg-color:rgba(255,255,255,.16);
+    --dropdown-bg:rgba(255,255,255,.22);
+
+    /* Text */
+    --text-color:#243244;
+    --heading-color:#111827;
+    --text-secondary:#526274;
+    --text-muted:#7c8ea5;
+
+    /* Accent */
+    --primary-color:#6366f1;
+    --primary-hover:#4f46e5;
+    --primary-active:#4338ca;
+    --primary-light:#eef2ff;
+
+    --button-color:rgba(99,102,241,.72);
+    --button-hover:rgba(79,70,229,.85);
+    --button-active:rgba(67,56,202,.95);
+    --button-text:#ffffff;
+
+    /* Inputs */
+    --input-bg-color:rgba(255,255,255,.20);
+    --input-text-color:#1e293b;
+    --input-placeholder-color:#94a3b8;
+    --input-border-color:rgba(255,255,255,.45);
+    --input-hover-border:rgba(255,255,255,.70);
+    --input-focus-border:#6366f1;
+    --input-focus-shadow:rgba(99,102,241,.18);
+
+    /* Tables */
+    --table-header-bg:rgba(255,255,255,.24);
+    --table-row-bg:transparent;
+    --table-row-hover:rgba(255,255,255,.18);
+    --table-striped:rgba(255,255,255,.08);
+    --table-selected:rgba(99,102,241,.15);
+    --table-border:rgba(255,255,255,.18);
+
+    /* Tabs */
+    --tab-background:rgba(255,255,255,.18);
+    --tab-hover:rgba(255,255,255,.30);
+    --tab-active:rgba(99,102,241,.90);
+    --tab-text:#334155;
+    --tab-active-text:#ffffff;
+
+    /* Cards */
+    --card-header-bg:transparent;
+    --card-border:rgba(255,255,255,.50);
+    --card-hover-border:rgba(255,255,255,.80);
+
+    --card-shadow:
+        0 12px 35px rgba(15,23,42,.08),
+        inset 0 1px rgba(255,255,255,.70);
+
+    --card-hover-shadow:
+        0 20px 50px rgba(15,23,42,.14),
+        inset 0 1px rgba(255,255,255,.90);
+
+    /* Borders */
+    --border-color:rgba(255,255,255,.42);
+    --border-light:rgba(255,255,255,.22);
+    --border-dark:rgba(255,255,255,.60);
+
+    /* Scrollbar */
+    --scrollbar-thumb:rgba(255,255,255,.55);
+    --scrollbar-track:transparent;
+
+}
+
+/* ==========================================================
+   NEO GLASS
+========================================================== */
+
+[data-theme="Neo Glass"]{
+
+    /* Background */
+    --background-color:
+        radial-gradient(circle at 15% 20%, #475569 0%, transparent 28%),
+        radial-gradient(circle at 85% 12%, #312e81 0%, transparent 28%),
+        radial-gradient(circle at 75% 90%, #164e63 0%, transparent 30%),
+        linear-gradient(135deg,#151922 0%,#10131b 45%,#090b10 100%);
+
+    /* Glass */
+    --sidebar-bg:rgba(24,27,34,.48);
+    --navbar-bg:rgba(20,22,30,.42);
+    --card-bg-color:rgba(30,34,44,.42);
+    --modal-bg-color:rgba(32,36,48,.55);
+    --table-bg-color:rgba(28,32,42,.38);
+    --tab-bg-color:rgba(255,255,255,.05);
+    --dropdown-bg:rgba(30,34,44,.50);
+
+    /* Text */
+    --text-color:#f8fafc;
+    --heading-color:#ffffff;
+    --text-secondary:#d1d5db;
+    --text-muted:#94a3b8;
+
+    /* Accent */
+    --primary-color:#8b5cf6;
+    --primary-hover:#7c3aed;
+    --primary-active:#6d28d9;
+    --primary-light:#312e81;
+
+    --button-color:rgba(139,92,246,.78);
+    --button-hover:rgba(124,58,237,.90);
+    --button-active:rgba(109,40,217,.98);
+    --button-text:#ffffff;
+
+    /* Inputs */
+    --input-bg-color:rgba(255,255,255,.05);
+    --input-text-color:#ffffff;
+    --input-placeholder-color:#94a3b8;
+    --input-border-color:rgba(255,255,255,.10);
+    --input-hover-border:rgba(255,255,255,.22);
+    --input-focus-border:#8b5cf6;
+    --input-focus-shadow:rgba(139,92,246,.20);
+
+    /* Tables */
+    --table-header-bg:rgba(255,255,255,.08);
+    --table-row-bg:transparent;
+    --table-row-hover:rgba(255,255,255,.05);
+    --table-striped:rgba(255,255,255,.02);
+    --table-selected:rgba(139,92,246,.18);
+    --table-border:rgba(255,255,255,.08);
+
+    /* Tabs */
+    --tab-background:rgba(255,255,255,.05);
+    --tab-hover:rgba(255,255,255,.10);
+    --tab-active:#8b5cf6;
+    --tab-text:#e5e7eb;
+    --tab-active-text:#ffffff;
+
+    /* Cards */
+    --card-header-bg:transparent;
+    --card-border:rgba(255,255,255,.08);
+    --card-hover-border:rgba(255,255,255,.18);
+
+    --card-shadow:
+        0 18px 45px rgba(0,0,0,.40),
+        inset 0 1px rgba(255,255,255,.06);
+
+    --card-hover-shadow:
+        0 25px 60px rgba(0,0,0,.55),
+        inset 0 1px rgba(255,255,255,.10);
+
+    /* Borders */
+    --border-color:rgba(255,255,255,.10);
+    --border-light:rgba(255,255,255,.05);
+    --border-dark:rgba(255,255,255,.18);
+
+    /* Scrollbar */
+    --scrollbar-thumb:rgba(255,255,255,.18);
+    --scrollbar-track:transparent;
+
+}
+
+/* ==========================================================
+   AURORA GLASS
+========================================================== */
+
+[data-theme="Aurora Glass"]{
+
+    /* ==========================================================
+       PRIMARY
+    ========================================================== */
+
+    --primary-color:#7c3aed;
+    --primary-hover:#6d28d9;
+    --primary-active:#5b21b6;
+    --primary-light:#ede9fe;
+
+    /* ==========================================================
+       BACKGROUND
+    ========================================================== */
+
+    --background-color:
+        radial-gradient(circle at 8% 15%, #67e8f9 0%, transparent 28%),
+        radial-gradient(circle at 90% 12%, #c084fc 0%, transparent 28%),
+        radial-gradient(circle at 80% 82%, #34d399 0%, transparent 32%),
+        radial-gradient(circle at 18% 88%, #fb7185 0%, transparent 28%),
+        radial-gradient(circle at 50% 45%, #60a5fa 0%, transparent 25%),
+        linear-gradient(
+            135deg,
+            #eef9ff 0%,
+            #edf2ff 30%,
+            #f6f0ff 65%,
+            #f0fffc 100%
+        );
+
+    --sidebar-bg:rgba(255,255,255,.16);
+
+    --navbar-bg:rgba(255,255,255,.14);
+
+    --card-bg-color:rgba(255,255,255,.18);
+
+    --modal-bg-color:rgba(255,255,255,.26);
+
+    --table-bg-color:rgba(255,255,255,.14);
+
+    --tab-bg-color:rgba(255,255,255,.12);
+
+    --dropdown-bg:rgba(255,255,255,.18);
+
+    /* ==========================================================
+       TEXT
+    ========================================================== */
+
+    --text-color:#233247;
+
+    --heading-color:#101828;
+
+    --text-secondary:#526274;
+
+    --text-muted:#72849b;
+
+    --text-light:#94a3b8;
+
+    --link-color:#7c3aed;
+
+    --link-hover:#6d28d9;
+
+    /* ==========================================================
+       INPUTS
+    ========================================================== */
+
+    --input-bg-color:rgba(255,255,255,.15);
+
+    --input-text-color:#233247;
+
+    --input-placeholder-color:#8b9aad;
+
+    --input-border-color:rgba(255,255,255,.28);
+
+    --input-hover-border:rgba(255,255,255,.50);
+
+    --input-focus-border:#7c3aed;
+
+    --input-focus-shadow:rgba(124,58,237,.18);
+
+    --input-disabled-bg:rgba(255,255,255,.08);
+
+    /* ==========================================================
+       BUTTONS
+    ========================================================== */
+
+    --button-color:#7c3aed;
+
+    --button-hover:#6d28d9;
+
+    --button-active:#5b21b6;
+
+    --button-text:#ffffff;
+
+    --button-disabled:#d1d5db;
+
+    /* ==========================================================
+       ACTION BUTTONS
+    ========================================================== */
+
+    --edit-button-color:#3b82f6;
+
+    --edit-button-hover:#2563eb;
+
+    --delete-button-color:#ef4444;
+
+    --delete-button-hover:#dc2626;
+
+    --success-button-color:#10b981;
+
+    --success-button-hover:#059669;
+
+    --warning-button-color:#f59e0b;
+
+    --warning-button-hover:#d97706;
+
+    --neutral-button-color:#64748b;
+
+    --neutral-button-hover:#475569;
+
+    --info-button-color:#06b6d4;
+
+    --info-button-hover:#0891b2;
+
+    /* ==========================================================
+       TABLES
+    ========================================================== */
+
+    --table-header-bg:rgba(255,255,255,.24);
+
+    --table-row-bg:transparent;
+
+    --table-row-hover:rgba(255,255,255,.18);
+
+    --table-striped:rgba(255,255,255,.08);
+
+    --table-selected:rgba(124,58,237,.12);
+
+    --table-border:rgba(255,255,255,.16);
+
+    /* ==========================================================
+       TABS
+    ========================================================== */
+
+    --tab-background:rgba(255,255,255,.16);
+
+    --tab-hover:rgba(255,255,255,.28);
+
+    --tab-active:#7c3aed;
+
+    --tab-text:#334155;
+
+    --tab-active-text:#ffffff;
+
+    /* ==========================================================
+       CARDS
+    ========================================================== */
+
+    --card-header-bg:transparent;
+
+    --card-border:rgba(255,255,255,.32);
+
+    --card-hover-border:rgba(255,255,255,.65);
+
+    --card-shadow:
+        0 18px 40px rgba(80,100,255,.08),
+        0 8px 18px rgba(0,0,0,.04),
+        inset 0 1px rgba(255,255,255,.45);
+
+    --card-hover-shadow:
+        0 28px 70px rgba(80,100,255,.15),
+        inset 0 1px rgba(255,255,255,.60);
+
+    /* ==========================================================
+       BORDERS
+    ========================================================== */
+
+    --border-color:rgba(255,255,255,.25);
+
+    --border-light:rgba(255,255,255,.15);
+
+    --border-dark:rgba(255,255,255,.42);
+
+    /* ==========================================================
+       SCROLLBAR
+    ========================================================== */
+
+    --scrollbar-thumb:rgba(255,255,255,.45);
+
+    --scrollbar-track:transparent;
+
+    /* ==========================================================
+       STATUS
+    ========================================================== */
+
+    --success-bg:rgba(16,185,129,.12);
+
+    --warning-bg:rgba(245,158,11,.12);
+
+    --danger-bg:rgba(239,68,68,.12);
+
+    --info-bg:rgba(59,130,246,.12);
+
+    /* ==========================================================
+       BADGES
+    ========================================================== */
+
+    --badge-success:#10b981;
+
+    --badge-warning:#f59e0b;
+
+    --badge-danger:#ef4444;
+
+    --badge-info:#3b82f6;
+
+    /* ==========================================================
+       SHADOWS
+    ========================================================== */
+
+    --shadow-sm:
+        0 6px 18px rgba(15,23,42,.05);
+
+    --shadow-md:
+        0 18px 40px rgba(15,23,42,.08);
+
+    --shadow-lg:
+        0 35px 80px rgba(15,23,42,.14);
+
+}
+
+/* ==========================================================
+   MOONLIGHT GLASS
+========================================================== */
+
+[data-theme="Moonlight Glass"]{
+
+    /* ==========================================================
+       PRIMARY
+    ========================================================== */
+
+    --primary-color:#64748b;
+    --primary-hover:#475569;
+    --primary-active:#334155;
+    --primary-light:#f1f5f9;
+
+    /* ==========================================================
+       BACKGROUND
+    ========================================================== */
+
+    --background-color:
+        radial-gradient(circle at 12% 15%, #ffffff 0%, transparent 26%),
+        radial-gradient(circle at 88% 18%, #dbe4ef 0%, transparent 30%),
+        radial-gradient(circle at 78% 85%, #e8edf5 0%, transparent 30%),
+        linear-gradient(
+            145deg,
+            #fafbfc 0%,
+            #edf2f7 35%,
+            #e7edf4 70%,
+            #f7f9fb 100%
+        );
+
+    --sidebar-bg:rgba(255,255,255,.20);
+
+    --navbar-bg:rgba(255,255,255,.18);
+
+    --card-bg-color:rgba(255,255,255,.22);
+
+    --modal-bg-color:rgba(255,255,255,.28);
+
+    --table-bg-color:rgba(255,255,255,.16);
+
+    --tab-bg-color:rgba(255,255,255,.16);
+
+    --dropdown-bg:rgba(255,255,255,.22);
+
+    /* ==========================================================
+       TEXT
+    ========================================================== */
+
+    --text-color:#2b3442;
+
+    --heading-color:#111827;
+
+    --text-secondary:#566272;
+
+    --text-muted:#7b8794;
+
+    --text-light:#a0aec0;
+
+    --link-color:#64748b;
+
+    --link-hover:#334155;
+
+    /* ==========================================================
+       INPUTS
+    ========================================================== */
+
+    --input-bg-color:rgba(255,255,255,.16);
+
+    --input-text-color:#2b3442;
+
+    --input-placeholder-color:#94a3b8;
+
+    --input-border-color:rgba(255,255,255,.45);
+
+    --input-hover-border:rgba(255,255,255,.70);
+
+    --input-focus-border:#64748b;
+
+    --input-focus-shadow:rgba(100,116,139,.18);
+
+    --input-disabled-bg:rgba(255,255,255,.10);
+
+    /* ==========================================================
+       BUTTONS
+    ========================================================== */
+
+    --button-color:#64748b;
+
+    --button-hover:#475569;
+
+    --button-active:#334155;
+
+    --button-text:#ffffff;
+
+    --button-disabled:#d1d5db;
+
+    /* ==========================================================
+       ACTION BUTTONS
+    ========================================================== */
+
+    --edit-button-color:#3b82f6;
+
+    --edit-button-hover:#2563eb;
+
+    --delete-button-color:#ef4444;
+
+    --delete-button-hover:#dc2626;
+
+    --success-button-color:#10b981;
+
+    --success-button-hover:#059669;
+
+    --warning-button-color:#f59e0b;
+
+    --warning-button-hover:#d97706;
+
+    --neutral-button-color:#64748b;
+
+    --neutral-button-hover:#475569;
+
+    --info-button-color:#06b6d4;
+
+    --info-button-hover:#0891b2;
+
+    /* ==========================================================
+       TABLES
+    ========================================================== */
+
+    --table-header-bg:rgba(255,255,255,.25);
+
+    --table-row-bg:transparent;
+
+    --table-row-hover:rgba(255,255,255,.18);
+
+    --table-striped:rgba(255,255,255,.08);
+
+    --table-selected:rgba(100,116,139,.12);
+
+    --table-border:rgba(255,255,255,.20);
+
+    /* ==========================================================
+       TABS
+    ========================================================== */
+
+    --tab-background:rgba(255,255,255,.18);
+
+    --tab-hover:rgba(255,255,255,.30);
+
+    --tab-active:#64748b;
+
+    --tab-text:#334155;
+
+    --tab-active-text:#ffffff;
+
+    /* ==========================================================
+       CARDS
+    ========================================================== */
+
+    --card-header-bg:transparent;
+
+    --card-border:rgba(255,255,255,.50);
+
+    --card-hover-border:rgba(255,255,255,.80);
+
+    --card-shadow:
+        0 15px 35px rgba(15,23,42,.07),
+        inset 0 1px rgba(255,255,255,.85);
+
+    --card-hover-shadow:
+        0 25px 60px rgba(15,23,42,.12),
+        inset 0 1px rgba(255,255,255,1);
+
+    /* ==========================================================
+       BORDERS
+    ========================================================== */
+
+    --border-color:rgba(255,255,255,.45);
+
+    --border-light:rgba(255,255,255,.22);
+
+    --border-dark:rgba(255,255,255,.65);
+
+    /* ==========================================================
+       SCROLLBAR
+    ========================================================== */
+
+    --scrollbar-thumb:rgba(180,190,205,.55);
+
+    --scrollbar-track:transparent;
+
+    /* ==========================================================
+       STATUS
+    ========================================================== */
+
+    --success-bg:rgba(16,185,129,.10);
+
+    --warning-bg:rgba(245,158,11,.10);
+
+    --danger-bg:rgba(239,68,68,.10);
+
+    --info-bg:rgba(59,130,246,.10);
+
+    /* ==========================================================
+       BADGES
+    ========================================================== */
+
+    --badge-success:#10b981;
+
+    --badge-warning:#f59e0b;
+
+    --badge-danger:#ef4444;
+
+    --badge-info:#3b82f6;
+
+    /* ==========================================================
+       SHADOWS
+    ========================================================== */
+
+    --shadow-sm:
+        0 6px 18px rgba(15,23,42,.05);
+
+    --shadow-md:
+        0 16px 40px rgba(15,23,42,.08);
+
+    --shadow-lg:
+        0 30px 70px rgba(15,23,42,.12);
+
+}

@@ -96,11 +96,11 @@ app.use(tenantResolver);
 
 // Routes Registration
 app.use('/', require('./src/api/routes/auth.routes'));
+app.use('/', require('./src/api/routes/school.routes'));
 app.use('/', require('./src/api/routes/student.routes'));
 app.use('/', require('./src/api/routes/class.routes'));
 app.use('/', require('./src/api/routes/finance.routes'));
 app.use('/', require('./src/api/routes/question.routes'));
-app.use('/', require('./src/api/routes/school.routes'));
 app.use('/api/metadata', require('./src/api/routes/metadata.routes'));
 
 const PORT = process.env.PORT || 3001;
