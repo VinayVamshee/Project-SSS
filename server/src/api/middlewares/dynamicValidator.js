@@ -4,7 +4,25 @@ const FieldRegistry = require('../../domain/metadata/models/FieldRegistry');
 const dynamicValidator = (entityType) => {
   return async (req, res, next) => {
     try {
-      const template = await Template.findOne({ entity: entityType, status: 'active' }).populate('fields.fieldId');
+      if (req.body.AdmissionNo === "Re-Admission" || req.body.previousStudentId) {
+        return next();
+      }
+      const mongoose = require('mongoose');
+      const EntityRegistry = mongoose.models.EntityRegistry || require('../../domain/metadata/models/EntityRegistry');
+      
+      const entityDoc = await EntityRegistry.findOne({
+        $or: [
+          { key: entityType },
+          { key: entityType.toLowerCase() },
+          { key: entityType.replace(/([A-Z])/g, '_$1').toLowerCase().replace(/^_/, '') }
+        ]
+      });
+
+      if (!entityDoc) {
+        return next();
+      }
+
+      const template = await Template.findOne({ entity: entityDoc._id, status: 'active' }).populate('fields.fieldId');
       if (!template) {
         return next();
       }

@@ -83,6 +83,7 @@ export default function Developer() {
     label: '',
     description: '',
     entity: '',
+    purpose: '',
     scope: 'global',
     schools: [],
     fields: []
@@ -347,7 +348,7 @@ export default function Developer() {
 
   const handleStartEditingField = (field) => {
     setEditingFieldId(field._id);
-    
+
     let displayFieldObj = { field: 'name', source: 'core', path: '' };
     if (field.lookup?.displayField) {
       if (typeof field.lookup.displayField === 'string') {
@@ -466,6 +467,7 @@ export default function Developer() {
         label: '',
         description: '',
         entity: '',
+        purpose: '',
         scope: 'global',
         schools: [],
         fields: []
@@ -485,6 +487,7 @@ export default function Developer() {
       label: tpl.label || '',
       description: tpl.description || '',
       entity: tpl.entity?._id || tpl.entity || '',
+      purpose: tpl.purpose || '',
       scope: tpl.scope || 'global',
       schools: tpl.schools || [],
       fields: (tpl.fields || []).map(tf => ({
@@ -591,7 +594,7 @@ export default function Developer() {
       setLoading(false);
     }
   };
-  
+
   const handlePreviewSubmit = async (formData) => {
     setFormSubmittedData(formData);
     if (submitToBackend) {
@@ -1038,7 +1041,6 @@ export default function Developer() {
       {/* Tab 2: Field Registry */}
       {activeTab === 'fields' && (
         <div>
-          <h4 className="fw-bold mb-4"><i className="fa-solid fa-database me-2" style={{ color: 'var(--button-color)' }}></i>Global Field Registry</h4>
 
           <div className="row g-4">
             {/* Left Side: Form */}
@@ -1123,15 +1125,15 @@ export default function Developer() {
                           type="text"
                           className="form-control premium-input"
                           value={newField.lookup?.displayField?.field || ''}
-                          onChange={e => setNewField({ 
-                            ...newField, 
-                            lookup: { 
-                              ...newField.lookup, 
-                              displayField: { 
-                                ...(newField.lookup?.displayField || {}), 
-                                field: e.target.value 
-                              } 
-                            } 
+                          onChange={e => setNewField({
+                            ...newField,
+                            lookup: {
+                              ...newField.lookup,
+                              displayField: {
+                                ...(newField.lookup?.displayField || {}),
+                                field: e.target.value
+                              }
+                            }
                           })}
                           required
                         />
@@ -1141,15 +1143,15 @@ export default function Developer() {
                         <select
                           className="form-select premium-input"
                           value={newField.lookup?.displayField?.source || 'core'}
-                          onChange={e => setNewField({ 
-                            ...newField, 
-                            lookup: { 
-                              ...newField.lookup, 
-                              displayField: { 
-                                ...(newField.lookup?.displayField || {}), 
-                                source: e.target.value 
-                              } 
-                            } 
+                          onChange={e => setNewField({
+                            ...newField,
+                            lookup: {
+                              ...newField.lookup,
+                              displayField: {
+                                ...(newField.lookup?.displayField || {}),
+                                source: e.target.value
+                              }
+                            }
                           })}
                           required
                         >
@@ -1165,15 +1167,15 @@ export default function Developer() {
                           className="form-control premium-input"
                           placeholder="e.g. academic.section"
                           value={newField.lookup?.displayField?.path || ''}
-                          onChange={e => setNewField({ 
-                            ...newField, 
-                            lookup: { 
-                              ...newField.lookup, 
-                              displayField: { 
-                                ...(newField.lookup?.displayField || {}), 
-                                path: e.target.value 
-                              } 
-                            } 
+                          onChange={e => setNewField({
+                            ...newField,
+                            lookup: {
+                              ...newField.lookup,
+                              displayField: {
+                                ...(newField.lookup?.displayField || {}),
+                                path: e.target.value
+                              }
+                            }
                           })}
                         />
                       </div>
@@ -1456,6 +1458,25 @@ export default function Developer() {
               </select>
             </div>
             <div className="col-md-3">
+              <label className="premium-label">Template Purpose *</label>
+              <select
+                className="form-select premium-input"
+                value={newTemplate.purpose}
+                onChange={e => setNewTemplate({ ...newTemplate, purpose: e.target.value })}
+                required
+              >
+                <option value="">-- Choose Purpose --</option>
+                <option value="student_registration">Student Registration</option>
+                <option value="student_promotion">Student Promotion</option>
+                <option value="student_transfer">Student Transfer</option>
+                <option value="student_tc">Student TC</option>
+                <option value="student_import">Student Import</option>
+                <option value="fee_structure">Fee Structure</option>
+                <option value="student_fee_payment">Student Fee Payment</option>
+                <option value="employee_registration">Employee Registration</option>
+              </select>
+            </div>
+            <div className="col-md-3">
               <label className="premium-label">Scope Scope</label>
               <select
                 className="form-select premium-input"
@@ -1562,13 +1583,13 @@ export default function Developer() {
                                     const nextOrder = newTemplate.fields.length + 1;
                                     setNewTemplate({
                                       ...newTemplate,
-                                      fields: [...newTemplate.fields, { 
-                                        fieldId: f._id, 
-                                        order: nextOrder, 
-                                        required: false, 
-                                        unique: false, 
-                                        readOnly: false, 
-                                        hidden: false, 
+                                      fields: [...newTemplate.fields, {
+                                        fieldId: f._id,
+                                        order: nextOrder,
+                                        required: false,
+                                        unique: false,
+                                        readOnly: false,
+                                        hidden: false,
                                         width: 12,
                                         placeholder: '',
                                         helperText: '',
@@ -1994,6 +2015,7 @@ export default function Developer() {
                       label: '',
                       description: '',
                       entity: '',
+                      purpose: '',
                       scope: 'global',
                       schools: [],
                       fields: []
@@ -2025,6 +2047,7 @@ export default function Developer() {
                   <th>Key</th>
                   <th>Title</th>
                   <th>Entity</th>
+                  <th>Purpose</th>
                   <th>Scope</th>
                   <th>Fields Count</th>
                   <th>Status</th>
@@ -2036,7 +2059,8 @@ export default function Developer() {
                   <tr key={t._id}>
                     <td className="fw-bold">{t.key}</td>
                     <td>{t.label}</td>
-                     <td><span className="status-pill active">{typeof t.entity === 'object' ? (t.entity?.label || t.entity?.key || '') : t.entity}</span></td>
+                    <td><span className="status-pill active">{typeof t.entity === 'object' ? (t.entity?.label || t.entity?.key || '') : t.entity}</span></td>
+                    <td><span className="status-pill draft">{t.purpose || '---'}</span></td>
                     <td><span className="status-pill draft">{t.scope}</span></td>
                     <td>{t.fields?.length || 0} fields</td>
                     <td><span className={`status-pill ${t.status}`}>{t.status}</span></td>
@@ -2080,7 +2104,7 @@ export default function Developer() {
                   onChange={e => setPreviewTemplateId(e.target.value)}
                 >
                   <option value="">-- Choose Template --</option>
-                   {templates.filter(t => t.status === 'active').map(t => (
+                  {templates.filter(t => t.status === 'active').map(t => (
                     <option key={t._id} value={t._id}>{t.label} ({typeof t.entity === 'object' ? (t.entity?.label || t.entity?.key || '') : t.entity})</option>
                   ))}
                 </select>
@@ -2632,7 +2656,7 @@ export default function Developer() {
                           </span>
                         )}
                       </div>
-                      
+
                       <div className="small">
                         <strong className="d-block mb-1">Field Mappings (Field Registry Key &rarr; Mongoose Field):</strong>
                         {(!store.fields || (store.fields instanceof Map ? store.fields.size === 0 : Object.keys(store.fields).length === 0)) ? (
@@ -2665,7 +2689,7 @@ export default function Developer() {
                 )}
               </div>
             </div>
-            
+
             <div className="d-flex justify-content-end border-top pt-3 mt-4">
               <button className="btn btn-sm btn-outline-secondary px-4 py-1.5 fw-semibold" onClick={() => setSelectedEntityForView(null)}>Close</button>
             </div>

@@ -44,8 +44,7 @@ export default function AddNewStudent() {
                 const allTemplates = templatesRes.data?.data || [];
                 const studentTemplate = allTemplates.find(t => 
                     t.status === 'active' && 
-                    (t.entity?.key === 'student_enrollment' || t.entity === 'student_enrollment') &&
-                    t.key.includes('student_registration')
+                    t.purpose === 'student_registration'
                 );
 
                 if (studentTemplate) {
@@ -69,7 +68,7 @@ export default function AddNewStudent() {
         setLoading(true);
         setLoadingMessage('Registering student...');
         try {
-            await submitTemplateForm(templateForm.template._id, formData);
+            await submitTemplateForm(templateForm.template.id || templateForm.template._id, formData);
             setMessage('✅ Student registered successfully!');
             setLiveValues({});
             window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -83,8 +82,8 @@ export default function AddNewStudent() {
     // Helper functions to resolve display names for class and academic year in the print preview
     const getClassName = (id) => {
         if (!id) return '---';
-        const match = classes.find(c => c._id === id);
-        return match ? match.class : id;
+        const match = classes.find(c => c._id === id || c.class === id || c.name === id);
+        return match ? (match.class || match.name) : id;
     };
 
     const getAcademicYearName = (id) => {
@@ -110,7 +109,7 @@ export default function AddNewStudent() {
             )}
 
             <div className="row g-4">
-                {/* Left Column: The Form */}
+                {/* Left Column: The Dynamic Form */}
                 <div className="col-lg-6">
                     {templateForm && (
                         <div className="premium-card bg-white p-4 shadow-sm rounded border">
@@ -129,47 +128,45 @@ export default function AddNewStudent() {
                     )}
                 </div>
 
-                {/* Right Column: Premium Live Print Preview */}
+                {/* Right Column: Live print preview matching template style */}
                 <div className="col-lg-6">
                     <div className="premium-card bg-white p-4 shadow-sm rounded border sticky-top" style={{ top: '24px', zIndex: 1 }}>
                         <h5 className="fw-bold mb-3 text-secondary border-bottom pb-2">
                             <i className="fa-solid fa-print me-2"></i>Live Document Print Preview (A4 Form)
                         </h5>
                         
-                        {/* A4 Printout Sheet container */}
-                        <div className="a4-sheet p-5 border shadow-sm mx-auto bg-white text-dark position-relative" style={{ maxWidth: '100%', minHeight: '650px', fontSize: '12px', border: '1px solid #ddd' }}>
+                        <div className="a4-sheet p-5 border shadow-sm mx-auto bg-white text-dark position-relative" style={{ maxWidth: '100%', minHeight: '850px', fontSize: '11px', border: '1px solid #ddd' }}>
                             
                             {/* School Header */}
-                            <div className="text-center border-bottom pb-3 mb-4">
+                            <div className="text-center border-bottom pb-2 mb-3">
                                 <h4 className="fw-bold mb-1 text-uppercase text-primary" style={{ letterSpacing: '1px', fontSize: '18px' }}>Vamshee Techno School</h4>
                                 <p className="text-muted mb-0 small" style={{ fontSize: '10px' }}>Affiliated to CBSE, Academic Session {getAcademicYearName(liveValues.academicyear)}</p>
-                                <h6 className="fw-bold text-secondary mt-2 mb-0" style={{ letterSpacing: '0.5px' }}>OFFICIAL ADMISSION RECORD</h6>
+                                <h6 className="fw-bold text-secondary mt-1 mb-0" style={{ letterSpacing: '0.5px' }}>OFFICIAL ADMISSION RECORD</h6>
                             </div>
 
                             {/* Main Body */}
-                            <div className="row g-3">
-                                {/* Photo Box - Top Right */}
+                            <div className="row g-2">
+                                {/* Photo Box & Student Name Row */}
                                 <div className="col-8">
                                     <div className="mb-2">
-                                        <strong className="text-muted d-block" style={{ fontSize: '10px' }}>STUDENT NAME</strong>
-                                        <span className="fw-bold text-uppercase" style={{ fontSize: '14px' }}>
-                                            {liveValues.fullname || `${liveValues.firstname || ''} ${liveValues.middlename || ''} ${liveValues.lastname || ''}`.trim() || '---'}
+                                        <strong className="text-muted d-block" style={{ fontSize: '9px' }}>STUDENT FULL NAME</strong>
+                                        <span className="fw-bold text-uppercase" style={{ fontSize: '13px' }}>
+                                            {liveValues.fullname || '---'}
                                         </span>
                                     </div>
-                                    
-                                    <div className="row g-2 mt-1">
-                                        <div className="col-6">
-                                            <strong className="text-muted d-block" style={{ fontSize: '10px' }}>GENDER</strong>
-                                            <span className="fw-semibold">{liveValues.gender || '---'}</span>
+                                    <div className="row g-2">
+                                        <div className="col-8">
+                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>STUDENT NAME (HINDI)</strong>
+                                            <span className="fw-semibold">{liveValues.studentnamehindi || '---'}</span>
                                         </div>
-                                        <div className="col-6">
-                                            <strong className="text-muted d-block" style={{ fontSize: '10px' }}>DATE OF BIRTH</strong>
-                                            <span className="fw-semibold">{liveValues.dateofbirth || '---'}</span>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>SCHOOL TYPE</strong>
+                                            <span className="fw-semibold">{liveValues.schooltype || '---'}</span>
                                         </div>
                                     </div>
                                 </div>
                                 <div className="col-4 text-end">
-                                    <div className="d-inline-block border bg-light text-center rounded" style={{ width: '100px', height: '110px', overflow: 'hidden' }}>
+                                    <div className="d-inline-block border bg-light text-center rounded" style={{ width: '90px', height: '100px', overflow: 'hidden' }}>
                                         {liveValues.profilephoto ? (
                                             <img src={liveValues.profilephoto} alt="Student" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                                         ) : (
@@ -182,97 +179,194 @@ export default function AddNewStudent() {
                                 </div>
 
                                 {/* Section 1: Academic Information */}
-                                <div className="col-12 mt-4">
-                                    <div className="section-title fw-bold text-secondary border-bottom pb-1 mb-2" style={{ letterSpacing: '0.5px', fontSize: '11px' }}>
-                                        I. ACADEMIC ENROLLMENT DETAILS
+                                <div className="col-12 mt-2">
+                                    <div className="section-title fw-bold text-secondary border-bottom pb-1 mb-2" style={{ letterSpacing: '0.5px', fontSize: '10px' }}>
+                                        I. ACADEMIC & ENROLLMENT DETAILS
                                     </div>
-                                    <div className="row g-3">
+                                    <div className="row g-2">
                                         <div className="col-4">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>ADMISSION NUMBER</strong>
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>ADMISSION NUMBER</strong>
                                             <span className="font-monospace fw-semibold">{liveValues.admissionnumber || '---'}</span>
                                         </div>
                                         <div className="col-4">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>ROLL NUMBER</strong>
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>ROLL NUMBER</strong>
                                             <span className="font-monospace fw-semibold">{liveValues.rollnumber || '---'}</span>
                                         </div>
                                         <div className="col-4">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>ACADEMIC YEAR</strong>
-                                            <span className="fw-semibold">{getAcademicYearName(liveValues.academicyear)}</span>
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>ADMISSION DATE</strong>
+                                            <span className="fw-semibold">{liveValues.admissiondate || '---'}</span>
                                         </div>
-                                        <div className="col-6">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>CLASS</strong>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>CLASS</strong>
                                             <span className="fw-semibold">{getClassName(liveValues.class)}</span>
                                         </div>
-                                        <div className="col-6">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>SECTION</strong>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>SECTION</strong>
                                             <span className="fw-semibold">{liveValues.section || '---'}</span>
                                         </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>ACADEMIC YEAR</strong>
+                                            <span className="fw-semibold">{getAcademicYearName(liveValues.academicyear)}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>STUDENT STATUS</strong>
+                                            <span className="fw-semibold">{liveValues.studentstatus || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>ACADEMIC STATUS</strong>
+                                            <span className="fw-semibold">{liveValues.academic_status || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>JOINING DATE</strong>
+                                            <span className="fw-semibold">{liveValues.joiningdate || '---'}</span>
+                                        </div>
                                     </div>
                                 </div>
 
-                                {/* Section 2: Parent / Guardian Details */}
-                                <div className="col-12 mt-4">
-                                    <div className="section-title fw-bold text-secondary border-bottom pb-1 mb-2" style={{ letterSpacing: '0.5px', fontSize: '11px' }}>
-                                        II. PARENT / GUARDIAN INFORMATION
+                                {/* Section 2: Personal Profile */}
+                                <div className="col-12 mt-2">
+                                    <div className="section-title fw-bold text-secondary border-bottom pb-1 mb-2" style={{ letterSpacing: '0.5px', fontSize: '10px' }}>
+                                        II. STUDENT PERSONAL PROFILE
                                     </div>
-                                    <div className="row g-3">
+                                    <div className="row g-2">
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>GENDER</strong>
+                                            <span className="fw-semibold">{liveValues.gender || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>DATE OF BIRTH</strong>
+                                            <span className="fw-semibold">{liveValues.dateofbirth || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>BLOOD GROUP</strong>
+                                            <span className="fw-semibold">{liveValues.bloodgroup || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>CASTE</strong>
+                                            <span className="fw-semibold">{liveValues.caste || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>CASTE (HINDI)</strong>
+                                            <span className="fw-semibold">{liveValues.castenamehindi || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>CASTE CERTIFICATE NO.</strong>
+                                            <span className="fw-semibold">{liveValues.castecertificatenumber || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>CATEGORY</strong>
+                                            <span className="fw-semibold">{liveValues.category || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>RELIGION</strong>
+                                            <span className="fw-semibold">{liveValues.religion || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>MOTHER TONGUE</strong>
+                                            <span className="fw-semibold">{liveValues.mothertongue || '---'}</span>
+                                        </div>
                                         <div className="col-6">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>FATHER'S NAME</strong>
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>AADHAAR NUMBER</strong>
+                                            <span className="font-monospace fw-semibold">{liveValues.aadhaarnumber || '---'}</span>
+                                        </div>
+                                        <div className="col-6">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>BIRTH CERTIFICATE NO.</strong>
+                                            <span className="font-monospace fw-semibold">{liveValues.birthcertificatenumber || '---'}</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Section 3: Parent & Family Details */}
+                                <div className="col-12 mt-2">
+                                    <div className="section-title fw-bold text-secondary border-bottom pb-1 mb-2" style={{ letterSpacing: '0.5px', fontSize: '10px' }}>
+                                        III. FAMILY & GUARDIAN INFORMATION
+                                    </div>
+                                    <div className="row g-2">
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>FATHER'S NAME</strong>
                                             <span className="fw-semibold">{liveValues.fathername || '---'}</span>
                                         </div>
-                                        <div className="col-6">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>MOTHER'S NAME</strong>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>FATHER MOBILE</strong>
+                                            <span className="fw-semibold">{liveValues.fathermobilenumber || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>FATHER AADHAAR</strong>
+                                            <span className="fw-semibold">{liveValues.fatheraadhaarnumber || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>MOTHER'S NAME</strong>
                                             <span className="fw-semibold">{liveValues.mothername || '---'}</span>
                                         </div>
-                                        <div className="col-6">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>CONTACT PHONE</strong>
-                                            <span className="fw-semibold">{liveValues.mobilenumber || '---'}</span>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>MOTHER MOBILE</strong>
+                                            <span className="fw-semibold">{liveValues.mothermobilenumber || '---'}</span>
+                                        </div>
+                                        <div className="col-4">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>MOTHER AADHAAR</strong>
+                                            <span className="fw-semibold">{liveValues.motheraadhaarnumber || '---'}</span>
                                         </div>
                                         <div className="col-6">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>EMAIL ADDRESS</strong>
-                                            <span className="fw-semibold">{liveValues.email || '---'}</span>
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>STUDENT MOBILE</strong>
+                                            <span className="fw-semibold">{liveValues.studentmobilenumber || '---'}</span>
+                                        </div>
+                                        <div className="col-6">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>STUDENT EMAIL</strong>
+                                            <span className="fw-semibold">{liveValues.studentemail || '---'}</span>
                                         </div>
                                     </div>
                                 </div>
 
-                                {/* Section 3: Contact & Address Details */}
-                                <div className="col-12 mt-4">
-                                    <div className="section-title fw-bold text-secondary border-bottom pb-1 mb-2" style={{ letterSpacing: '0.5px', fontSize: '11px' }}>
-                                        III. PERMANENT CONTACT ADDRESS
+                                {/* Section 4: Previous Education & Address */}
+                                <div className="col-12 mt-2">
+                                    <div className="section-title fw-bold text-secondary border-bottom pb-1 mb-2" style={{ letterSpacing: '0.5px', fontSize: '10px' }}>
+                                        IV. PREVIOUS EDUCATION & CONTACT ADDRESS
                                     </div>
-                                    <div className="row g-3">
+                                    <div className="row g-2">
+                                        <div className="col-6">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>PREVIOUS SCHOOL</strong>
+                                            <span className="fw-semibold">{liveValues.previousschool || '---'}</span>
+                                        </div>
+                                        <div className="col-6">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>TC NUMBER</strong>
+                                            <span className="fw-semibold">{liveValues.tcnumber || '---'}</span>
+                                        </div>
                                         <div className="col-12">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>STREET ADDRESS</strong>
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>STREET ADDRESS</strong>
                                             <span className="fw-semibold">{liveValues.address || '---'}</span>
                                         </div>
-                                        <div className="col-4">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>CITY</strong>
+                                        <div className="col-3">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>CITY</strong>
                                             <span className="fw-semibold">{liveValues.city || '---'}</span>
                                         </div>
-                                        <div className="col-4">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>STATE</strong>
+                                        <div className="col-3">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>DISTRICT</strong>
+                                            <span className="fw-semibold">{liveValues.district || '---'}</span>
+                                        </div>
+                                        <div className="col-3">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>STATE</strong>
                                             <span className="fw-semibold">{liveValues.state || '---'}</span>
                                         </div>
-                                        <div className="col-4">
-                                            <strong className="text-muted d-block" style={{ fontSize: '9px' }}>PINCODE</strong>
+                                        <div className="col-3">
+                                            <strong className="text-muted d-block" style={{ fontSize: '8px' }}>PINCODE</strong>
                                             <span className="fw-semibold">{liveValues.pincode || '---'}</span>
                                         </div>
                                     </div>
                                 </div>
 
                                 {/* Footer Signatures */}
-                                <div className="col-12 mt-5 pt-4 position-absolute bottom-0 start-0 end-0 px-5 mb-5">
-                                    <div className="d-flex justify-content-between text-center pt-3 border-top" style={{ fontSize: '10px' }}>
+                                <div className="col-12 mt-4 pt-3 border-top">
+                                    <div className="d-flex justify-content-between text-center" style={{ fontSize: '9px' }}>
                                         <div>
-                                            <div className="mb-4"></div>
+                                            <div className="mb-3"></div>
                                             <strong>Parent's Signature</strong>
                                         </div>
                                         <div>
-                                            <div className="mb-4"></div>
+                                            <div className="mb-3"></div>
                                             <strong>Registrar / Admin Office</strong>
                                         </div>
                                         <div>
-                                            <div className="mb-4"></div>
+                                            <div className="mb-3"></div>
                                             <strong>Principal Stamp</strong>
                                         </div>
                                     </div>

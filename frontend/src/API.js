@@ -72,27 +72,72 @@ api.interceptors.response.use((response) => {
         });
     }
 
-    // 2. Map payments / getFees list response: academicYear Object -> Name String
+    // 2. Map payments / getFees list response: academicYear Object -> Name String and components -> flat properties
     if (url.includes('/getFees') || url.includes('/payments')) {
         const data = response.data;
-        if (Array.isArray(data)) {
-            response.data = data.map(item => ({
-                ...item,
-                academicYears: (item.academicYears || []).map(ay => ({
+        const mapPaymentItem = (item) => {
+            const mappedItem = { ...item };
+            if (item.academicYears && Array.isArray(item.academicYears)) {
+                mappedItem.academicYears = item.academicYears.map(ay => ({
                     ...ay,
-                    academicYear: ay.academicYear?.name || ay.academicYear?.year || ay.academicYear?.toString() || ""
-                }))
-            }));
+                    academicYear: ay.academicYear?.name || ay.academicYear?.year || ay.academicYear?.toString() || "",
+                    payments: (ay.payments || []).map(p => {
+                        const flatPayment = { ...p };
+                        if (p.components && Array.isArray(p.components)) {
+                            p.components.forEach(comp => {
+                                const key = comp.fieldId?.key || comp.fieldId?.fieldKey;
+                                if (key) {
+                                    flatPayment[key.toLowerCase()] = comp.amount;
+                                }
+                            });
+                        }
+                        return flatPayment;
+                    })
+                }));
+            }
+            if (item.payments && Array.isArray(item.payments)) {
+                mappedItem.payments = item.payments.map(p => {
+                    const flatPayment = { ...p };
+                    if (p.components && Array.isArray(p.components)) {
+                        p.components.forEach(comp => {
+                            const key = comp.fieldId?.key || comp.fieldId?.fieldKey;
+                            if (key) {
+                                flatPayment[key.toLowerCase()] = comp.amount;
+                            }
+                        });
+                    }
+                    return flatPayment;
+                });
+            }
+            return mappedItem;
+        };
+
+        if (Array.isArray(data)) {
+            response.data = data.map(mapPaymentItem);
+        } else if (data && typeof data === 'object') {
+            response.data = mapPaymentItem(data);
         }
     }
 
-    // 3. Map class fees response: academicYear Object -> Name String
+    // 3. Map class fees response: academicYear Object -> Name String and fees -> flat properties
     if (url.includes('/class-fees')) {
         const data = response.data;
         if (Array.isArray(data)) {
             response.data = data.map(item => ({
                 ...item,
-                academicYear: item.academicYear?.name || item.academicYear?.year || item.academicYear?.toString() || ""
+                academicYear: item.academicYear?.name || item.academicYear?.year || item.academicYear?.toString() || "",
+                classes: (item.classes || []).map(c => {
+                    const flatClassFee = { ...c };
+                    if (c.fees && Array.isArray(c.fees)) {
+                        c.fees.forEach(f => {
+                            const key = f.fieldId?.key || f.fieldId?.fieldKey;
+                            if (key) {
+                                flatClassFee[key.toLowerCase()] = f.amount;
+                            }
+                        });
+                    }
+                    return flatClassFee;
+                })
             }));
         }
     }

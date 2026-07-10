@@ -30,6 +30,21 @@ const TemplateSchema = new mongoose.Schema(
         default: ""
     },
 
+    purpose: {
+        type: String,
+        required: true,
+        enum: [
+            "student_registration",
+            "student_promotion",
+            "student_transfer",
+            "student_tc",
+            "student_import",
+            "fee_structure",
+            "student_fee_payment",
+            "employee_registration"
+        ]
+    },
+
     // ===========================================================
     // ENTITY
     // ===========================================================

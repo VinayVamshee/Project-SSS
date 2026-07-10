@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { getStudents, getAcademicYears, getClasses, getFees, getFeesByStudent, getClassFees, saveClassFees, saveFees, incrementReceipt, getReceiptBook, updateReceiptBook, getAllMasters, getFieldDefinitions } from '../../API';
+import { getStudents, getAcademicYears, getClasses, getFees, getFeesByStudent, getClassFees, saveFees, incrementReceipt, getReceiptBook, updateReceiptBook, getAllMasters, getFieldDefinitions, getTemplates, getTemplateForm } from '../../API';
 import boy from "../Images/bussiness-man.png";
 import { generatePdf } from "../DownloadReceipt/DownloadReceipt";
 import SearchFilterBar from "../Shared/SearchFilterBar";
@@ -41,6 +41,7 @@ export default function Payments() {
     const [students, setStudents] = useState([]);
     const [feesData, setFeesData] = useState([]);
     const [classFeesData, setClassFeesData] = useState([]);
+    const [feeTemplateFields, setFeeTemplateFields] = useState([]);
     const [selectedYear, setSelectedYear] = useState("");
     const [academicYears, setAcademicYears] = useState([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -50,6 +51,23 @@ export default function Payments() {
 
     const fetchData = async () => {
         try {
+            // Load fee template fields for dynamic total fee resolution
+            try {
+                const templatesRes = await getTemplates();
+                const allTemplates = templatesRes.data?.data || [];
+                const feeTemplate = allTemplates.find(t => 
+                    t.status === 'active' && 
+                    t.purpose === 'fee_structure'
+                );
+                if (feeTemplate) {
+                    const formRes = await getTemplateForm(feeTemplate._id);
+                    const fields = formRes.data?.data?.fields || [];
+                    setFeeTemplateFields(fields);
+                }
+            } catch (err) {
+                console.error("Failed to load fee template fields in Payments:", err);
+            }
+
             // 1. Get Student definitions fields
             const fieldsRes = await getFieldDefinitions();
             setPersonalInfoList(fieldsRes.data.data || []);
@@ -516,6 +534,8 @@ export default function Payments() {
         isNewStudent: false,
         payments: []
     });
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
 
     const [receiptBook, setReceiptBook] = useState({ bookName: "", currentNumber: 0 });
     const [editReceiptBook, setEditReceiptBook] = useState({ bookName: "", startNumber: 1 });
@@ -543,23 +563,21 @@ export default function Payments() {
     const handleOpenPaymentModal = async (student) => {
         setSelectedStudent(student);
 
-        // Reset payment details using setSinglePayment
-        setSinglePayment({
-            admission_fees: null,
-            development_fee: null,
-            exam_fee: null,
-            progress_card: null,
-            identity_card: null,
-            school_diary: null,
-            school_activity: null,
-            tuition_fee: null,
-            late_fee: null,
-            miscellaneous: null,
-            paymentDate: null,
+        const baseValues = {
+            paymentDate: new Date().toISOString().split('T')[0],
             paymentMethod: "Cash",
-            paymentBy: null,
-            amount: null
-        });
+            paymentBy: "",
+            amount: 0
+        };
+        if (feeTemplateFields) {
+            feeTemplateFields.forEach(tf => {
+                const key = (tf.fieldId?.key || tf.key || '').toLowerCase();
+                if (key) {
+                    baseValues[key] = "";
+                }
+            });
+        }
+        setSinglePayment(baseValues);
 
         try {
             const receiptRes = await getReceiptBook();
@@ -602,44 +620,61 @@ export default function Payments() {
             return;
         }
 
-        const admissionFees = Number(studentClassFee.admission_fees) || 0;
-        const developmentFee = Number(studentClassFee.development_fee) || 0;
-        const examFee = Number(studentClassFee.exam_fee) || 0;
-        const progressCard = Number(studentClassFee.progress_card) || 0;
-        const identityCard = Number(studentClassFee.identity_card) || 0;
-        const schoolDiary = Number(studentClassFee.school_diary) || 0;
-        const schoolActivity = Number(studentClassFee.school_activity) || 0;
-        const tuitionFee = Number(studentClassFee.tuition_fee) || 0;
-        const lateFee = Number(studentClassFee.late_fee) || 0;
-        const miscellaneous = Number(studentClassFee.miscellaneous) || 0;
+        let adjustedTotalFees = 0;
+        if (feeTemplateFields && feeTemplateFields.length > 0 && studentClassFee.fees && Array.isArray(studentClassFee.fees)) {
+            feeTemplateFields.forEach(tf => {
+                const tfFieldId = tf.fieldId?._id || tf.fieldId;
+                if (!tfFieldId) return;
 
-        let adjustedTotalFees = developmentFee + examFee + progressCard + identityCard + schoolDiary + schoolActivity + tuitionFee + lateFee + miscellaneous;
-        if (paymentData.isNewStudent) {
-            adjustedTotalFees += admissionFees;
+                const matchingFee = studentClassFee.fees.find(f => {
+                    const feeFieldId = f.fieldId?._id || f.fieldId;
+                    return feeFieldId && feeFieldId.toString() === tfFieldId.toString();
+                });
+
+                if (matchingFee) {
+                    const fieldKey = (tf.fieldId?.key || tf.key || '').toLowerCase();
+                    if (fieldKey === 'admission_fees' || fieldKey === 'admission_fee') {
+                        if (paymentData.isNewStudent) {
+                            adjustedTotalFees += Number(matchingFee.amount) || 0;
+                        }
+                    } else if (fieldKey !== 'total_fees' && fieldKey !== 'total_fee') {
+                        adjustedTotalFees += Number(matchingFee.amount) || 0;
+                    }
+                }
+            });
         }
+        let calculatedAmount = 0;
+        const components = [];
+        if (feeTemplateFields && feeTemplateFields.length > 0) {
+            feeTemplateFields.forEach(tf => {
+                const key = (tf.fieldId?.key || tf.key || '').toLowerCase();
+                if (key === 'class' || key === 'academicyear' || key === 'academic_year') return;
+
+                const amountVal = Number(singlePayment[key]) || 0;
+                calculatedAmount += amountVal;
+
+                const tfFieldId = tf.fieldId?._id || tf.fieldId;
+                if (tfFieldId) {
+                    components.push({
+                        fieldId: tfFieldId,
+                        amount: amountVal
+                    });
+                }
+            });
+        }
+
         const paymentDetails = {
             studentId: selectedStudent._id,
             academicYear: selectedYear,
             totalFees: adjustedTotalFees,
             discount: Number(paymentData.discount) || 0,
             isNewStudent: paymentData.isNewStudent,
-
-            // Payment Info
             newPayment: {
-                amount: Number((singlePayment.admission_fees || 0) + (singlePayment.development_fee || 0) + (singlePayment.exam_fee || 0) + (singlePayment.progress_card || 0) + (singlePayment.identity_card || 0) + (singlePayment.school_diary || 0) + (singlePayment.school_activity || 0) + (singlePayment.tuition_fee || 0) + (singlePayment.late_fee || 0) + (singlePayment.miscellaneous || 0)),
+                amount: calculatedAmount,
                 date: singlePayment.paymentDate ? new Date(singlePayment.paymentDate) : new Date(),
                 paymentMethod: singlePayment.paymentMethod,
                 paymentBy: singlePayment.paymentBy,
-                admission_fees: Number(singlePayment.admission_fees) || 0,
-                development_fee: Number(singlePayment.development_fee) || 0,
-                exam_fee: Number(singlePayment.exam_fee) || 0,
-                progress_card: Number(singlePayment.progress_card) || 0,
-                identity_card: Number(singlePayment.identity_card) || 0,
-                school_diary: Number(singlePayment.school_diary) || 0,
-                school_activity: Number(singlePayment.school_activity) || 0,
-                tuition_fee: Number(singlePayment.tuition_fee) || 0,
-                late_fee: Number(singlePayment.late_fee) || 0,
-                miscellaneous: Number(singlePayment.miscellaneous) || 0,
+                components: components,
                 receiptBookName: receiptBook.bookName || "",
                 receiptNumber: receiptBook.currentNumber || 0
             }
@@ -652,7 +687,19 @@ export default function Payments() {
 
             if (response.status === 200) {
                 alert("Payment added successfully!");
-                setSinglePayment({ paymentAmount: "", paymentDate: "", paymentBy: "", paymentMethod: "Cash", admission_fees: "", development_fee: "", exam_fee: "", progress_card: "", identity_card: "", school_diary: "", school_activity: "", tuition_fee: "", late_fee: "", miscellaneous: "" });
+                const baseReset = {
+                    paymentDate: new Date().toISOString().split('T')[0],
+                    paymentMethod: "Cash",
+                    paymentBy: "",
+                    amount: 0
+                };
+                if (feeTemplateFields) {
+                    feeTemplateFields.forEach(tf => {
+                        const key = (tf.fieldId?.key || tf.key || '').toLowerCase();
+                        if (key) baseReset[key] = "";
+                    });
+                }
+                setSinglePayment(baseReset);
                 setPaymentData(prev => ({ ...prev, discount: "0", isNewStudent: false, academicYear: "", totalFees: "" }));
                 fetchData();
             }
@@ -663,28 +710,6 @@ export default function Payments() {
         }
     };
 
-    const [classFees, setClassFees] = useState({
-        academicYear: '',
-        class_id: '',
-        admission_fees: '',
-        development_fee: '',
-        exam_fee: '',
-        progress_card: '',
-        identity_card: '',
-        school_diary: '',
-        school_activity: '',
-        tuition_fee: '',
-    });
-
-    const handleSubmitClassFees = async () => {
-        try {
-            await saveClassFees(classFees);
-            alert('Fee Structure Updated');
-            fetchData();
-        } catch (error) {
-            console.error("Error saving class fees", error);
-        }
-    };
 
     // eslint-disable-next-line
     const [latestId, setLatestId] = useState(null);
@@ -740,159 +765,7 @@ export default function Payments() {
                     <i className="fa-solid fa-file-excel me-1"></i>Download All Fee Sheets
                 </button>
 
-                <button className="btn btn-sm btn-outline-primary fw-bold" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFeeStructure">
-                    <i className="fa-solid fa-money-check-dollar me-1"></i>Fee Structure
-                </button>
             </SearchFilterBar>
-
-            <div className="collapse" id="collapseFeeStructure">
-                <div className="card card-body">
-                    <table className="table table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Class</th>
-                                <th>Admission Fees</th>
-                                <th>Development Fee</th>
-                                <th>Exam Fee</th>
-                                <th>Progress Card</th>
-                                <th>Identity Card</th>
-                                <th>School Diary</th>
-                                <th>School Activity</th>
-                                <th>Tuition Fee</th>
-                                <th>Total Fees</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {classFeesData.length > 0 &&
-                                classFeesData[0].classes
-                                    .filter(fee => fee.class_id && fee.class_id._id)
-                                    .sort((a, b) => {
-                                        const customOrder = [
-                                            "Pre-Nursery",
-                                            "Nursery",
-                                            "KG-1",
-                                            "KG-2",
-                                            "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
-                                            "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
-                                            "Class-11", "Class-12"
-                                        ];
-
-                                        const nameA = a.class_id.class || "";
-                                        const nameB = b.class_id.class || "";
-
-                                        const indexA = customOrder.indexOf(nameA);
-                                        const indexB = customOrder.indexOf(nameB);
-
-                                        // If not found, push to end
-                                        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-                                    })
-                                    .map((fee, idx) => {
-                                        const className = fee.class_id.class || "Deleted Class";
-                                        const total =
-                                            (fee.admission_fees || 0) +
-                                            (fee.development_fee || 0) +
-                                            (fee.exam_fee || 0) +
-                                            (fee.progress_card || 0) +
-                                            (fee.identity_card || 0) +
-                                            (fee.school_diary || 0) +
-                                            (fee.school_activity || 0) +
-                                            (fee.tuition_fee || 0) +
-                                            (fee.late_fee || 0) +
-                                            (fee.miscellaneous || 0);
-
-                                        return (
-                                            <tr key={idx}>
-                                                <td>{className}</td>
-                                                <td>{fee.admission_fees || 0}</td>
-                                                <td>{fee.development_fee || 0}</td>
-                                                <td>{fee.exam_fee || 0}</td>
-                                                <td>{fee.progress_card || 0}</td>
-                                                <td>{fee.identity_card || 0}</td>
-                                                <td>{fee.school_diary || 0}</td>
-                                                <td>{fee.school_activity || 0}</td>
-                                                <td>{fee.tuition_fee || 0}</td>
-                                                <td>{total}</td>
-                                            </tr>
-                                        );
-                                    })}
-                        </tbody>
-                    </table>
-
-
-                    <button type="button" className="btn btn-outline-success" data-bs-toggle="modal" data-bs-target="#AddClassFees" disabled={!(canEdit || canNoDeleteEdit)}>
-                        Add/Edit Fee Strucutre
-                    </button>
-
-
-                    <div className="modal fade" id="AddClassFees" tabIndex="-1" aria-labelledby="AddClassFeesLabel" aria-hidden="true">
-                        <div className="modal-dialog modal-xl">
-                            <div className="modal-content">
-                                <div className="modal-header">
-                                    <h5 className="modal-title" id="AddClassFeesLabel">Manage Class Fees</h5>
-                                    <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-
-                                <div className="modal-body">
-                                    <div className="row g-3">
-                                        <div className="col-md-6">
-                                            <label className="form-label">Academic Year</label>
-                                            <select className="form-control" value={classFees.academicYear} onChange={(e) => setClassFees({ ...classFees, academicYear: e.target.value })}>
-                                                <option value="">Select Year</option>
-                                                {academicYears.map((year) => (
-                                                    <option key={year._id} value={year.year}>{year.year}</option>
-                                                ))}
-                                            </select>
-                                        </div>
-
-                                        <div className="col-md-6">
-                                            <label className="form-label">Select Class</label>
-                                            <select className="form-control" name="class_id" value={classFees.class_id} onChange={(e) => setClassFees({ ...classFees, class_id: e.target.value })} >
-                                                <option value="">Select a class</option>
-                                                {classes.length > 0 ? (
-                                                    classes.map((cls) => (
-                                                        <option key={cls._id} value={cls._id}>{cls.class}</option>
-                                                    ))
-                                                ) : (
-                                                    <option disabled>No Classes Available</option>
-                                                )}
-                                            </select>
-                                        </div>
-
-                                        {/* Fees Fields (Grid of 4 per row) */}
-                                        {[
-                                            { label: "Admission Fees", key: "admission_fees" },
-                                            { label: "Development Fee", key: "development_fee" },
-                                            { label: "Exam Fee", key: "exam_fee" },
-                                            { label: "Progress Card", key: "progress_card" },
-                                            { label: "Identity Card", key: "identity_card" },
-                                            { label: "School Diary", key: "school_diary" },
-                                            { label: "School Activity", key: "school_activity" },
-                                            { label: "Tuition Fee", key: "tuition_fee" }
-                                        ].map(({ label, key }) => (
-                                            <div className="col-md-3" key={key}>
-                                                <label className="form-label">{label}</label>
-                                                <input
-                                                    type="number"
-                                                    className="form-control"
-                                                    name={key}
-                                                    value={classFees[key]}
-                                                    onChange={(e) => setClassFees({ ...classFees, [key]: e.target.value })}
-                                                />
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-
-                                <div className="modal-footer">
-                                    <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                                    <button type="button" className="btn btn-primary" onClick={handleSubmitClassFees}>Save Changes</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
-            </div>
 
             <div className="Payments">
 
@@ -923,9 +796,28 @@ export default function Payments() {
                             (clsFee.class_id?._id || clsFee.class_id)?.toString() === classId?.toString()
                         );
                         if (classFees) {
-                            let total = (classFees.development_fee || 0) + (classFees.exam_fee || 0) + (classFees.progress_card || 0) + (classFees.identity_card || 0) + (classFees.school_diary || 0) + (classFees.school_activity || 0) + (classFees.tuition_fee || 0) + (classFees.late_fee || 0) + (classFees.miscellaneous || 0);
-                            if (element.isNewStudent) {
-                                total += (classFees.admission_fees || 0);
+                            let total = 0;
+                            if (feeTemplateFields && feeTemplateFields.length > 0 && classFees.fees && Array.isArray(classFees.fees)) {
+                                feeTemplateFields.forEach(tf => {
+                                    const tfFieldId = tf.fieldId?._id || tf.fieldId;
+                                    if (!tfFieldId) return;
+
+                                    const matchingFee = classFees.fees.find(f => {
+                                        const feeFieldId = f.fieldId?._id || f.fieldId;
+                                        return feeFieldId && feeFieldId.toString() === tfFieldId.toString();
+                                    });
+
+                                    if (matchingFee) {
+                                        const fieldKey = (tf.fieldId?.key || tf.key || '').toLowerCase();
+                                        if (fieldKey === 'admission_fees' || fieldKey === 'admission_fee') {
+                                            if (element.isNewStudent) {
+                                                total += Number(matchingFee.amount) || 0;
+                                            }
+                                        } else if (fieldKey !== 'total_fees' && fieldKey !== 'total_fee') {
+                                            total += Number(matchingFee.amount) || 0;
+                                        }
+                                    }
+                                });
                             }
                             totalFees = total - (discount || 0);
                             paidFees = 0;
@@ -934,45 +826,50 @@ export default function Payments() {
 
                     return (
                         <div key={element._id}>
-
-                            <div className="Payment" key={idx} style={{ animationDelay: `${idx * 0.15}s` }}>
+                            <div className="Payment student-list" key={idx} style={{ animationDelay: `${idx * 0.05}s` }}>
                                 <input
                                     type="checkbox"
-                                    className=""
+                                    className="select-checkbox"
                                     checked={selectedStudents.some(s => s._id === element._id)}
                                     onChange={() => handleStudentCheckboxToggle(element)}
                                 />
-                                <div className="Name">
+                                <div className="student-list-view" style={{ flex: 1 }}>
                                     <img src={element.image || boy} alt="..." />
-                                    <strong>{element.name}</strong>
-                                </div>
-                                <div className="class">
-                                    <strong>Class:</strong> {studentClass}
-                                </div>
-                                <div className="fees-container">
-                                    <div className="fees-bar">
-                                        <div
-                                            className="fees-progress"
-                                            style={{ width: totalFees !== "NA" ? `${(paidFees / totalFees) * 100}%` : "0%" }}
-                                        />
+                                    <strong style={{ width: '220px' }}>{element.name}</strong>
+                                    <div style={{ width: '120px' }}><label>Class:</label> {studentClass}</div>
+                                    
+                                    <div className="fees-container" style={{ flex: 1, maxWidth: '280px' }}>
+                                        <div className="fees-bar">
+                                            <div
+                                                className="fees-progress"
+                                                style={{ 
+                                                    width: totalFees !== "NA" ? `${Math.min((paidFees / totalFees) * 100, 100)}%` : "0%"
+                                                }}
+                                            />
+                                        </div>
+                                        <span className="fees-text" style={{ fontSize: '0.85rem', fontWeight: 600 }}>
+                                            ₹{paidFees} / ₹{totalFees}
+                                        </span>
                                     </div>
-                                    <span className="fees-text">
-                                        ₹{paidFees} / ₹{totalFees}
-                                    </span>
                                 </div>
-                                <button type="button" className="btn btn-paymentHistory" onClick={() => handleDownloadExcel(element, feesData, selectedYear)} disabled={!canDownload}> <i className="fa-solid fa-file-arrow-down me-2" disabled={!canDownload}></i>Download History </button>
-                                <button className="btn btn-paymentHistory" type="button" data-bs-toggle="collapse" data-bs-target={`#HistoryCollapse-${element._id}`} aria-expanded="false" aria-controls={`HistoryCollapse-${element._id}`}><i className="fa-solid fa-clock-rotate-left me-1"></i> History<i className="fa-solid fa-caret-down ms-2"></i></button>
-                                <button type="button" className="btn btn-paymentHistory" data-bs-toggle="modal" data-bs-target="#addPaymentModal" onClick={() => handleOpenPaymentModal(element)} disabled={!(canEdit || canNoDeleteEdit)}>
-                                    <i className="fa-solid fa-credit-card me-1"></i> Add Payment
-                                </button>
+                                <div className="payment-actions d-flex gap-2">
+                                    <button type="button" className="btn btn-paymentHistory btn-sm" onClick={() => handleDownloadExcel(element, feesData, selectedYear)} disabled={!canDownload}> <i className="fa-solid fa-file-arrow-down me-1"></i>Download Sheet </button>
+                                    <button className="btn btn-paymentHistory btn-sm" type="button" data-bs-toggle="collapse" data-bs-target={`#HistoryCollapse-${element._id}`} aria-expanded="false" aria-controls={`HistoryCollapse-${element._id}`}><i className="fa-solid fa-clock-rotate-left me-1"></i> History<i className="fa-solid fa-caret-down ms-1"></i></button>
+                                    <button type="button" className="btn btn-paymentHistory btn-sm" onClick={() => {
+                                        handleOpenPaymentModal(element);
+                                        setIsSidebarOpen(true);
+                                    }} disabled={!(canEdit || canNoDeleteEdit)}>
+                                        <i className="fa-solid fa-credit-card me-1"></i> Add Payment
+                                    </button>
+                                </div>
                             </div>
 
-
                             <div className="collapse mt-2" id={`HistoryCollapse-${element._id}`}>
-                                <div className="card card-body">
-                                    <h6 style={{ textAlign: 'center' }}>Payment History</h6>
-                                    <table className="table table-bordered mt-3">
-                                        <thead className="table-dark">
+                                <div className="card card-body" style={{ backgroundColor: 'var(--hover-bg-color)', borderColor: 'var(--border-color)', borderRadius: '12px', padding: '20px' }}>
+                                    <h6 style={{ textAlign: 'center', fontWeight: 700, color: 'var(--text-color)', marginBottom: '16px' }}>Payment History</h6>
+                                    <div className="table-responsive">
+                                        <table className="setup-table mt-3" style={{ width: '100%' }}>
+                                            <thead>
                                             <tr>
                                                 <th>S. No</th>
                                                 <th>Receipt No.</th>
@@ -1012,6 +909,7 @@ export default function Payments() {
                                             )}
                                         </tbody>
                                     </table>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1019,35 +917,68 @@ export default function Payments() {
                 })}
             </div>
 
-            {/* Add Payment */}
-            <div className="modal fade" id="addPaymentModal" tabIndex="-1" aria-labelledby="addPaymentModalLabel" aria-hidden="true">
-                <div className="modal-dialog modal-lg">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h5 className="modal-title" id="addPaymentModalLabel">Add Payment for {selectedStudent?.name}</h5>
-                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            {/* Add Payment Sidebar */}
+            <div className={`payment-sidebar-backdrop ${isSidebarOpen ? 'show' : ''}`} onClick={() => setIsSidebarOpen(false)} />
+            <div className={`payment-sidebar ${isSidebarOpen ? 'open' : ''}`}>
+                <div className="sidebar-inner d-flex flex-column h-100">
+                    {/* Header */}
+                    <div className="sidebar-header d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center gap-2">
+                            <i className="fa-solid fa-credit-card" style={{ fontSize: '1.1rem', color: 'var(--primary-color, #3b82f6)' }}></i>
+                            <h5 className="fw-bold mb-0">Add Payment</h5>
                         </div>
-                        <div className="modal-body">
+                        <button type="button" className="btn-close" onClick={() => setIsSidebarOpen(false)} />
+                    </div>
 
-                            <div className="alert alert-info d-flex justify-content-between align-items-center">
-                                <span>Current Receipt: <strong>{receiptBook.bookName} - {receiptBook.currentNumber}</strong></span>
-                                <button className="btn btn-sm btn-save" data-bs-toggle="collapse" data-bs-target="#ReceiptCollapse" aria-expanded="false" aria-controls="ReceiptCollapse" onClick={() => setEditReceiptBook(receiptBook)}>Edit</button>
+                    {/* Body */}
+                    <div className="sidebar-body flex-grow-1 overflow-auto">
+                        {/* Student Info Card */}
+                        {selectedStudent && (
+                            <div className="payment-student-card mb-4">
+                                <div className="d-flex align-items-center gap-3">
+                                    <img
+                                        src={selectedStudent.image || boy}
+                                        alt={selectedStudent.name}
+                                        className="payment-student-avatar"
+                                    />
+                                    <div>
+                                        <h6 className="fw-bold mb-1">{selectedStudent.name}</h6>
+                                        <span className="badge bg-primary rounded-pill me-1">
+                                            {selectedStudent.AdmissionNo || selectedStudent.admissionNo || 'N/A'}
+                                        </span>
+                                        <span className="text-muted small">
+                                            {selectedStudent.academicYears?.find(y => y.academicYear === selectedYear)?.class || ''}
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
+                        )}
 
-                            <div className="collapse my-3" id="ReceiptCollapse">
-                                <div className="card card-body">
+                        {/* Receipt Info */}
+                        <div className="payment-receipt-bar mb-4">
+                            <div className="d-flex justify-content-between align-items-center">
+                                <div className="d-flex align-items-center gap-2">
+                                    <i className="fa-solid fa-receipt" style={{ color: 'var(--primary-color, #3b82f6)' }}></i>
+                                    <span className="fw-semibold small">Receipt: <strong>{receiptBook.bookName} - {receiptBook.currentNumber}</strong></span>
+                                </div>
+                                <button className="btn btn-sm btn-outline-secondary" onClick={() => setEditReceiptBook(receiptBook)} data-bs-toggle="collapse" data-bs-target="#ReceiptCollapseSidebar">
+                                    <i className="fa-solid fa-pen-to-square me-1"></i>Edit
+                                </button>
+                            </div>
+                            <div className="collapse mt-3" id="ReceiptCollapseSidebar">
+                                <div className="p-3 rounded" style={{ background: 'var(--table-header-bg, #f8fafc)', border: '1px solid var(--border-color, #e2e8f0)' }}>
                                     {editReceiptBook && (
-                                        <div className="mb-3 d-flex gap-2 align-items-end">
-                                            <div>
-                                                <label className="form-label">New Book Name</label>
-                                                <input type="text" className="form-control" value={editReceiptBook.bookName} onChange={(e) => setEditReceiptBook({ ...editReceiptBook, bookName: e.target.value })} />
+                                        <div className="d-flex gap-2 align-items-end">
+                                            <div className="flex-grow-1">
+                                                <label className="form-label small fw-semibold">Book Name</label>
+                                                <input type="text" className="form-control form-control-sm" value={editReceiptBook.bookName} onChange={(e) => setEditReceiptBook({ ...editReceiptBook, bookName: e.target.value })} />
                                             </div>
-                                            <div>
-                                                <label className="form-label">Start Number</label>
-                                                <input type="number" className="form-control" value={editReceiptBook.startNumber} onChange={(e) => setEditReceiptBook({ ...editReceiptBook, startNumber: parseInt(e.target.value) })} />
+                                            <div style={{ width: '100px' }}>
+                                                <label className="form-label small fw-semibold">Start #</label>
+                                                <input type="number" className="form-control form-control-sm" value={editReceiptBook.startNumber} onChange={(e) => setEditReceiptBook({ ...editReceiptBook, startNumber: parseInt(e.target.value) })} />
                                             </div>
                                             <button
-                                                className="btn btn-save"
+                                                className="btn btn-sm btn-primary"
                                                 onClick={async () => {
                                                     try {
                                                         const res = await updateReceiptBook(editReceiptBook);
@@ -1064,161 +995,105 @@ export default function Payments() {
                                     )}
                                 </div>
                             </div>
+                        </div>
 
-                            <div className="row">
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Admission Fees</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={singlePayment.admission_fees}
-                                        onChange={(e) => setSinglePayment({ ...singlePayment, admission_fees: parseFloat(e.target.value) })}
-                                        placeholder="Enter admission fees"
-                                    />
+                        {/* Fee Component Inputs */}
+                        <div className="payment-section-label mb-2">
+                            <i className="fa-solid fa-indian-rupee-sign me-2"></i>Fee Components
+                        </div>
+                        <div className="payment-fields-grid mb-4">
+                            {feeTemplateFields && feeTemplateFields.length > 0 ? (
+                                feeTemplateFields.map((tf, index) => {
+                                    const key = (tf.fieldId?.key || tf.key || '').toLowerCase();
+                                    if (key === 'class' || key === 'academicyear' || key === 'academic_year') return null;
+                                    return (
+                                        <div className="payment-field-item" key={index}>
+                                            <label className="form-label small fw-semibold">{tf.fieldId?.label || tf.label}</label>
+                                            <div className="input-group">
+                                                <span className="input-group-text">₹</span>
+                                                <input
+                                                    type="number"
+                                                    className="form-control"
+                                                    value={singlePayment[key] === undefined || singlePayment[key] === null ? "" : singlePayment[key]}
+                                                    onChange={(e) => setSinglePayment({
+                                                        ...singlePayment,
+                                                        [key]: parseFloat(e.target.value) || 0
+                                                    })}
+                                                    placeholder="0"
+                                                />
+                                            </div>
+                                        </div>
+                                    );
+                                })
+                            ) : (
+                                <div className="text-center text-muted py-3" style={{ gridColumn: '1 / -1' }}>
+                                    No active fee template fields found.
                                 </div>
+                            )}
+                        </div>
 
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Development Fee</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={singlePayment.development_fee}
-                                        onChange={(e) => setSinglePayment({ ...singlePayment, development_fee: parseFloat(e.target.value) })}
-                                        placeholder="Enter development fee"
-                                    />
-                                </div>
+                        {/* Payment Details Section */}
+                        <div className="payment-section-label mb-2">
+                            <i className="fa-solid fa-file-invoice me-2"></i>Payment Details
+                        </div>
+                        <div className="payment-fields-grid mb-4">
+                            <div className="payment-field-item">
+                                <label className="form-label small fw-semibold">Payment Date</label>
+                                <input type="date" className="form-control" value={singlePayment.paymentDate} onChange={(e) => setSinglePayment({ ...singlePayment, paymentDate: e.target.value })} />
+                            </div>
 
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Exam Fee</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={singlePayment.exam_fee}
-                                        onChange={(e) => setSinglePayment({ ...singlePayment, exam_fee: parseFloat(e.target.value) })}
-                                        placeholder="Enter exam fee"
-                                    />
-                                </div>
+                            <div className="payment-field-item">
+                                <label className="form-label small fw-semibold">Payment By</label>
+                                <input type="text" className="form-control" value={singlePayment.paymentBy} onChange={(e) => setSinglePayment({ ...singlePayment, paymentBy: e.target.value })} placeholder="Payer's name" />
+                            </div>
 
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Progress Card</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={singlePayment.progress_card}
-                                        onChange={(e) => setSinglePayment({ ...singlePayment, progress_card: parseFloat(e.target.value) })}
-                                        placeholder="Enter progress card fee"
-                                    />
-                                </div>
+                            <div className="payment-field-item">
+                                <label className="form-label small fw-semibold">Payment Method</label>
+                                <select className="form-select" value={singlePayment.paymentMethod} onChange={(e) => setSinglePayment({ ...singlePayment, paymentMethod: e.target.value })}>
+                                    <option value="Cash">Cash</option>
+                                    <option value="UPI">UPI</option>
+                                    <option value="Bank Transfer">Bank Transfer</option>
+                                    <option value="Card">Card</option>
+                                </select>
+                            </div>
 
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Identity Card</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={singlePayment.identity_card}
-                                        onChange={(e) => setSinglePayment({ ...singlePayment, identity_card: parseFloat(e.target.value) })}
-                                        placeholder="Enter identity card fee"
-                                    />
-                                </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">School Diary</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={singlePayment.school_diary}
-                                        onChange={(e) => setSinglePayment({ ...singlePayment, school_diary: parseFloat(e.target.value) })}
-                                        placeholder="Enter school diary fee"
-                                    />
-                                </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">School Activity</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={singlePayment.school_activity}
-                                        onChange={(e) => setSinglePayment({ ...singlePayment, school_activity: parseFloat(e.target.value) })}
-                                        placeholder="Enter school activity fee"
-                                    />
-                                </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Tuition Fee</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={singlePayment.tuition_fee}
-                                        onChange={(e) => setSinglePayment({ ...singlePayment, tuition_fee: parseFloat(e.target.value) })}
-                                        placeholder="Enter tuition fee"
-                                    />
-                                </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Late Fee</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={singlePayment.late_fee}
-                                        onChange={(e) => setSinglePayment({ ...singlePayment, late_fee: parseFloat(e.target.value) })}
-                                        placeholder="Enter late fee"
-                                    />
-                                </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Miscellaneous</label>
-                                    <input
-                                        type="number"
-                                        className="form-control"
-                                        value={singlePayment.miscellaneous}
-                                        onChange={(e) => setSinglePayment({ ...singlePayment, miscellaneous: parseFloat(e.target.value) })}
-                                        placeholder="Enter miscellaneous fees"
-                                    />
-                                </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Payment Date</label>
-                                    <input type="date" className="form-control" value={singlePayment.paymentDate} onChange={(e) => setSinglePayment({ ...singlePayment, paymentDate: e.target.value })} />
-                                </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Payment By</label>
-                                    <input type="text" className="form-control" value={singlePayment.paymentBy} onChange={(e) => setSinglePayment({ ...singlePayment, paymentBy: e.target.value })} placeholder="Enter payer's name" />
-                                </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">Payment Method</label>
-                                    <select className="form-select" value={singlePayment.paymentMethod} onChange={(e) => setSinglePayment({ ...singlePayment, paymentMethod: e.target.value })}>
-                                        <option value="Cash">Cash</option>
-                                        <option value="UPI">UPI</option>
-                                        <option value="Bank Transfer">Bank Transfer</option>
-                                        <option value="Card">Card</option>
-                                    </select>
-                                </div>
-
-                                <div className="col-md-6 mb-3 mt-4">
-                                    <input
-                                        type="checkbox"
-                                        className="form-check-input me-2"
-                                        id="isNewStudent"
-                                        checked={paymentData.isNewStudent}
-                                        onChange={(e) => setPaymentData({ ...paymentData, isNewStudent: e.target.checked })}
-                                    />
-                                    <label className="form-check-label" htmlFor="isNewStudent">Is New Student</label>
-                                </div>
-
-                                <div className="col-md-6 mb-3">
-                                    <label className="form-label">One Time Discount</label>
-                                    <input type="number" className="form-control" value={paymentData.discount} onChange={(e) => setPaymentData({ ...paymentData, discount: e.target.value })} placeholder="Enter discount amount" />
+                            <div className="payment-field-item">
+                                <label className="form-label small fw-semibold">Discount</label>
+                                <div className="input-group">
+                                    <span className="input-group-text">₹</span>
+                                    <input type="number" className="form-control" value={paymentData.discount} onChange={(e) => setPaymentData({ ...paymentData, discount: e.target.value })} placeholder="0" />
                                 </div>
                             </div>
                         </div>
 
-
-                        <div className="modal-footer">
-                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button type="button" className="btn btn-primary" onClick={submitPayment} disabled={!(canEdit || canNoDeleteEdit)}>Save Payment</button>
+                        {/* New Student Toggle */}
+                        <div className="payment-toggle-card mb-3">
+                            <div className="d-flex align-items-center justify-content-between">
+                                <div className="d-flex align-items-center gap-2">
+                                    <i className="fa-solid fa-user-plus" style={{ color: 'var(--primary-color, #3b82f6)' }}></i>
+                                    <span className="fw-semibold small">New Student (Include Admission Fee)</span>
+                                </div>
+                                <div className="form-check form-switch mb-0">
+                                    <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        id="isNewStudentSidebar"
+                                        checked={paymentData.isNewStudent}
+                                        onChange={(e) => setPaymentData({ ...paymentData, isNewStudent: e.target.checked })}
+                                    />
+                                </div>
+                            </div>
                         </div>
+                    </div>
+
+                    {/* Footer */}
+                    <div className="sidebar-footer d-flex justify-content-between align-items-center">
+                        <button type="button" className="btn btn-outline-secondary" onClick={() => setIsSidebarOpen(false)}>
+                            <i className="fa-solid fa-xmark me-1"></i>Cancel
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={() => { submitPayment(); setIsSidebarOpen(false); }} disabled={!(canEdit || canNoDeleteEdit)}>
+                            <i className="fa-solid fa-check me-1"></i>Save Payment
+                        </button>
                     </div>
                 </div>
             </div>

@@ -152,12 +152,8 @@ class MetadataService {
       seenIds.add(fieldIdStr);
 
       if (f.order === undefined || f.order === null) {
-        throw new AppError('Field order value is required.', 400);
+        f.order = fields.indexOf(f) + 1;
       }
-      if (seenOrders.has(f.order)) {
-        throw new AppError(`Duplicate order value found: ${f.order}`, 400);
-      }
-      seenOrders.add(f.order);
 
       // Validate regex pattern if provided
       if (f.validation && f.validation.pattern) {

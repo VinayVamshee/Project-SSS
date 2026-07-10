@@ -1,5 +1,4 @@
 import React, { useRef, useState } from 'react';
-import axios from 'axios';
 
 /**
  * ImageField — Dedicated image upload component with imgBB hosting integration.
@@ -14,16 +13,23 @@ export default function ImageField({ fieldKey, value, onChange, required, readOn
 
     setUploading(true);
     const formData = new FormData();
-    formData.append("key", "8451f34223c6e62555eec9187d855f8f");
-    formData.append("image", file);
+    formData.append('key', '8451f34223c6e62555eec9187d855f8f');
+    formData.append('image', file);
 
     try {
-      const res = await axios.post("https://api.imgbb.com/1/upload", formData);
-      const url = res.data.data.display_url || res.data.data.url;
-      onChange(url);
+      const response = await fetch("https://api.imgbb.com/1/upload", {
+        method: "POST",
+        body: formData
+      });
+      const data = await response.json();
+      if (data.success && (data.data?.display_url || data.data?.url)) {
+        onChange(data.data.display_url || data.data.url);
+      } else {
+        throw new Error(data.error?.message || "Upload failed");
+      }
     } catch (err) {
       console.error("imgBB upload failed:", err);
-      alert("Failed to upload image. Please try again.");
+      alert("Failed to upload image: " + err.message);
     } finally {
       setUploading(false);
     }

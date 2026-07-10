@@ -9,6 +9,7 @@ import { lookup as lookupAPI } from "../../../API";
 
 export default function LookupField({
   fieldKey,
+  fieldLabel,
   lookup,
   value,
   onChange,
@@ -23,7 +24,7 @@ export default function LookupField({
   const wrapperRef = useRef(null);
   const debounceRef = useRef(null);
 
-  const entityName = lookup?.entity || "records";
+  const entityName = fieldLabel || "record";
 
   const fetchRecords = useCallback(async (text = "") => {
 
@@ -37,11 +38,14 @@ export default function LookupField({
 
       setRecords(Array.isArray(data) ? data : []);
 
+      return Array.isArray(data) ? data : [];
+
     } catch (err) {
 
       console.error(err);
 
       setRecords([]);
+      return [];
 
     } finally {
 
@@ -58,6 +62,28 @@ export default function LookupField({
     fetchRecords("");
 
   }, [open, fetchRecords]);
+
+  // Resolve initial value to search text label
+  useEffect(() => {
+    if (value) {
+      const match = records.find(r => r.value === value);
+      if (match) {
+        setSearch(match.label);
+      } else {
+        const resolveLabel = async () => {
+          const loaded = await fetchRecords("");
+          const found = loaded.find(r => r.value === value);
+          if (found) {
+            setSearch(found.label);
+          }
+        };
+        resolveLabel();
+      }
+    } else {
+      setSearch("");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value, fieldKey]);
 
   useEffect(() => {
 

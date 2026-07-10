@@ -216,10 +216,25 @@ export default function Navigation() {
                                     <button
                                         className="btn btn-danger btn-sm mx-2"
                                         onClick={() => {
-                                            localStorage.removeItem("token");
-                                            localStorage.removeItem("userType");
-                                            localStorage.removeItem("username");
-                                            window.location.href = "/login";
+                                            const isImpersonating = localStorage.getItem("isImpersonating") === "true";
+                                            if (isImpersonating) {
+                                                localStorage.setItem("isDev", "true");
+                                                localStorage.setItem("userRole", localStorage.getItem("originalUserRole") || "");
+                                                localStorage.setItem("userType", localStorage.getItem("originalUserType") || "");
+                                                localStorage.removeItem("isImpersonating");
+                                                localStorage.removeItem("impersonatedUsername");
+                                                localStorage.removeItem("impersonatedRole");
+                                                localStorage.removeItem("originalIsDev");
+                                                localStorage.removeItem("originalUserRole");
+                                                localStorage.removeItem("originalUserType");
+                                                alert("🔄 Impersonation ended. Returned to Developer Mode.");
+                                                window.location.href = "/Developer";
+                                            } else {
+                                                localStorage.removeItem("token");
+                                                localStorage.removeItem("userType");
+                                                localStorage.removeItem("username");
+                                                window.location.href = "/login";
+                                            }
                                         }}
                                     >
                                         Logout

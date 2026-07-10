@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useCallback } from "react";
-import { getStudents, getClasses, getAcademicYears, getFees, getClassFees } from "../../API";
+import { getStudents, getClasses, getAcademicYears, getFees, getClassFees, getTemplates, getTemplateForm } from "../../API";
 import { useNavigate } from "react-router-dom";
 import {
     BarChart,
@@ -57,6 +57,7 @@ export default function OverView() {
     const [academicYears, setAcademicYears] = useState([]);
     const [allPayments, setAllPayments] = useState([]);
     const [classFeesData, setClassFeesData] = useState([]);
+    const [feeTemplateFields, setFeeTemplateFields] = useState([]);
 
     // The currently active academic year selection
     const [selectedYear, setSelectedYear] = useState("");
@@ -92,7 +93,7 @@ export default function OverView() {
             const studentList = (studentRes.data.students || []).map(s => ({
                 ...s,
                 academicYears: (s.enrollments || []).map(e => ({
-                    academicYear: e.academicYear?.name || e.academicYear?.toString() || "",
+                    academicYear: e.academicYear?.name || e.academicYear?.year || e.academicYear?.toString() || "",
                     class: e.class,
                     status: e.status
                 }))
@@ -115,6 +116,23 @@ export default function OverView() {
 
             setAllPayments(feesRes.data || []);
             setClassFeesData(classFeesRes.data || []);
+
+            // Load fee template fields for dynamic total fee resolution
+            try {
+                const templatesRes = await getTemplates();
+                const allTemplates = templatesRes.data?.data || [];
+                const feeTemplate = allTemplates.find(t => 
+                    t.status === 'active' && 
+                    t.purpose === 'fee_structure'
+                );
+                if (feeTemplate) {
+                    const formRes = await getTemplateForm(feeTemplate._id);
+                    const fields = formRes.data?.data?.fields || [];
+                    setFeeTemplateFields(fields);
+                }
+            } catch (err) {
+                console.error("Failed to load fee template fields in OverView:", err);
+            }
 
             // Auto select latest year
             const allYears = studentList.flatMap((s) => s.academicYears.map((y) => y.academicYear));
@@ -141,7 +159,7 @@ export default function OverView() {
 
         // 1. Calculate active students in selected year
         const activeInSelected = students.filter((student) =>
-            student.academicYears.some((year) => year.academicYear === selectedYear && year.status === "Active")
+            student.academicYears.some((year) => year.academicYear?.trim() === selectedYear?.trim() && (year.status || '').toLowerCase() === "active")
         );
         setActiveStudents(activeInSelected);
 
@@ -149,7 +167,7 @@ export default function OverView() {
         const classCount = {};
         students.forEach((student) => {
             const activeYearEntry = student.academicYears.find(
-                (y) => y.academicYear === selectedYear && y.status === "Active"
+                (y) => y.academicYear?.trim() === selectedYear?.trim() && (y.status || '').toLowerCase() === "active"
             );
             if (activeYearEntry) {
                 const cls = activeYearEntry.class;
@@ -163,7 +181,7 @@ export default function OverView() {
         const methodCounts = {};
 
         allPayments.forEach((fee) => {
-            const yearData = fee.academicYears?.find((y) => y.academicYear === selectedYear);
+            const yearData = fee.academicYears?.find((y) => y.academicYear?.trim() === selectedYear?.trim());
             if (yearData && yearData.payments && Array.isArray(yearData.payments)) {
                 yearData.payments.forEach(p => {
                     totalPaid += p.amount;
@@ -188,11 +206,17 @@ export default function OverView() {
             let totalPayableAfterDiscount = 0;
             const classWiseSummary = {};
 
+            console.log("📊 [Dashboard Recalc] selectedYear:", selectedYear);
+            console.log("📊 [Dashboard Recalc] classFeesData:", classFeesData);
+            console.log("📊 [Dashboard Recalc] total students loaded:", students.length);
+
             students.forEach(student => {
                 const academicYear = student.academicYears.find(
-                    y => y.academicYear === selectedYear && y.status === "Active"
+                    y => y.academicYear?.trim() === selectedYear?.trim() && (y.status || '').toLowerCase() === "active"
                 );
-                if (!academicYear) return;
+                if (!academicYear) {
+                    return;
+                }
 
                 const studentClassName = academicYear.class;
                 const classObj = classes.find(c => c.class === studentClassName);
@@ -205,7 +229,7 @@ export default function OverView() {
                 let paidAmount = 0;
 
                 if (studentPaymentRecord) {
-                    const yearData = studentPaymentRecord.academicYears?.find(y => y.academicYear === selectedYear);
+                    const yearData = studentPaymentRecord.academicYears?.find(y => y.academicYear?.trim() === selectedYear?.trim());
                     if (yearData) {
                         fullFee = yearData.totalFees || 0;
                         discount = yearData.discount || 0;
@@ -214,22 +238,34 @@ export default function OverView() {
                 }
 
                 if (fullFee === 0) {
-                    const yearFees = classFeesData.find(fee => fee.academicYear === selectedYear);
+                    const yearFees = classFeesData.find(fee => fee.academicYear?.trim() === selectedYear?.trim());
                     const classFees = yearFees?.classes.find(clsFee =>
                         (clsFee.class_id?._id || clsFee.class_id)?.toString() === classId?.toString()
                     );
                     if (classFees) {
-                        fullFee =
-                            (classFees.admission_fees || 0) * (student.isNewStudent ? 1 : 0) +
-                            (classFees.development_fee || classFees.development_fees || 0) +
-                            (classFees.exam_fee || 0) +
-                            (classFees.progress_card || 0) +
-                            (classFees.identity_card || 0) +
-                            (classFees.school_diary || 0) +
-                            (classFees.school_activity || 0) +
-                            (classFees.tuition_fee || 0) +
-                            (classFees.late_fee || 0) +
-                            (classFees.miscellaneous || 0);
+                        if (feeTemplateFields && feeTemplateFields.length > 0 && classFees.fees && Array.isArray(classFees.fees)) {
+                            feeTemplateFields.forEach(tf => {
+                                const tfFieldId = tf.fieldId?._id || tf.fieldId;
+                                if (!tfFieldId) return;
+
+                                // Find matching field entry in classFees.fees by fieldId
+                                const matchingFee = classFees.fees.find(f => {
+                                    const feeFieldId = f.fieldId?._id || f.fieldId;
+                                    return feeFieldId && feeFieldId.toString() === tfFieldId.toString();
+                                });
+
+                                if (matchingFee) {
+                                    const fieldKey = (tf.fieldId?.key || tf.key || '').toLowerCase();
+                                    if (fieldKey === 'admission_fees' || fieldKey === 'admission_fee') {
+                                        if (student.isNewStudent) {
+                                            fullFee += Number(matchingFee.amount) || 0;
+                                        }
+                                    } else if (fieldKey !== 'total_fees' && fieldKey !== 'total_fee') {
+                                        fullFee += Number(matchingFee.amount) || 0;
+                                    }
+                                }
+                            });
+                        }
                     }
                 }
 
@@ -253,7 +289,7 @@ export default function OverView() {
             setClassWiseSummaryData(classWiseSummary);
         }
 
-    }, [selectedYear, students, classes, classFeesData, allPayments]);
+    }, [selectedYear, students, classes, classFeesData, allPayments, feeTemplateFields]);
 
     // ==========================================
     // RECHARTS DATA FORMATTING

@@ -188,6 +188,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
         {renderLabel()}
         <LookupField
           fieldKey={key}
+          fieldLabel={label}
           lookup={lookup}
           value={value}
           onChange={handleChange}

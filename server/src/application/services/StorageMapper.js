@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 class StorageMapper {
   async map(payload, storageConfig) {
-    const FieldRegistry = mongoose.model('FieldRegistry');
+    const FieldRegistry = mongoose.models.FieldRegistry || require('../../domain/metadata/models/FieldRegistry');
     const mapped = {};
 
     // 1. Gather all core keys mapped across all models to prevent them from leaking into dynamicFields

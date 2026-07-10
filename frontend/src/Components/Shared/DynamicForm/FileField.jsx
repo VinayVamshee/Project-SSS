@@ -26,16 +26,16 @@ export default function FileField({ fieldKey, value, onChange, required, readOnl
         id={`file-${fieldKey}`}
         style={{ display: 'none' }}
         required={required}
-        disabled={readOnly}
+        disabled={true}
         onChange={handleChange}
       />
       <label
         htmlFor={`file-${fieldKey}`}
         className="df-file-label"
-        style={readOnly ? { opacity: 0.6, cursor: 'default' } : undefined}
+        style={{ opacity: 0.6, cursor: 'not-allowed' }}
       >
-        <i className="fa-solid fa-paperclip"></i>
-        {value ? 'Change file...' : 'Choose file...'}
+        <i className="fa-solid fa-ban"></i>
+        File Upload Disabled
       </label>
       {value && (
         <div className="df-file-name">

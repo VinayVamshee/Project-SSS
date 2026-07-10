@@ -6,12 +6,14 @@ import api, {
     getSubjects, addSubject, deleteSubject, updateSubject,
     getClassSubjects, linkClassSubject,
     getChaptersByClassAndSubject,
-    getExams, addExam
+    getExams, addExam,
+    getClassFees, getTemplates, getTemplateForm, submitTemplateForm
 } from '../../API';
 import './Master.css';
 import Notification from '../Shared/Notification';
 import LoadingIndicator from '../Shared/LoadingIndicator';
 import ConfirmModal from '../Shared/ConfirmModal';
+import DynamicForm from '../Shared/DynamicForm';
 
 export default function Master() {
     const navigate = useNavigate();
@@ -191,6 +193,45 @@ export default function Master() {
     const [newSubjectName, setNewSubjectName] = useState('');
     const [editSubjectId, setEditSubjectId] = useState(null);
     const [editSubjectName, setEditSubjectName] = useState('');
+
+    // Fee Structure Setup States
+    const [feeTemplateForm, setFeeTemplateForm] = useState(null);
+    const [classFeesData, setClassFeesData] = useState([]);
+    const [selectedFeeYear, setSelectedFeeYear] = useState('');
+
+    const fetchFeeStructureData = useCallback(async () => {
+        try {
+            // 1. Fetch template form
+            const templatesRes = await getTemplates();
+            const allTemplates = templatesRes.data?.data || [];
+            const feeTemplate = allTemplates.find(t => t.status === 'active' && t.purpose === 'fee_structure');
+            if (feeTemplate) {
+                const formRes = await getTemplateForm(feeTemplate._id);
+                setFeeTemplateForm(formRes.data?.data);
+            }
+
+            // 2. Fetch classes
+            const classRes = await getClasses();
+            const sortedClasses = (classRes.data.classes || []).sort((a, b) => parseInt(a.class) - parseInt(b.class));
+            setClasses(sortedClasses);
+
+            // 3. Fetch class fees
+            const classFeesResponse = await getClassFees();
+            const allFees = classFeesResponse.data || [];
+            const filteredFees = selectedFeeYear
+                ? allFees.filter(fee => fee.academicYear?.trim() === selectedFeeYear.trim())
+                : allFees;
+            setClassFeesData(filteredFees);
+        } catch (err) {
+            console.error("Failed to load fee structure setup data:", err);
+        }
+    }, [selectedFeeYear]);
+
+    useEffect(() => {
+        if (activeTab === 'fee_structure') {
+            fetchFeeStructureData();
+        }
+    }, [activeTab, fetchFeeStructureData]);
 
     const fetchAcademicsData = async () => {
         try {
@@ -557,6 +598,14 @@ export default function Master() {
                         <i className="fas fa-graduation-cap me-2"></i>Academics Setup
                     </button>
                 </li>
+                <li className="nav-item">
+                    <button
+                        className={`nav-link premium-nav-link ${activeTab === 'fee_structure' ? 'active' : ''}`}
+                        onClick={() => setActiveTab('fee_structure')}
+                    >
+                        <i className="fas fa-money-check-dollar me-2"></i>Fee Structure Setup
+                    </button>
+                </li>
             </ul>
 
             {/* Forms section */}
@@ -887,18 +936,171 @@ export default function Master() {
                         </div>
                     )}
                 </div>
+            ) : activeTab === 'fee_structure' ? (
+                <div className="fee-structure-setup-flat">
+                    <div className="setup-title-group mb-4">
+                        <h3 className="fw-bold d-flex align-items-center">
+                            <i className="fa-solid fa-money-check-dollar text-success me-2"></i>
+                            Class Fee Structure Setup
+                        </h3>
+                        <p className="text-muted">Define, adjust, and view class-level fee schedules for academic sessions.</p>
+                    </div>
+
+                    <div className="setup-content-card mb-4" style={{ padding: '1.5rem' }}>
+                        <div className="row align-items-center">
+                            <div className="col-md-6">
+                                <label className="premium-label fw-bold mb-2">
+                                    CHOOSE TARGET SESSION
+                                </label>
+                                <select 
+                                    className="form-select premium-input" 
+                                    value={selectedFeeYear} 
+                                    onChange={(e) => setSelectedFeeYear(e.target.value)}
+                                >
+                                    <option value="">-- Select Session Year --</option>
+                                    {academicYears.map((year) => (
+                                        <option key={year._id} value={year.year}>{year.year}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    {selectedFeeYear ? (
+                        <div className="row g-4">
+                            {/* Left Side: Create / Edit Form */}
+                            <div className="col-lg-5">
+                                <div className="setup-content-card h-100">
+                                    <div className="setup-title-group mb-3 pb-2 border-bottom">
+                                        <h4 className="fw-bold"><i className="fa-solid fa-pen-to-square me-2 text-primary"></i>Configure Schedule</h4>
+                                    </div>
+                                    <div className="p-1">
+                                        {feeTemplateForm ? (
+                                            <DynamicForm
+                                                template={feeTemplateForm}
+                                                mode="create"
+                                                onSubmit={async (formData) => {
+                                                    try {
+                                                        const payload = {
+                                                            ...formData,
+                                                            academicYear: selectedFeeYear
+                                                        };
+                                                        await submitTemplateForm(feeTemplateForm.template.id || feeTemplateForm.template._id, payload);
+                                                        showMessage('✅ Fee structure updated successfully!');
+                                                        fetchFeeStructureData();
+                                                    } catch (err) {
+                                                        console.error("Failed to submit template form", err);
+                                                        showMessage("❌ Failed to save: " + (err.response?.data?.message || err.message));
+                                                    }
+                                                }}
+                                                submitLabel="Save Fee Structure"
+                                            />
+                                        ) : (
+                                            <div className="text-center py-4 text-muted">
+                                                ⚠️ Fee structure template not configured.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Right Side: Active Fee List */}
+                            <div className="col-lg-7">
+                                <div className="setup-content-card h-100">
+                                    <div className="setup-title-group mb-3 pb-2 border-bottom">
+                                        <h4 className="fw-bold"><i className="fa-solid fa-list me-2 text-success"></i>Current Fee Structures ({selectedFeeYear})</h4>
+                                    </div>
+                                    <div className="p-1">
+                                        {feeTemplateForm ? (
+                                            <div className="table-responsive">
+                                                <table className="setup-table align-middle">
+                                                    <thead>
+                                                        <tr>
+                                                            <th className="fw-bold">Class</th>
+                                                            {feeTemplateForm.fields
+                                                                .filter(f => f.key !== 'class_id' && f.key !== 'class' && f.key !== 'academicYear' && f.key !== 'total_fees' && f.key !== 'total_fee')
+                                                                .map(field => (
+                                                                    <th key={field.key} className="fw-bold">{field.label}</th>
+                                                                ))}
+                                                            <th className="fw-bold text-success">Total Fees</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {classFeesData.length > 0 && classFeesData[0].classes ? (
+                                                            classFeesData[0].classes
+                                                                .filter(fee => fee.class_id && fee.class_id._id)
+                                                                .sort((a, b) => {
+                                                                    const customOrder = [
+                                                                        "Pre-Nursery", "Nursery", "KG-1", "KG-2",
+                                                                        "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
+                                                                        "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
+                                                                        "Class-11", "Class-12"
+                                                                    ];
+                                                                    const nameA = a.class_id.class || "";
+                                                                    const nameB = b.class_id.class || "";
+                                                                    const indexA = customOrder.indexOf(nameA);
+                                                                    const indexB = customOrder.indexOf(nameB);
+                                                                    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+                                                                })
+                                                                .map((fee, idx) => {
+                                                                    const className = fee.class_id.class || "Deleted Class";
+                                                                    const feeColumns = feeTemplateForm.fields.filter(
+                                                                        f => f.key !== 'class_id' && f.key !== 'class' && f.key !== 'academicYear' && f.key !== 'total_fees' && f.key !== 'total_fee'
+                                                                    );
+                                                                    const total = feeColumns.reduce((sum, field) => {
+                                                                        return sum + (Number(fee[field.key]) || 0);
+                                                                    }, 0);
+
+                                                                    return (
+                                                                        <tr key={idx}>
+                                                                            <td className="fw-semibold">{className}</td>
+                                                                            {feeColumns.map(field => (
+                                                                                <td key={field.key}>₹{(Number(fee[field.key]) || 0).toLocaleString('en-IN')}</td>
+                                                                            ))}
+                                                                            <td className="fw-bold text-success">₹{total.toLocaleString('en-IN')}</td>
+                                                                        </tr>
+                                                                    );
+                                                                })
+                                                        ) : (
+                                                            <tr>
+                                                                <td colSpan={feeTemplateForm.fields.filter(f => f.key !== 'class_id' && f.key !== 'class' && f.key !== 'academicYear').length + 2} className="text-center py-4 text-muted">
+                                                                    No fee structures configured for this Academic Year.
+                                                                </td>
+                                                            </tr>
+                                                        )}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-4 text-muted">
+                                                ⚠️ Fee structure template is not configured.
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="setup-content-card p-5 text-center">
+                            <i className="fa-solid fa-calendar-day fa-3x mb-3 text-muted"></i>
+                            <h5 className="fw-bold">No Academic Session Selected</h5>
+                            <p className="text-muted mb-0">Please choose an academic rollover session year from the dropdown menu above to display and configure class fee structures.</p>
+                        </div>
+                    )}
+                </div>
             ) : (
                 <div className="row g-4">
                     <div className="col-lg-8">
-                        <div className="premium-card">
-                            <div className="card-header-gradient d-flex align-items-center">
-                                <i className="fas fa-edit me-2"></i>
-                                {activeTab === 'profile' && "Update School Contact Metadata"}
-                                {activeTab === 'branding' && "Modify Theme Preset Settings"}
-                                {activeTab === 'sessions' && "Manage Operational Calendars"}
+                        <div className="setup-content-card">
+                            <div className="setup-title-group mb-3 pb-2 border-bottom">
+                                <h4 className="fw-bold">
+                                    <i className="fas fa-edit text-primary me-2"></i>
+                                    {activeTab === 'profile' && "Update School Contact Metadata"}
+                                    {activeTab === 'branding' && "Modify Theme Preset Settings"}
+                                    {activeTab === 'sessions' && "Manage Operational Calendars"}
+                                </h4>
                             </div>
-
-                            <div className="card-body p-4">
+                            <div className="p-1">
                                 {activeTab === 'profile' && (
                                     <div className="row g-3">
                                         <div className="col-12">
@@ -990,7 +1192,7 @@ export default function Master() {
 
                     {/* Sidebar Preview Box */}
                     <div className="col-lg-4">
-                        <div className="premium-card h-100 p-4 d-flex flex-column justify-content-between align-items-center text-center bg-white">
+                        <div className="setup-content-card h-100 p-4 d-flex flex-column justify-content-between align-items-center text-center">
                             <div className="w-100">
                                 <h4 className="fw-bold mb-3">Live Branding Preview</h4>
                                 <p className="text-muted small mb-4">Preview of how the branding matches dynamically with the client dashboard layouts.</p>

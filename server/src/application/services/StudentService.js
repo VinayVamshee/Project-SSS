@@ -1,6 +1,14 @@
 const mongoose = require('mongoose');
 const StudentEnrollmentRepository = require('../../domain/student/repositories/StudentEnrollmentRepository');
 
+// Register all required models to avoid runtime missing schema errors
+require('../../domain/student/models/Student');
+require('../../domain/student/models/StudentEnrollment');
+require('../../domain/academics/models/Classes');
+require('../../domain/academics/models/AcademicYear');
+require('../../domain/metadata/models/FieldRegistry');
+require('../../domain/metadata/models/Template');
+
 class StudentService {
   async registerStudent(schoolId, data) {
     const Template = mongoose.model('Template');
@@ -16,16 +24,37 @@ class StudentService {
       throw new Error("No active student registration template found.");
     }
 
+    // Resolve academicYear (name or ID) - Prioritize new year from academicYears array on re-admission
+    let academicYearId = (data.academicYears && data.academicYears[0]?.academicYear) || data.academicYearId;
+    if (academicYearId && !mongoose.Types.ObjectId.isValid(academicYearId)) {
+      const AcademicYear = mongoose.model('AcademicYear');
+      const yearDoc = await AcademicYear.findOne({
+        $or: [{ name: academicYearId }, { year: academicYearId }],
+        schoolId
+      });
+      if (yearDoc) academicYearId = yearDoc._id;
+    }
+
+    // Resolve class (name or ID) - Prioritize new class from academicYears array on re-admission
+    let classId = (data.academicYears && data.academicYears[0]?.class) || data.enrollmentClass;
+    if (classId && !mongoose.Types.ObjectId.isValid(classId)) {
+      const Class = mongoose.model('Class');
+      const classDoc = await Class.findOne({ class: classId, schoolId });
+      if (classDoc) classId = classDoc._id;
+    }
+
     // Map legacy payload format to EAV payload format
     const payload = {
+      studentId: data.previousStudentId || data.studentId || data._id,
+      _id: data.previousStudentId || data.studentId || data._id,
       student_code: data.studentCode,
       lifecycle_status: data.lifecycleStatus || 'Active',
-      class: data.enrollmentClass,
-      academicyear: data.academicYearId,
-      section: data.sectionId,
-      admissionnumber: data.admissionNumber,
-      rollnumber: data.rollNumber,
-      profilephoto: data.image
+      class: classId,
+      academicyear: academicYearId,
+      section: data.sectionId || (data.academicYears && data.academicYears[0]?.section),
+      admissionnumber: data.admissionNumber || data.AdmissionNo,
+      rollnumber: data.rollNumber || (data.academicYears && data.academicYears[0]?.rollNumber),
+      profilephoto: data.image || data.profilePhoto
     };
 
     // Append dynamic fields
@@ -115,8 +144,8 @@ class StudentService {
   async promoteStudents(schoolId, data) {
     const { studentIds, currentAcademicYear, newAcademicYear, newClass, newSection } = data;
 
-    const Class = mongoose.model('Class');
-    const AcademicYear = mongoose.model('AcademicYear');
+    const Class = mongoose.models.Class || require('../../domain/academics/models/Classes');
+    const AcademicYear = mongoose.models.AcademicYear || require('../../domain/academics/models/AcademicYear');
 
     // 1. Resolve newAcademicYear (name or ID) to its ObjectID
     let targetYearId = newAcademicYear;
@@ -190,14 +219,27 @@ class StudentService {
         admissionNumber: prev ? prev.admissionNumber : '',
         rollNumber: prev ? prev.rollNumber : '',
         profilePhoto: prev ? prev.profilePhoto : '',
-        dynamicFields: prev ? (prev.dynamicFields || []).map(df => ({
-          fieldId: df.fieldId?._id || df.fieldId,
-          value: df.value
-        })) : []
+        dynamicFields: prev ? (prev.dynamicFields || [])
+          .map(df => {
+            const fid = df.fieldId?._id || df.fieldId;
+            return fid ? { fieldId: fid, value: df.value } : null;
+          })
+          .filter(Boolean) : []
       };
     });
 
     return StudentEnrollmentRepository.insertMany(enrollments);
+  }
+
+  async updateAcademicYearStatus(studentId, data) {
+    const { status } = data;
+    const enrollments = await StudentEnrollmentRepository.find({ studentId });
+    if (!enrollments || enrollments.length === 0) {
+      throw new Error(`No enrollment found for student ID ${studentId}`);
+    }
+    // Sort by createdAt descending to get the latest enrollment
+    const latestEnrollment = enrollments.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))[0];
+    return StudentEnrollmentRepository.updateById(latestEnrollment._id, { academicStatus: status });
   }
 
   async dropAcademicYear(data) {
