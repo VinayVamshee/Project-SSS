@@ -1,23 +1,32 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
+import axios from 'axios';
 
 /**
- * ImageField — Dedicated image upload component.
- *
- * Shows a preview thumbnail when an image is selected.
- *
- * Props:
- *   fieldKey – The field key
- *   value    – Current filename (string)
- *   onChange – Callback: (filename) => void
- *   required – Is this field required?
- *   readOnly – Is this field read-only?
+ * ImageField — Dedicated image upload component with imgBB hosting integration.
  */
 export default function ImageField({ fieldKey, value, onChange, required, readOnly }) {
   const inputRef = useRef(null);
+  const [uploading, setUploading] = useState(false);
 
-  const handleChange = (e) => {
+  const handleChange = async (e) => {
     const file = e.target.files[0];
-    onChange(file?.name || '');
+    if (!file) return;
+
+    setUploading(true);
+    const formData = new FormData();
+    formData.append("key", "8451f34223c6e62555eec9187d855f8f");
+    formData.append("image", file);
+
+    try {
+      const res = await axios.post("https://api.imgbb.com/1/upload", formData);
+      const url = res.data.data.display_url || res.data.data.url;
+      onChange(url);
+    } catch (err) {
+      console.error("imgBB upload failed:", err);
+      alert("Failed to upload image. Please try again.");
+    } finally {
+      setUploading(false);
+    }
   };
 
   return (
@@ -29,21 +38,24 @@ export default function ImageField({ fieldKey, value, onChange, required, readOn
         id={`image-${fieldKey}`}
         style={{ display: 'none' }}
         required={required}
-        disabled={readOnly}
+        disabled={readOnly || uploading}
         onChange={handleChange}
       />
       <label
         htmlFor={`image-${fieldKey}`}
-        className="df-file-label"
-        style={readOnly ? { opacity: 0.6, cursor: 'default' } : undefined}
+        className="df-file-label d-flex align-items-center gap-2"
+        style={readOnly || uploading ? { opacity: 0.6, cursor: 'default' } : undefined}
       >
-        <i className="fa-solid fa-image"></i>
-        {value ? 'Change image...' : 'Choose image...'}
+        {uploading ? (
+          <><i className="fa-solid fa-spinner fa-spin"></i>Uploading to Cloud...</>
+        ) : (
+          <><i className="fa-solid fa-image"></i>{value ? 'Change Profile Image' : 'Upload Profile Image'}</>
+        )}
       </label>
-      {value && (
-        <div className="df-file-name">
-          <i className="fa-solid fa-image" style={{ fontSize: '0.75rem' }}></i>
-          {value}
+      {value && !uploading && (
+        <div className="df-file-name mt-2 small text-muted text-truncate" style={{ maxWidth: '100%' }}>
+          <i className="fa-solid fa-link me-1"></i>
+          <a href={value} target="_blank" rel="noopener noreferrer" className="text-info">{value}</a>
         </div>
       )}
     </div>

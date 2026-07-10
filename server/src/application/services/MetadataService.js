@@ -72,18 +72,10 @@ class MetadataService {
 
   // ─── Field Registry ─────────────────────────────────────────────────────────
   async createField(data) {
-    const { key, label, type, options, lookup, validationPattern } = data;
+    const { key } = data;
 
     const exists = await FieldRepository.findOne({ key });
     if (exists) throw new AppError(`Field with key '${key}' already exists.`, 409);
-
-    if (validationPattern) {
-      try {
-        new RegExp(validationPattern);
-      } catch (err) {
-        throw new AppError(`Invalid validation regex pattern: ${err.message}`, 400);
-      }
-    }
 
     return FieldRepository.create({
       ...data,
@@ -102,14 +94,6 @@ class MetadataService {
         if (data[key] !== undefined && data[key] !== field[key]) {
           throw new AppError(`Field property '${key}' is immutable once active.`, 400);
         }
-      }
-    }
-
-    if (data.validationPattern) {
-      try {
-        new RegExp(data.validationPattern);
-      } catch (err) {
-        throw new AppError(`Invalid validation regex pattern: ${err.message}`, 400);
       }
     }
 
@@ -174,6 +158,15 @@ class MetadataService {
         throw new AppError(`Duplicate order value found: ${f.order}`, 400);
       }
       seenOrders.add(f.order);
+
+      // Validate regex pattern if provided
+      if (f.validation && f.validation.pattern) {
+        try {
+          new RegExp(f.validation.pattern);
+        } catch (err) {
+          throw new AppError(`Invalid validation regex pattern in field ${fieldIdStr}: ${err.message}`, 400);
+        }
+      }
     }
   }
 
@@ -274,12 +267,17 @@ class MetadataService {
           key: fieldDef.key,
           label: fieldDef.label,
           type: fieldDef.type,
-          required: tField.required || fieldDef.required,
-          placeholder: fieldDef.placeholder || '',
           options: fieldDef.options || [],
           lookup: fieldDef.lookup || null,
-          ui: fieldDef.ui || null,
-          width: tField.width || fieldDef.ui?.width || 12
+          required: tField.required || false,
+          unique: tField.unique || false,
+          readOnly: tField.readOnly || false,
+          hidden: tField.hidden || false,
+          width: tField.width || 12,
+          placeholder: tField.placeholder || '',
+          helperText: tField.helperText || '',
+          defaultValue: tField.defaultValue !== undefined ? tField.defaultValue : null,
+          validation: tField.validation || {}
         };
       })
       .filter(Boolean);
@@ -294,7 +292,6 @@ class MetadataService {
   }
 
   async lookup(fieldKey, search = "", schoolId) {
-
     const field = await FieldRepository.findOne({
       key: fieldKey,
       type: "lookup",
@@ -315,36 +312,84 @@ class MetadataService {
       throw new AppError('Lookup entity not found.', 404);
     }
 
-    const entityConfig = await EntityRepository.findOne({
-      key: entity,
-      allowLookup: true,
-      status: "active"
-    });
+    let entityConfig;
+    if (entity && typeof entity === 'object' && entity.model) {
+      entityConfig = entity;
+    } else {
+      const entityQuery = mongoose.isValidObjectId(entity) ? { _id: entity } : { key: entity };
+      entityConfig = await EntityRepository.findOne({
+        ...entityQuery,
+        allowLookup: true,
+        status: "active"
+      });
+    }
 
     if (!entityConfig) {
       throw new AppError("Lookup entity not found.", 404);
     }
 
     const Model = mongoose.model(entityConfig.model);
-
     const filter = {};
 
     if (schoolId && Model.schema.path('schoolId')) {
       filter.schoolId = schoolId;
     }
 
+    const displayKey = (typeof displayField === 'string') 
+      ? displayField 
+      : (displayField?.field || "name");
+
     if (search) {
-      filter[displayField] = {
-        $regex: search,
-        $options: "i"
-      };
+      if (!displayField || typeof displayField === 'string' || displayField.source === 'core') {
+        filter[displayKey] = {
+          $regex: search,
+          $options: "i"
+        };
+      } else if (displayField.source === 'dynamic') {
+        filter["dynamicFields.value"] = {
+          $regex: search,
+          $options: "i"
+        };
+      } else if (displayField.source === 'nested' && displayField.path) {
+        filter[displayField.path] = {
+          $regex: search,
+          $options: "i"
+        };
+      }
     }
 
     const records = await Model.find(filter).limit(50).lean();
 
+    const getDisplayValue = (record) => {
+      let fieldVal = "";
+      if (typeof displayField === 'string') {
+        fieldVal = record[displayField];
+      } else if (displayField) {
+        const { field: fieldKey, source, path } = displayField;
+        if (source === "dynamic") {
+          if (Array.isArray(record.dynamicFields)) {
+            const df = record.dynamicFields.find(f => 
+              (f.fieldId && (f.fieldId.toString() === fieldKey || (f.fieldId.key && f.fieldId.key === fieldKey)))
+            );
+            fieldVal = df ? df.value : "";
+          }
+        } else if (source === "nested" && path) {
+          const parts = path.split('.');
+          let current = record;
+          for (const part of parts) {
+            current = current ? current[part] : undefined;
+          }
+          fieldVal = current;
+        } else {
+          fieldVal = record[fieldKey || "name"];
+        }
+      }
+      return fieldVal || record.name || "";
+    };
+
     return records.map(record => ({
-      value: record[valueField],
-      label: record[displayField],
+      value: record[valueField || "_id"],
+      label: getDisplayValue(record),
     }));
   }
 }

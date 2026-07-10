@@ -7,13 +7,29 @@ exports.getQuestions = async (req, res) => {
     const { class: classId, subject: subjectId, chapter: chapterId } = req.query;
 
     try {
-        const filter = { class: classId, subject: subjectId };
-        if (chapterId) filter.chapter = chapterId;
-
-        const paper = await QuestionPaper.findOne(filter);
-        if (!paper) return res.json({ questions: [] });
-
-        res.json({ questions: paper.questions });
+        if (chapterId) {
+            const paper = await QuestionPaper.findOne({ class: classId, subject: subjectId, chapter: chapterId });
+            if (!paper) return res.json({ questions: [] });
+            
+            const questionsWithChapter = (paper.questions || []).map(q => {
+                const qObj = q.toObject ? q.toObject() : q;
+                qObj.chapter = paper.chapter;
+                return qObj;
+            });
+            return res.json({ questions: questionsWithChapter });
+        } else {
+            const papers = await QuestionPaper.find({ class: classId, subject: subjectId });
+            let allQuestions = [];
+            for (const p of papers) {
+                const questionsWithChapter = (p.questions || []).map(q => {
+                    const qObj = q.toObject ? q.toObject() : q;
+                    qObj.chapter = p.chapter;
+                    return qObj;
+                });
+                allQuestions = allQuestions.concat(questionsWithChapter);
+            }
+            return res.json({ questions: allQuestions });
+        }
     } catch (err) {
         res.status(500).json({ message: err.message });
     }
@@ -137,17 +153,15 @@ exports.addQuestion = async (req, res) => {
 
 // DELETE a question
 exports.deleteQuestion = async (req, res) => {
-    const { class: classId, subject: subjectId, chapter: chapterId, mongoId } = req.body;
+    const { class: classId, subject: subjectId, mongoId } = req.body;
 
     if (!classId || !subjectId || !mongoId) {
         return res.status(400).json({ message: 'Missing required fields' });
     }
 
     try {
-        const filter = { class: classId, subject: subjectId, chapter: chapterId || null };
-        const paper = await QuestionPaper.findOne(filter);
-        if (!paper) return res.status(404).json({ message: 'Question paper not found' });
-
+        const papers = await QuestionPaper.find({ class: classId, subject: subjectId });
+        let targetPaper = null;
         let deleted = false;
 
         function removeById(arr) {
@@ -165,12 +179,18 @@ exports.deleteQuestion = async (req, res) => {
                 .filter(Boolean);
         }
 
-        paper.questions = removeById(paper.questions);
+        for (const paper of papers) {
+            paper.questions = removeById(paper.questions);
+            if (deleted) {
+                targetPaper = paper;
+                break;
+            }
+        }
 
-        if (!deleted) return res.status(404).json({ message: 'Question not found' });
+        if (!deleted || !targetPaper) return res.status(404).json({ message: 'Question not found' });
 
-        await paper.save();
-        return res.json({ questions: paper.questions });
+        await targetPaper.save();
+        return res.json({ questions: targetPaper.questions });
     } catch (err) {
         console.error('Delete error:', err);
         return res.status(500).json({ message: 'Internal server error' });
@@ -179,17 +199,15 @@ exports.deleteQuestion = async (req, res) => {
 
 // PUT to update a specific question
 exports.updateQuestion = async (req, res) => {
-    const { class: classId, subject: subjectId, chapter: chapterId, mongoId, updatedQuestion } = req.body;
+    const { class: classId, subject: subjectId, mongoId, updatedQuestion } = req.body;
 
     if (!mongoId) {
         return res.status(400).json({ error: 'Missing question identifier' });
     }
 
     try {
-        const filter = { class: classId, subject: subjectId, chapter: chapterId || null };
-        const paper = await QuestionPaper.findOne(filter);
-        if (!paper) return res.status(404).json({ error: 'Question paper not found' });
-
+        const papers = await QuestionPaper.find({ class: classId, subject: subjectId });
+        let targetPaper = null;
         let updated = false;
 
         async function updateById(arr) {
@@ -204,16 +222,26 @@ exports.updateQuestion = async (req, res) => {
                     updated = true;
                     return true;
                 }
-                if (q.subQuestions?.length > 0) await updateById(q.subQuestions);
+                if (q.subQuestions?.length > 0) {
+                    const found = await updateById(q.subQuestions);
+                    if (found) return true;
+                }
+            }
+            return false;
+        }
+
+        for (const paper of papers) {
+            const found = await updateById(paper.questions);
+            if (found) {
+                targetPaper = paper;
+                break;
             }
         }
 
-        await updateById(paper.questions);
+        if (!updated || !targetPaper) return res.status(404).json({ error: 'Question not found' });
 
-        if (!updated) return res.status(404).json({ error: 'Question not found' });
-
-        await paper.save();
-        res.json({ questions: paper.questions });
+        await targetPaper.save();
+        res.json({ questions: targetPaper.questions });
     } catch (err) {
         console.error('Update error:', err);
         res.status(500).json({ message: 'Internal server error' });

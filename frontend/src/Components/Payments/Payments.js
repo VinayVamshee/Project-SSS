@@ -8,8 +8,6 @@ import * as XLSX from "xlsx";
 import { useNavigate } from "react-router-dom";
 import './Payments.css';
 
-
-
 export default function Payments() {
 
     const navigate = useNavigate();
@@ -54,10 +52,9 @@ export default function Payments() {
         try {
             // 1. Get Student definitions fields
             const fieldsRes = await getFieldDefinitions();
-            const fields = fieldsRes.data.data || [];
-            setPersonalInfoList(fields);
+            setPersonalInfoList(fieldsRes.data.data || []);
 
-            // 2. Get Students and flatten EAV fields
+            // 2. Get Students list
             const studentResponse = await getStudents();
             const mapped = (studentResponse.data.students || []).map(s => {
                 const legacyStudent = {
@@ -71,21 +68,27 @@ export default function Payments() {
 
                 if (s.dynamicFields && Array.isArray(s.dynamicFields)) {
                     s.dynamicFields.forEach(df => {
-                        const field = fields.find(
-                            p => p._id === (df.fieldId?._id || df.fieldId)
-                        );
-                        const key = df.fieldId?.fieldKey || field?.fieldKey;
+                        const key = df.fieldId?.fieldKey;
                         if (key) {
-                            if (key === "admissionNo")
+                            const lowerKey = key.toLowerCase();
+                            if (lowerKey === "admissionno" || lowerKey === "admissionnumber") {
                                 legacyStudent.AdmissionNo = df.value;
-                            else if (key === "freeStudent")
+                                legacyStudent.admissionNo = df.value;
+                            } else if (lowerKey === "freestudent" || lowerKey === "freestud") {
                                 legacyStudent.FreeStud = df.value;
-                            else if (key === "caste")
+                                legacyStudent.freeStudent = df.value;
+                            } else if (lowerKey === "caste") {
                                 legacyStudent.Caste = df.value;
-                            else if (key === "casteHindi")
+                                legacyStudent.caste = df.value;
+                            } else if (lowerKey === "castehindi") {
                                 legacyStudent.CasteHindi = df.value;
-                            else
-                                legacyStudent[key] = df.value;
+                                legacyStudent.casteHindi = df.value;
+                            } else if (lowerKey === "gender") {
+                                legacyStudent.gender = df.value;
+                            } else if (lowerKey === "dateofbirth" || lowerKey === "dob") {
+                                legacyStudent.dob = df.value;
+                            }
+                            legacyStudent[lowerKey] = df.value;
                         }
                     });
                 }
@@ -139,17 +142,14 @@ export default function Payments() {
 
                 const classFeesResponse = await getClassFees();
                 const allFees = classFeesResponse.data || [];
-
                 const filteredFees = selectedYear
                     ? allFees.filter(fee => fee.academicYear?.trim() === selectedYear.trim())
                     : allFees;
-
                 setClassFeesData(filteredFees);
             } catch (error) {
-                console.error("❌ Error fetching class fees for selected year:", error);
+                console.error("Error fetching class fees for selected year:", error);
             }
         };
-
         if (selectedYear) {
             fetchClassFeesForSelectedYear();
         }

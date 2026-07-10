@@ -6,6 +6,9 @@ import PrintQuestionPaper from '../PrintQuestionPaper/PrintQuestionPaper';
 import DownloadQuestionBank from '../DownloadQuestionBank/DownloadQuestionBank';
 import TextEditor from '../TextEditor/TextEditor';
 import './QuestionPaper.css';
+import Notification from '../Shared/Notification';
+import LoadingIndicator from '../Shared/LoadingIndicator';
+import ConfirmModal from '../Shared/ConfirmModal';
 
 
 
@@ -18,6 +21,7 @@ export default function QuestionManager() {
     });
 
     const [message, setMessage] = useState("");
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null, type: 'primary' });
     const showMessage = (msg) => {
         setMessage(msg);
         setTimeout(() => setMessage(""), 5000);
@@ -321,27 +325,33 @@ export default function QuestionManager() {
         }));
     };
 
-    const handleDelete = async (mongoId) => {
-        const confirmDelete = window.confirm('Are you sure you want to delete this question?');
-        if (!confirmDelete) return;
+    const handleDelete = (mongoId) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Delete Question',
+            message: 'Are you sure you want to delete this question? This action cannot be undone.',
+            type: 'danger',
+            onConfirm: async () => {
+                setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                try {
+                    const res = await axios.delete('http://localhost:3001/questions', {
+                        data: {
+                            class: selectedClass,
+                            subject: selectedSubject,
+                            chapter: selectedChapter,
+                            mongoId,
+                        },
+                    });
 
-        try {
-            const res = await axios.delete('http://localhost:3001/questions', {
-                data: {
-                    class: selectedClass,
-                    subject: selectedSubject,
-                    chapter: selectedChapter,
-                    mongoId,
-                },
-            });
-
-            setQuestions(res.data.questions);
-            fetchQuestions();
-            showMessage('✅ Question deleted successfully.');
-        } catch (error) {
-            console.error('❌ Error deleting question:', error);
-            showMessage('❌ Failed to delete the question. Please try again.');
-        }
+                    setQuestions(res.data.questions);
+                    fetchQuestions();
+                    showMessage('✅ Question deleted successfully.');
+                } catch (error) {
+                    console.error('❌ Error deleting question:', error);
+                    showMessage('❌ Failed to delete the question. Please try again.');
+                }
+            }
+        });
     };
 
     const [selectedQuestions, setSelectedQuestions] = useState([]);
@@ -391,18 +401,25 @@ export default function QuestionManager() {
         setNewTemplate(t => ({ ...t, instructions: newInstructions }));
     };
 
-    const handleDeleteTemplate = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this template?")) return;
-
-        try {
-            await axios.delete(`http://localhost:3001/delete-template/${id}`);
-            const res = await axios.get('http://localhost:3001/get-all-templates');
-            setTemplates(res.data);
-            showMessage("Template Deleted")
-        } catch (error) {
-            console.error("Error deleting template:", error);
-            showMessage("Failed to delete template.");
-        }
+    const handleDeleteTemplate = (id) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Delete Template',
+            message: 'Are you sure you want to delete this template? This action cannot be undone.',
+            type: 'danger',
+            onConfirm: async () => {
+                setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                try {
+                    await axios.delete(`http://localhost:3001/delete-template/${id}`);
+                    const res = await axios.get('http://localhost:3001/get-all-templates');
+                    setTemplates(res.data);
+                    showMessage("Template Deleted")
+                } catch (error) {
+                    console.error("Error deleting template:", error);
+                    showMessage("Failed to delete template.");
+                }
+            }
+        });
     };
 
     const handleEditTemplate = (template) => {
@@ -2358,56 +2375,16 @@ export default function QuestionManager() {
                 />
             </div>
 
-            {message && (
-                <div
-                    className="position-fixed fade-in"
-                    style={{
-                        bottom: "20px",
-                        right: "20px",
-                        zIndex: 9999,
-                        backgroundColor:
-                            message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
-                                ? "#f8d7da"
-                                : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
-                                    ? "#d1e7dd"
-                                    : message.toLowerCase().includes("please")
-                                        ? "#fff3cd"
-                                        : "#e2e3e5",
-                        color:
-                            message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
-                                ? "#842029"
-                                : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
-                                    ? "#0f5132"
-                                    : message.toLowerCase().includes("please")
-                                        ? "#664d03"
-                                        : "#41464b",
-                        padding: "12px 18px 18px",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                        fontWeight: "500",
-                        maxWidth: "300px",
-                        overflow: "hidden",
-                    }}
-                >
-                    {message}
-
-                    <div
-                        className="progress-bar-animate mt-2"
-                        style={{
-                            height: "4px",
-                            backgroundColor:
-                                message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
-                                    ? "#842029"
-                                    : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
-                                        ? "#0f5132"
-                                        : message.toLowerCase().includes("please")
-                                            ? "#664d03"
-                                            : "#41464b",
-                        }}
-                    />
-                </div>
-            )}
-
+            <Notification message={message} />
+            <LoadingIndicator message="Uploading logo..." active={uploading} />
+            <ConfirmModal
+                isOpen={confirmDialog.isOpen}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 }

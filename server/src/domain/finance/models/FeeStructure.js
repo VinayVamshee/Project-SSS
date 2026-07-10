@@ -32,11 +32,19 @@ const feeStructureSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'AcademicYear',
     required: true,
-    unique: true
   },
   classes: [classFeeSubSchema]
 }, {
   timestamps: true,
+});
+
+feeStructureSchema.index(
+{
+    schoolId:1,
+    academicYear:1
+},
+{
+    unique:true
 });
 
 module.exports = mongoose.model('FeeStructure', feeStructureSchema);

@@ -19,6 +19,7 @@ export default function DynamicForm({
   mode = 'preview',
   initialValues = {},
   onSubmit,
+  onChange,
   submitLabel,
   className = ''
 }) {
@@ -52,8 +53,12 @@ export default function DynamicForm({
   const isReadOnly = mode === 'readonly';
 
   const handleFieldChange = useCallback((key, value) => {
-    setFormData(prev => ({ ...prev, [key]: value }));
-  }, []);
+    setFormData(prev => {
+      const next = { ...prev, [key]: value };
+      if (onChange) onChange(next);
+      return next;
+    });
+  }, [onChange]);
 
   const handleSubmit = (e) => {
     e.preventDefault();

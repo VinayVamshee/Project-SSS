@@ -42,4 +42,7 @@ router.delete('/templates/:id', restrictTo('admin', 'developer'), metadataContro
 // ─── Generic Lookup ───────────────────────────────────────────────────────────
 router.get('/lookup', metadataController.lookup);
 
+// ─── Generic Template Form Submission Dispatcher ────────────────────────────────
+router.post('/templates/submit', metadataController.submitForm);
+
 module.exports = router;

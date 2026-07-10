@@ -2,16 +2,22 @@ import React, { useState, useEffect } from 'react';
 import {
   getEntities, createEntity, archiveEntity, activateEntity, deleteEntity,
   getFieldDefinitions, addFieldDefinition, updateFieldDefinition, deleteFieldDefinition, archiveFieldDefinition, activateFieldDefinition,
-  getTemplates, getTemplateForm, createTemplate, updateTemplate, publishTemplate, archiveTemplate, restoreTemplate, deleteTemplate,
+  getTemplates, getTemplateForm, createTemplate, updateTemplate, publishTemplate, archiveTemplate, restoreTemplate, deleteTemplate, submitTemplateForm,
   getAllMasters, createMaster, deleteMaster, setMasterInUse,
   devGetUsers, devCreateUser, devUpdateUser, login
 } from '../../API';
 import DynamicForm from '../Shared/DynamicForm';
+import Notification from '../Shared/Notification';
+import LoadingIndicator from '../Shared/LoadingIndicator';
+import ConfirmModal from '../Shared/ConfirmModal';
 import './Developer.css';
 
 export default function Developer() {
   const [activeTab, setActiveTab] = useState('entity_registry');
   const [notification, setNotification] = useState({ message: '', type: 'success' });
+  const [loading, setLoading] = useState(false);
+  const [loadingMessage, setLoadingMessage] = useState('Saving...');
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null, type: 'primary' });
 
   const showNotification = (msg, type = 'success') => {
     setNotification({ message: msg, type });
@@ -33,12 +39,15 @@ export default function Developer() {
     category: 'General',
     icon: '',
     color: '#6366f1',
+    handler: 'Generic',
+    storageRaw: '[]',
     allowTemplates: true,
     allowLookup: true,
     visibleInMenu: true,
     system: false,
     status: 'active'
   });
+  const [selectedEntityForView, setSelectedEntityForView] = useState(null);
 
   // 2. Field Registry States
   const [fields, setFields] = useState([]);
@@ -50,29 +59,17 @@ export default function Developer() {
     description: '',
     category: 'General',
     type: 'text',
-    placeholder: '',
-    helperText: '',
-    required: false,
-    unique: false,
-    min: '',
-    max: '',
-    minLength: '',
-    maxLength: '',
-    validationPattern: '',
-    validationMessage: '',
-    defaultValue: '',
     options: [],
     lookup: {
       entity: '',
-      displayField: 'name',
+      displayField: {
+        field: 'name',
+        source: 'core',
+        path: ''
+      },
       valueField: '_id',
       multiple: false,
       searchable: true
-    },
-    ui: {
-      icon: '',
-      color: '',
-      width: 12
     }
   });
   const [optionLabel, setOptionLabel] = useState('');
@@ -90,12 +87,15 @@ export default function Developer() {
     schools: [],
     fields: []
   });
+  const [editingTemplateFieldId, setEditingTemplateFieldId] = useState(null);
   const [fieldFilterText, setFieldFilterText] = useState('');
 
   // 4. Form Preview States
   const [previewTemplateId, setPreviewTemplateId] = useState('');
   const [previewForm, setPreviewForm] = useState(null);
   const [formSubmittedData, setFormSubmittedData] = useState(null);
+  const [submitToBackend, setSubmitToBackend] = useState(false);
+  const [backendResponse, setBackendResponse] = useState(null);
 
   // 5. School Tenants States (Empty inputs initial state)
   const [schools, setSchools] = useState([]);
@@ -200,8 +200,22 @@ export default function Developer() {
   // Entity Handlers
   const handleCreateEntity = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setLoadingMessage('Creating entity...');
     try {
-      await createEntity(newEntity);
+      let parsedStorage = [];
+      try {
+        parsedStorage = JSON.parse(newEntity.storageRaw || '[]');
+      } catch (jsonErr) {
+        showNotification('Invalid JSON in Storage Configuration', 'error');
+        setLoading(false);
+        return;
+      }
+
+      await createEntity({
+        ...newEntity,
+        storage: parsedStorage
+      });
       showNotification('Entity registered successfully!');
       setNewEntity({
         key: '',
@@ -212,6 +226,8 @@ export default function Developer() {
         category: 'General',
         icon: '',
         color: '#6366f1',
+        handler: 'Generic',
+        storageRaw: '[]',
         allowTemplates: true,
         allowLookup: true,
         visibleInMenu: true,
@@ -221,53 +237,73 @@ export default function Developer() {
       loadEntities();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to create entity', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleArchiveEntity = async (id) => {
+    setLoading(true);
+    setLoadingMessage('Archiving entity...');
     try {
       await archiveEntity(id);
       showNotification('Entity archived.');
       loadEntities();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to archive entity', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleActivateEntity = async (id) => {
+    setLoading(true);
+    setLoadingMessage('Activating entity...');
     try {
       await activateEntity(id);
       showNotification('Entity activated.');
       loadEntities();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to activate entity', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteEntity = async (id) => {
-    if (!window.confirm('Delete this entity?')) return;
-    try {
-      await deleteEntity(id);
-      showNotification('Entity deleted.');
-      loadEntities();
-    } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to delete entity', 'error');
-    }
+  const handleDeleteEntity = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Entity',
+      message: 'Are you sure you want to delete this entity? This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setLoading(true);
+        setLoadingMessage('Deleting entity...');
+        try {
+          await deleteEntity(id);
+          showNotification('Entity deleted.');
+          loadEntities();
+        } catch (err) {
+          showNotification(err.response?.data?.message || 'Failed to delete entity', 'error');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   // Field Handlers
   const handleCreateField = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setLoadingMessage(editingFieldId ? 'Updating field...' : 'Creating field...');
     try {
       const payload = {
         ...newField,
         fieldKey: newField.key,
         fieldName: newField.label,
         fieldType: newField.type,
-        min: newField.min ? Number(newField.min) : undefined,
-        max: newField.max ? Number(newField.max) : undefined,
-        minLength: newField.minLength ? Number(newField.minLength) : undefined,
-        maxLength: newField.maxLength ? Number(newField.maxLength) : undefined,
         lookup: newField.type === 'lookup' ? newField.lookup : undefined
       };
 
@@ -286,29 +322,17 @@ export default function Developer() {
         description: '',
         category: 'General',
         type: 'text',
-        placeholder: '',
-        helperText: '',
-        required: false,
-        unique: false,
-        min: '',
-        max: '',
-        minLength: '',
-        maxLength: '',
-        validationPattern: '',
-        validationMessage: '',
-        defaultValue: '',
         options: [],
         lookup: {
           entity: '',
-          displayField: 'name',
+          displayField: {
+            field: 'name',
+            source: 'core',
+            path: ''
+          },
           valueField: '_id',
           multiple: false,
           searchable: true
-        },
-        ui: {
-          icon: '',
-          color: '',
-          width: 12
         }
       });
       setOptionLabel('');
@@ -316,40 +340,40 @@ export default function Developer() {
       loadFields();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to save field', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleStartEditingField = (field) => {
     setEditingFieldId(field._id);
+    
+    let displayFieldObj = { field: 'name', source: 'core', path: '' };
+    if (field.lookup?.displayField) {
+      if (typeof field.lookup.displayField === 'string') {
+        displayFieldObj.field = field.lookup.displayField;
+      } else {
+        displayFieldObj = {
+          field: field.lookup.displayField.field || 'name',
+          source: field.lookup.displayField.source || 'core',
+          path: field.lookup.displayField.path || ''
+        };
+      }
+    }
+
     setNewField({
       key: field.key || field.fieldKey || '',
       label: field.label || field.fieldName || '',
       description: field.description || '',
       category: field.category || 'General',
       type: field.type || field.fieldType || 'text',
-      placeholder: field.placeholder || '',
-      helperText: field.helperText || '',
-      required: field.required || false,
-      unique: field.unique || false,
-      min: field.min !== undefined ? String(field.min) : '',
-      max: field.max !== undefined ? String(field.max) : '',
-      minLength: field.minLength !== undefined ? String(field.minLength) : '',
-      maxLength: field.maxLength !== undefined ? String(field.maxLength) : '',
-      validationPattern: field.validationPattern || '',
-      validationMessage: field.validationMessage || '',
-      defaultValue: field.defaultValue || '',
       options: field.options || [],
-      lookup: field.lookup || {
-        entity: '',
-        displayField: 'name',
-        valueField: '_id',
-        multiple: false,
-        searchable: true
-      },
-      ui: field.ui || {
-        icon: '',
-        color: '',
-        width: 12
+      lookup: {
+        entity: field.lookup?.entity?._id || field.lookup?.entity || '',
+        displayField: displayFieldObj,
+        valueField: field.lookup?.valueField || '_id',
+        multiple: field.lookup?.multiple || false,
+        searchable: field.lookup?.searchable !== undefined ? field.lookup.searchable : true
       }
     });
   };
@@ -371,53 +395,62 @@ export default function Developer() {
     });
   };
 
-  const handleTestRegex = () => {
-    if (!newField.validationPattern) {
-      alert('⚠️ Enter a regex validation pattern first.');
-      return;
-    }
-    try {
-      new RegExp(newField.validationPattern);
-      alert('✅ Regular expression compiled successfully. Pattern is correct!');
-    } catch (err) {
-      alert(`❌ Invalid Regular Expression: ${err.message}`);
-    }
-  };
-
   const handleArchiveField = async (id) => {
+    setLoading(true);
+    setLoadingMessage('Archiving field...');
     try {
       await archiveFieldDefinition(id);
       showNotification('Field archived.');
       loadFields();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to archive field', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleActivateField = async (id) => {
+    setLoading(true);
+    setLoadingMessage('Activating field...');
     try {
       await activateFieldDefinition(id);
       showNotification('Field activated.');
       loadFields();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to activate field', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteDraftField = async (id) => {
-    if (!window.confirm('Delete draft field?')) return;
-    try {
-      await deleteFieldDefinition(id);
-      showNotification('Draft field deleted.');
-      loadFields();
-    } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to delete field', 'error');
-    }
+  const handleDeleteDraftField = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Draft Field',
+      message: 'Are you sure you want to delete this draft field? This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setLoading(true);
+        setLoadingMessage('Deleting field...');
+        try {
+          await deleteFieldDefinition(id);
+          showNotification('Draft field deleted.');
+          loadFields();
+        } catch (err) {
+          showNotification(err.response?.data?.message || 'Failed to delete field', 'error');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   // Template Handlers
   const handleCreateTemplate = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setLoadingMessage(editingTemplateId ? 'Updating template...' : 'Creating template...');
     try {
       if (editingTemplateId) {
         await updateTemplate(editingTemplateId, newTemplate);
@@ -440,6 +473,8 @@ export default function Developer() {
       loadTemplates();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to save template', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -449,70 +484,131 @@ export default function Developer() {
       key: tpl.key || '',
       label: tpl.label || '',
       description: tpl.description || '',
-      entity: tpl.entity || '',
+      entity: tpl.entity?._id || tpl.entity || '',
       scope: tpl.scope || 'global',
       schools: tpl.schools || [],
       fields: (tpl.fields || []).map(tf => ({
         fieldId: tf.fieldId?._id || tf.fieldId || '',
         order: tf.order || 0,
         required: tf.required || false,
+        unique: tf.unique || false,
+        readOnly: tf.readOnly || tf.readonly || false,
+        readonly: tf.readOnly || tf.readonly || false,
         hidden: tf.hidden || false,
-        readonly: tf.readonly || false,
-        width: tf.width || 12
+        width: tf.width || 12,
+        placeholder: tf.placeholder || '',
+        helperText: tf.helperText || '',
+        defaultValue: tf.defaultValue || '',
+        validation: tf.validation || {
+          min: undefined,
+          max: undefined,
+          minLength: undefined,
+          maxLength: undefined,
+          pattern: '',
+          message: ''
+        }
       }))
     });
   };
 
   const handlePublishTemplate = async (id) => {
+    setLoading(true);
+    setLoadingMessage('Publishing template...');
     try {
       await publishTemplate(id);
       showNotification('Template published!');
       loadTemplates();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to publish template', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleArchiveTemplate = async (id) => {
+    setLoading(true);
+    setLoadingMessage('Archiving template...');
     try {
       await archiveTemplate(id);
       showNotification('Template archived.');
       loadTemplates();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to archive template', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleRestoreTemplate = async (id) => {
+    setLoading(true);
+    setLoadingMessage('Restoring template...');
     try {
       await restoreTemplate(id);
       showNotification('Template restored to draft.');
       loadTemplates();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to restore template', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteTemplate = async (id) => {
-    if (!window.confirm('Delete template?')) return;
-    try {
-      await deleteTemplate(id);
-      showNotification('Template deleted.');
-      loadTemplates();
-    } catch (err) {
-      showNotification(err.response?.data?.message || 'Failed to delete template', 'error');
-    }
+  const handleDeleteTemplate = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete Template',
+      message: 'Are you sure you want to delete this template? This action cannot be undone.',
+      type: 'danger',
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setLoading(true);
+        setLoadingMessage('Deleting template...');
+        try {
+          await deleteTemplate(id);
+          showNotification('Template deleted.');
+          loadTemplates();
+        } catch (err) {
+          showNotification(err.response?.data?.message || 'Failed to delete template', 'error');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   // Preview Layout Form
   const handleLoadPreviewForm = async () => {
     if (!previewTemplateId) return;
+    setLoading(true);
+    setLoadingMessage('Rendering layout form...');
     try {
       const res = await getTemplateForm(previewTemplateId);
       setPreviewForm(res.data.data);
       setFormSubmittedData(null);
     } catch (err) {
       showNotification('Failed to load form blueprint', 'error');
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handlePreviewSubmit = async (formData) => {
+    setFormSubmittedData(formData);
+    if (submitToBackend) {
+      setLoading(true);
+      setLoadingMessage('Submitting to backend dispatcher...');
+      try {
+        const res = await submitTemplateForm(previewTemplateId, formData);
+        setBackendResponse(res.data);
+        showNotification('Form submitted to dispatcher successfully!');
+      } catch (err) {
+        showNotification(err.response?.data?.message || 'Failed to submit form', 'error');
+        setBackendResponse(err.response?.data || { error: err.message });
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      setBackendResponse(null);
     }
   };
 
@@ -520,6 +616,8 @@ export default function Developer() {
   // School Tenants Handlers
   const handleCreateSchool = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setLoadingMessage('Provisioning school tenant...');
     try {
       const payload = {
         name: newSchool.name,
@@ -563,10 +661,14 @@ export default function Developer() {
       loadSchools();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to create school tenant.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   const handleSetActiveSchool = async (school) => {
+    setLoading(true);
+    setLoadingMessage('Switching school context...');
     try {
       await setMasterInUse(school._id);
       localStorage.setItem('schoolSlug', school.slug);
@@ -575,23 +677,39 @@ export default function Developer() {
       window.location.reload();
     } catch (err) {
       showNotification('Failed to switch school context.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleDeleteSchool = async (id) => {
-    if (!window.confirm('Delete this school tenant permanently?')) return;
-    try {
-      await deleteMaster(id);
-      showNotification('School tenant deleted.');
-      loadSchools();
-    } catch (err) {
-      showNotification('Failed to delete school tenant.', 'error');
-    }
+  const handleDeleteSchool = (id) => {
+    setConfirmDialog({
+      isOpen: true,
+      title: 'Delete School Tenant',
+      message: 'Are you sure you want to delete this school tenant permanently? This action cannot be undone and deletes all associated configurations.',
+      type: 'danger',
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+        setLoading(true);
+        setLoadingMessage('Deleting school tenant...');
+        try {
+          await deleteMaster(id);
+          showNotification('School tenant deleted.');
+          loadSchools();
+        } catch (err) {
+          showNotification('Failed to delete school tenant.', 'error');
+        } finally {
+          setLoading(false);
+        }
+      }
+    });
   };
 
   // User accounts
   const handleCreateUser = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setLoadingMessage('Creating user account...');
     try {
       await devCreateUser({ ...newUser, schoolId: selectedSchoolForUsers });
       showNotification('User account created!');
@@ -599,6 +717,8 @@ export default function Developer() {
       loadUsers();
     } catch (err) {
       showNotification(err.response?.data?.message || 'Failed to create user', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -608,6 +728,8 @@ export default function Developer() {
   };
 
   const handleSaveUserEdit = async (user) => {
+    setLoading(true);
+    setLoadingMessage('Updating user details...');
     try {
       await devUpdateUser(user._id, {
         username: user.username,
@@ -620,6 +742,8 @@ export default function Developer() {
       loadUsers();
     } catch (err) {
       showNotification('Failed to update user details.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -653,12 +777,7 @@ export default function Developer() {
 
   return (
     <div className="developer-container" style={{ backgroundColor: 'var(--background-color)', color: 'var(--text-color)' }}>
-      {notification.message && (
-        <div className={`alert alert-${notification.type === 'success' ? 'success' : 'danger'} mb-4`} role="alert" style={{ borderRadius: '8px' }}>
-          <i className={`fa-solid ${notification.type === 'success' ? 'fa-circle-check' : 'fa-triangle-exclamation'} me-2`}></i>
-          {notification.message}
-        </div>
-      )}
+      <Notification message={notification.message} type={notification.type} />
 
       {/* Tabs */}
       {/* Tabs */}
@@ -751,6 +870,40 @@ export default function Developer() {
                     className="form-control premium-input"
                     value={newEntity.category}
                     onChange={e => setNewEntity({ ...newEntity, category: e.target.value })}
+                  />
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Backend Handler *</label>
+                  <select
+                    className="form-select premium-input"
+                    value={newEntity.handler}
+                    onChange={e => setNewEntity({ ...newEntity, handler: e.target.value })}
+                    required
+                  >
+                    <option value="Generic">Generic</option>
+                    <option value="Student">Student</option>
+                    <option value="Employee">Employee</option>
+                    <option value="Payment">Payment</option>
+                    <option value="FeeStructure">FeeStructure</option>
+                  </select>
+                </div>
+                <div className="col-12">
+                  <label className="premium-label">Storage Mapping Configuration (JSON Array)</label>
+                  <textarea
+                    className="form-control premium-input font-monospace"
+                    rows="5"
+                    placeholder={`[
+  {
+    "model": "StudentEnrollment",
+    "fields": {
+      "class": "classId",
+      "roll_number": "rollNumber"
+    },
+    "dynamicFieldContainer": "dynamicFields"
+  }
+]`}
+                    value={newEntity.storageRaw}
+                    onChange={e => setNewEntity({ ...newEntity, storageRaw: e.target.value })}
                   />
                 </div>
                 <div className="col-12">
@@ -863,6 +1016,7 @@ export default function Developer() {
                             </span>
                           </td>
                           <td className="text-end">
+                            <button onClick={() => setSelectedEntityForView(ent)} className="btn-action-edit me-2"><i className="fa-solid fa-eye me-1"></i>View</button>
                             {ent.status === 'active' ? (
                               <button onClick={() => handleArchiveEntity(ent._id)} className="btn-action-warning me-2"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
                             ) : (
@@ -944,144 +1098,6 @@ export default function Developer() {
                     onChange={e => setNewField({ ...newField, description: e.target.value })}
                   />
                 </div>
-                <div className="col-12">
-                  <label className="premium-label">Placeholder</label>
-                  <input
-                    type="text"
-                    className="form-control premium-input"
-                    value={newField.placeholder}
-                    onChange={e => setNewField({ ...newField, placeholder: e.target.value })}
-                  />
-                </div>
-                <div className="col-12">
-                  <label className="premium-label">Helper Text</label>
-                  <input
-                    type="text"
-                    className="form-control premium-input"
-                    value={newField.helperText}
-                    onChange={e => setNewField({ ...newField, helperText: e.target.value })}
-                  />
-                </div>
-
-                <div className="col-12">
-                  <div className="form-check form-switch pt-2">
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      checked={newField.required}
-                      onChange={e => setNewField({ ...newField, required: e.target.checked })}
-                    />
-                    <span className="small text-muted fw-semibold ms-1">Required Default</span>
-                  </div>
-                </div>
-                <div className="col-12">
-                  <div className="form-check form-switch">
-                    <input
-                      type="checkbox"
-                      className="form-check-input"
-                      checked={newField.unique}
-                      onChange={e => setNewField({ ...newField, unique: e.target.checked })}
-                    />
-                    <span className="small text-muted fw-semibold ms-1">Unique Check</span>
-                  </div>
-                </div>
-
-                {/* Conditional Value Bounds */}
-                {['number', 'currency', 'date', 'datetime', 'time'].includes(newField.type) && (
-                  <div className="col-12 border-top pt-2">
-                    <h6 className="small fw-bold text-muted mb-2">Value Bounds (Conditional)</h6>
-                    <div className="row g-2">
-                      <div className="col-6">
-                        <label className="premium-label">Min Value</label>
-                        <input
-                          type={newField.type === 'number' || newField.type === 'currency' ? 'number' : newField.type}
-                          className="form-control premium-input"
-                          value={newField.min}
-                          onChange={e => setNewField({ ...newField, min: e.target.value })}
-                        />
-                      </div>
-                      <div className="col-6">
-                        <label className="premium-label">Max Value</label>
-                        <input
-                          type={newField.type === 'number' || newField.type === 'currency' ? 'number' : newField.type}
-                          className="form-control premium-input"
-                          value={newField.max}
-                          onChange={e => setNewField({ ...newField, max: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Conditional Length Constraints */}
-                {['text', 'textarea', 'email', 'phone', 'password'].includes(newField.type) && (
-                  <div className="col-12 border-top pt-2">
-                    <h6 className="small fw-bold text-muted mb-2">Length Constraints (Conditional)</h6>
-                    <div className="row g-2">
-                      <div className="col-6">
-                        <label className="premium-label">Min Characters</label>
-                        <input
-                          type="number"
-                          className="form-control premium-input"
-                          value={newField.minLength}
-                          onChange={e => setNewField({ ...newField, minLength: e.target.value })}
-                        />
-                      </div>
-                      <div className="col-6">
-                        <label className="premium-label">Max Characters</label>
-                        <input
-                          type="number"
-                          className="form-control premium-input"
-                          value={newField.maxLength}
-                          onChange={e => setNewField({ ...newField, maxLength: e.target.value })}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* Validation Pattern */}
-                <div className="col-12 border-top pt-2">
-                  <label className="premium-label">Validation Regex Pattern</label>
-                  <div className="input-group">
-                    <input
-                      type="text"
-                      className="form-control premium-input"
-                      placeholder="^[A-Z]{3,5}$"
-                      value={newField.validationPattern}
-                      onChange={e => setNewField({ ...newField, validationPattern: e.target.value })}
-                    />
-                    <button
-                      type="button"
-                      onClick={handleTestRegex}
-                      className="btn btn-outline-secondary"
-                      style={{ borderTopRightRadius: '8px', borderBottomRightRadius: '8px' }}
-                    >
-                      <i className="fa-solid fa-vial"></i> Test
-                    </button>
-                  </div>
-                </div>
-                <div className="col-12">
-                  <label className="premium-label">Validation Error Message</label>
-                  <input
-                    type="text"
-                    className="form-control premium-input"
-                    placeholder="Must be between 3 and 5 uppercase letters."
-                    value={newField.validationMessage}
-                    onChange={e => setNewField({ ...newField, validationMessage: e.target.value })}
-                  />
-                </div>
-                <div className="col-12">
-                  <label className="premium-label">Default Value (Optional)</label>
-                  <input
-                    type="text"
-                    className="form-control premium-input"
-                    placeholder="Default system value"
-                    value={newField.defaultValue}
-                    onChange={e => setNewField({ ...newField, defaultValue: e.target.value })}
-                  />
-                </div>
-
                 {/* Lookup Configuration */}
                 {newField.type === 'lookup' && (
                   <div className="col-12 border-top pt-2">
@@ -1091,32 +1107,82 @@ export default function Developer() {
                         <label className="premium-label">Target Entity *</label>
                         <select
                           className="form-select premium-input"
-                          value={newField.lookup.entity}
+                          value={newField.lookup?.entity || ''}
                           onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, entity: e.target.value } })}
                           required
                         >
                           <option value="">-- Choose Target --</option>
                           {entities.map(ent => (
-                            <option key={ent._id} value={ent.key}>{ent.label || ent.key}</option>
+                            <option key={ent._id} value={ent._id}>{ent.label || ent.key}</option>
                           ))}
                         </select>
                       </div>
-                      <div className="col-6">
-                        <label className="premium-label">Display Field *</label>
+                      <div className="col-12">
+                        <label className="premium-label">Display Field Key *</label>
                         <input
                           type="text"
                           className="form-control premium-input"
-                          value={newField.lookup.displayField}
-                          onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, displayField: e.target.value } })}
+                          value={newField.lookup?.displayField?.field || ''}
+                          onChange={e => setNewField({ 
+                            ...newField, 
+                            lookup: { 
+                              ...newField.lookup, 
+                              displayField: { 
+                                ...(newField.lookup?.displayField || {}), 
+                                field: e.target.value 
+                              } 
+                            } 
+                          })}
                           required
                         />
                       </div>
                       <div className="col-6">
+                        <label className="premium-label">Display Source *</label>
+                        <select
+                          className="form-select premium-input"
+                          value={newField.lookup?.displayField?.source || 'core'}
+                          onChange={e => setNewField({ 
+                            ...newField, 
+                            lookup: { 
+                              ...newField.lookup, 
+                              displayField: { 
+                                ...(newField.lookup?.displayField || {}), 
+                                source: e.target.value 
+                              } 
+                            } 
+                          })}
+                          required
+                        >
+                          <option value="core">Core Property</option>
+                          <option value="dynamic">Dynamic Field</option>
+                          <option value="nested">Nested Path</option>
+                        </select>
+                      </div>
+                      <div className="col-6">
+                        <label className="premium-label">Path (if Nested)</label>
+                        <input
+                          type="text"
+                          className="form-control premium-input"
+                          placeholder="e.g. academic.section"
+                          value={newField.lookup?.displayField?.path || ''}
+                          onChange={e => setNewField({ 
+                            ...newField, 
+                            lookup: { 
+                              ...newField.lookup, 
+                              displayField: { 
+                                ...(newField.lookup?.displayField || {}), 
+                                path: e.target.value 
+                              } 
+                            } 
+                          })}
+                        />
+                      </div>
+                      <div className="col-12">
                         <label className="premium-label">Value Field *</label>
                         <input
                           type="text"
                           className="form-control premium-input"
-                          value={newField.lookup.valueField}
+                          value={newField.lookup?.valueField || '_id'}
                           onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, valueField: e.target.value } })}
                           required
                         />
@@ -1126,10 +1192,10 @@ export default function Developer() {
                           <input
                             type="checkbox"
                             className="form-check-input"
-                            checked={newField.lookup.multiple}
+                            checked={!!newField.lookup?.multiple}
                             onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, multiple: e.target.checked } })}
                           />
-                          <span className="small text-muted">Allow Multiple</span>
+                          <span className="small text-muted ms-1">Allow Multiple</span>
                         </div>
                       </div>
                       <div className="col-6">
@@ -1137,52 +1203,15 @@ export default function Developer() {
                           <input
                             type="checkbox"
                             className="form-check-input"
-                            checked={newField.lookup.searchable}
+                            checked={newField.lookup?.searchable !== false}
                             onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, searchable: e.target.checked } })}
                           />
-                          <span className="small text-muted">Searchable</span>
+                          <span className="small text-muted ms-1">Searchable</span>
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
-
-                {/* UI Styling configurations */}
-                <div className="col-12 border-top pt-2">
-                  <h6 className="small fw-bold text-muted mb-2">UI Layout Styling</h6>
-                  <div className="row g-2">
-                    <div className="col-6">
-                      <label className="premium-label">FontAwesome Icon</label>
-                      <input
-                        type="text"
-                        className="form-control premium-input"
-                        placeholder="fa-font"
-                        value={newField.ui.icon}
-                        onChange={e => setNewField({ ...newField, ui: { ...newField.ui, icon: e.target.value } })}
-                      />
-                    </div>
-                    <div className="col-6">
-                      <label className="premium-label">Accent Color</label>
-                      <input
-                        type="color"
-                        className="form-control form-control-color premium-input w-100"
-                        value={newField.ui.color || '#cccccc'}
-                        onChange={e => setNewField({ ...newField, ui: { ...newField.ui, color: e.target.value } })}
-                      />
-                    </div>
-                    <div className="col-12">
-                      <label className="premium-label">Bootstrap Grid Column Width (1-12)</label>
-                      <input
-                        type="number"
-                        className="form-control premium-input"
-                        min="1"
-                        max="12"
-                        value={newField.ui.width}
-                        onChange={e => setNewField({ ...newField, ui: { ...newField.ui, width: parseInt(e.target.value) || 12 } })}
-                      />
-                    </div>
-                  </div>
-                </div>
 
                 {/* Picklist Option Manager */}
                 {['select', 'multiselect', 'radio'].includes(newField.type) && (
@@ -1287,9 +1316,7 @@ export default function Developer() {
                         <th>Key</th>
                         <th>Label</th>
                         <th>Type</th>
-                        <th className="text-center">Required</th>
-                        <th className="text-center">Unique</th>
-                        <th>Regex Pattern</th>
+                        <th>Category</th>
                         <th>Status</th>
                         <th className="text-end">Actions</th>
                       </tr>
@@ -1312,9 +1339,7 @@ export default function Developer() {
                               <td className="fw-bold">{f.key}</td>
                               <td>{f.label}</td>
                               <td><span className="badge bg-light text-dark border">{f.type}</span></td>
-                              <td className="text-center">{f.required ? <span className="text-success fw-bold">✓</span> : <span className="text-danger fw-bold">✗</span>}</td>
-                              <td className="text-center">{f.unique ? <span className="text-success fw-bold">✓</span> : <span className="text-danger fw-bold">✗</span>}</td>
-                              <td>{f.validationPattern ? <code className="small text-muted">{f.validationPattern}</code> : <span className="text-muted small">-</span>}</td>
+                              <td>{f.category || 'General'}</td>
                               <td><span className={`status-pill ${f.status}`}>{f.status}</span></td>
                               <td className="text-end">
                                 <button onClick={() => handleStartEditingField(f)} className="btn-action-edit me-2"><i className="fa-solid fa-pen me-1"></i>Edit</button>
@@ -1327,51 +1352,33 @@ export default function Developer() {
                                 {f.status === 'active' && (
                                   <button onClick={() => handleArchiveField(f._id)} className="btn-action-warning"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
                                 )}
+                                {f.status === 'archived' && (
+                                  <button onClick={() => handleActivateField(f._id)} className="btn-action-success"><i className="fa-solid fa-box-open me-1"></i>Activate</button>
+                                )}
                               </td>
                             </tr>
                             {isExpanded && (
                               <tr className="bg-light">
-                                <td colSpan="9" className="p-3">
+                                <td colSpan="7" className="p-3">
                                   <div className="card p-3 shadow-sm border-0" style={{ backgroundColor: '#fafafa', borderRadius: '6px' }}>
                                     <h6 className="fw-bold mb-3 text-muted"><i className="fa-solid fa-circle-info me-2 text-primary"></i>Advanced Field Definition Details</h6>
                                     <div className="row g-3 small text-dark">
-                                      <div className="col-md-3">
+                                      <div className="col-md-4">
                                         <strong>Category:</strong> <span className="text-muted d-block">{f.category || 'General'}</span>
                                       </div>
-                                      <div className="col-md-3">
+                                      <div className="col-md-8">
                                         <strong>Description:</strong> <span className="text-muted d-block">{f.description || 'No description provided.'}</span>
                                       </div>
-                                      <div className="col-md-3">
-                                        <strong>Placeholder:</strong> <span className="text-muted d-block">{f.placeholder || '-'}</span>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <strong>Helper Text:</strong> <span className="text-muted d-block">{f.helperText || '-'}</span>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <strong>Value Limits (Min / Max):</strong> <span className="text-muted d-block">Min: {f.min !== undefined ? f.min : '-'} | Max: {f.max !== undefined ? f.max : '-'}</span>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <strong>Length Limits (Min / Max):</strong> <span className="text-muted d-block">Min: {f.minLength !== undefined ? f.minLength : '-'} | Max: {f.maxLength !== undefined ? f.maxLength : '-'}</span>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <strong>Default Value:</strong> <span className="text-muted d-block">{f.defaultValue !== undefined && f.defaultValue !== null ? String(f.defaultValue) : '-'}</span>
-                                      </div>
-                                      <div className="col-md-3">
-                                        <strong>Validation Regex Error:</strong> <span className="text-muted d-block text-danger">{f.validationMessage || '-'}</span>
-                                      </div>
-                                      <div className="col-md-6 border-top pt-2">
-                                        <strong>UI Specs (Icon | Color | Grid Column Width):</strong>
-                                        <div className="pt-1">
-                                          <span className="badge bg-light text-dark border me-1"><i className={`fa-solid ${f.ui?.icon || 'fa-tag'} me-1`}></i>{f.ui?.icon || 'default'}</span>
-                                          <span className="badge bg-light text-dark border me-1" style={{ borderLeft: `4px solid ${f.ui?.color || '#ccc'}` }}>Color: {f.ui?.color || '#ccc'}</span>
-                                          <span className="badge bg-light text-dark border">Grid Width: {f.ui?.width || 12}/12</span>
-                                        </div>
-                                      </div>
-                                      {f.lookup && f.lookup.entity && (
-                                        <div className="col-md-6 border-top pt-2">
+                                      {f.lookup && (f.lookup.entity || f.lookup.displayField) && (
+                                        <div className="col-md-12 border-top pt-2">
                                           <strong>Lookup Configuration:</strong>
                                           <div className="pt-1 small text-muted">
-                                            Entity: <code>{f.lookup.entity}</code> | Display: <code>{f.lookup.displayField}</code> | Value: <code>{f.lookup.valueField}</code>
+                                            Entity ID: <code>{f.lookup.entity?._id || f.lookup.entity}</code>
+                                            {f.lookup.entity?.label && <span> ({f.lookup.entity.label})</span>}
+                                            <br />
+                                            Display Field: <code>{typeof f.lookup.displayField === 'object' ? f.lookup.displayField?.field : f.lookup.displayField}</code> (Source: <code>{f.lookup.displayField?.source || 'core'}</code> {f.lookup.displayField?.path && <span>, Path: <code>{f.lookup.displayField.path}</code></span>})
+                                            <br />
+                                            Value Field: <code>{f.lookup.valueField}</code>
                                             <br />
                                             Flags: Multiple ({f.lookup.multiple ? 'Yes' : 'No'}) | Searchable ({f.lookup.searchable ? 'Yes' : 'No'})
                                           </div>
@@ -1444,7 +1451,7 @@ export default function Developer() {
               >
                 <option value="">-- Choose Target Entity --</option>
                 {entities.map(ent => (
-                  <option key={ent._id} value={ent.key}>{ent.label || ent.key}</option>
+                  <option key={ent._id} value={ent._id}>{ent.label || ent.key}</option>
                 ))}
               </select>
             </div>
@@ -1555,7 +1562,26 @@ export default function Developer() {
                                     const nextOrder = newTemplate.fields.length + 1;
                                     setNewTemplate({
                                       ...newTemplate,
-                                      fields: [...newTemplate.fields, { fieldId: f._id, order: nextOrder, required: f.required, hidden: false, readonly: false, width: f.ui?.width || 12 }]
+                                      fields: [...newTemplate.fields, { 
+                                        fieldId: f._id, 
+                                        order: nextOrder, 
+                                        required: false, 
+                                        unique: false, 
+                                        readOnly: false, 
+                                        hidden: false, 
+                                        width: 12,
+                                        placeholder: '',
+                                        helperText: '',
+                                        defaultValue: '',
+                                        validation: {
+                                          min: undefined,
+                                          max: undefined,
+                                          minLength: undefined,
+                                          maxLength: undefined,
+                                          pattern: '',
+                                          message: ''
+                                        }
+                                      }]
                                     });
                                   }}
                                   className="btn btn-xs btn-outline-primary py-1 px-2"
@@ -1609,138 +1635,344 @@ export default function Developer() {
                               .sort((a, b) => a.order - b.order)
                               .map((tf, index, arr) => {
                                 return (
-                                  <tr key={tf.fieldId}>
-                                    <td>
-                                      <input
-                                        type="number"
-                                        className="form-control form-control-sm text-center py-0 px-1"
-                                        value={tf.order}
-                                        style={{ height: '24px', fontSize: '11px' }}
-                                        onChange={e => {
-                                          const val = parseInt(e.target.value) || 0;
-                                          const updated = newTemplate.fields.map(item =>
-                                            item.fieldId === tf.fieldId ? { ...item, order: val } : item
-                                          );
-                                          setNewTemplate({ ...newTemplate, fields: updated });
-                                        }}
-                                      />
-                                    </td>
-                                    <td>
-                                      <span className="fw-bold text-dark">{tf.fObj.label}</span>
-                                      <span className="text-muted d-block font-monospace" style={{ fontSize: '9px' }}>{tf.fObj.key}</span>
-                                    </td>
-                                    <td>
-                                      <span className="badge bg-light text-dark border">{tf.fObj.type}</span>
-                                    </td>
-                                    <td>
-                                      <select
-                                        className="form-select form-select-sm py-0 px-1 text-center"
-                                        value={tf.width || 12}
-                                        style={{ height: '24px', fontSize: '11px', minWidth: '75px' }}
-                                        onChange={e => {
-                                          const val = parseInt(e.target.value) || 12;
-                                          const updated = newTemplate.fields.map(item =>
-                                            item.fieldId === tf.fieldId ? { ...item, width: val } : item
-                                          );
-                                          setNewTemplate({ ...newTemplate, fields: updated });
-                                        }}
-                                      >
-                                        {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(w => (
-                                          <option key={w} value={w}>Col-{w}</option>
-                                        ))}
-                                      </select>
-                                    </td>
-                                    <td className="text-center">
-                                      <input
-                                        type="checkbox"
-                                        className="form-check-input"
-                                        checked={tf.required}
-                                        onChange={e => {
-                                          const updated = newTemplate.fields.map(item =>
-                                            item.fieldId === tf.fieldId ? { ...item, required: e.target.checked } : item
-                                          );
-                                          setNewTemplate({ ...newTemplate, fields: updated });
-                                        }}
-                                      />
-                                    </td>
-                                    <td className="text-center">
-                                      <input
-                                        type="checkbox"
-                                        className="form-check-input"
-                                        checked={tf.hidden}
-                                        onChange={e => {
-                                          const updated = newTemplate.fields.map(item =>
-                                            item.fieldId === tf.fieldId ? { ...item, hidden: e.target.checked } : item
-                                          );
-                                          setNewTemplate({ ...newTemplate, fields: updated });
-                                        }}
-                                      />
-                                    </td>
-                                    <td className="text-center">
-                                      <input
-                                        type="checkbox"
-                                        className="form-check-input"
-                                        checked={tf.readonly}
-                                        onChange={e => {
-                                          const updated = newTemplate.fields.map(item =>
-                                            item.fieldId === tf.fieldId ? { ...item, readonly: e.target.checked } : item
-                                          );
-                                          setNewTemplate({ ...newTemplate, fields: updated });
-                                        }}
-                                      />
-                                    </td>
-                                    <td className="text-end">
-                                      <div className="btn-group btn-group-sm">
-                                        <button
-                                          type="button"
-                                          disabled={index === 0}
-                                          onClick={() => {
-                                            const prevItem = arr[index - 1];
-                                            const updated = newTemplate.fields.map(item => {
-                                              if (item.fieldId === tf.fieldId) return { ...item, order: prevItem.order };
-                                              if (item.fieldId === prevItem.fieldId) return { ...item, order: tf.order };
-                                              return item;
-                                            });
+                                  <React.Fragment key={tf.fieldId}>
+                                    <tr>
+                                      <td>
+                                        <input
+                                          type="number"
+                                          className="form-control form-control-sm text-center py-0 px-1"
+                                          value={tf.order}
+                                          style={{ height: '24px', fontSize: '11px' }}
+                                          onChange={e => {
+                                            const val = parseInt(e.target.value) || 0;
+                                            const updated = newTemplate.fields.map(item =>
+                                              item.fieldId === tf.fieldId ? { ...item, order: val } : item
+                                            );
                                             setNewTemplate({ ...newTemplate, fields: updated });
                                           }}
-                                          className="btn btn-xs btn-outline-secondary py-0 px-2"
-                                          title="Move Up"
-                                        >
-                                          <i className="fa-solid fa-arrow-up"></i>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          disabled={index === arr.length - 1}
-                                          onClick={() => {
-                                            const nextItem = arr[index + 1];
-                                            const updated = newTemplate.fields.map(item => {
-                                              if (item.fieldId === tf.fieldId) return { ...item, order: nextItem.order };
-                                              if (item.fieldId === nextItem.fieldId) return { ...item, order: tf.order };
-                                              return item;
-                                            });
+                                        />
+                                      </td>
+                                      <td>
+                                        <span className="fw-bold text-dark">{tf.fObj.label}</span>
+                                        <span className="text-muted d-block font-monospace" style={{ fontSize: '9px' }}>{tf.fObj.key}</span>
+                                      </td>
+                                      <td>
+                                        <span className="badge bg-light text-dark border">{tf.fObj.type}</span>
+                                      </td>
+                                      <td>
+                                        <select
+                                          className="form-select form-select-sm py-0 px-1 text-center"
+                                          value={tf.width || 12}
+                                          style={{ height: '24px', fontSize: '11px', minWidth: '75px' }}
+                                          onChange={e => {
+                                            const val = parseInt(e.target.value) || 12;
+                                            const updated = newTemplate.fields.map(item =>
+                                              item.fieldId === tf.fieldId ? { ...item, width: val } : item
+                                            );
                                             setNewTemplate({ ...newTemplate, fields: updated });
                                           }}
-                                          className="btn btn-xs btn-outline-secondary py-0 px-2"
-                                          title="Move Down"
                                         >
-                                          <i className="fa-solid fa-arrow-down"></i>
-                                        </button>
-                                        <button
-                                          type="button"
-                                          onClick={() => {
-                                            setNewTemplate({
-                                              ...newTemplate,
-                                              fields: newTemplate.fields.filter(item => item.fieldId !== tf.fieldId)
-                                            });
+                                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(w => (
+                                            <option key={w} value={w}>Col-{w}</option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                      <td className="text-center">
+                                        <input
+                                          type="checkbox"
+                                          className="form-check-input"
+                                          checked={tf.required || false}
+                                          onChange={e => {
+                                            const updated = newTemplate.fields.map(item =>
+                                              item.fieldId === tf.fieldId ? { ...item, required: e.target.checked } : item
+                                            );
+                                            setNewTemplate({ ...newTemplate, fields: updated });
                                           }}
-                                          className="btn btn-xs btn-outline-danger py-0 px-2"
-                                          title="Remove Field"
-                                        >
-                                          <i className="fa-solid fa-trash"></i>
-                                        </button>
-                                      </div>
-                                    </td>
-                                  </tr>
+                                        />
+                                      </td>
+                                      <td className="text-center">
+                                        <input
+                                          type="checkbox"
+                                          className="form-check-input"
+                                          checked={tf.hidden || false}
+                                          onChange={e => {
+                                            const updated = newTemplate.fields.map(item =>
+                                              item.fieldId === tf.fieldId ? { ...item, hidden: e.target.checked } : item
+                                            );
+                                            setNewTemplate({ ...newTemplate, fields: updated });
+                                          }}
+                                        />
+                                      </td>
+                                      <td className="text-center">
+                                        <input
+                                          type="checkbox"
+                                          className="form-check-input"
+                                          checked={tf.readOnly || tf.readonly || false}
+                                          onChange={e => {
+                                            const updated = newTemplate.fields.map(item =>
+                                              item.fieldId === tf.fieldId ? { ...item, readOnly: e.target.checked, readonly: e.target.checked } : item
+                                            );
+                                            setNewTemplate({ ...newTemplate, fields: updated });
+                                          }}
+                                        />
+                                      </td>
+                                      <td className="text-end">
+                                        <div className="btn-group btn-group-sm">
+                                          <button
+                                            type="button"
+                                            onClick={() => setEditingTemplateFieldId(editingTemplateFieldId === tf.fieldId ? null : tf.fieldId)}
+                                            className={`btn btn-xs ${editingTemplateFieldId === tf.fieldId ? 'btn-primary text-white' : 'btn-outline-primary'} py-0 px-2`}
+                                            title="Configure Properties"
+                                          >
+                                            <i className="fa-solid fa-cog"></i>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={index === 0}
+                                            onClick={() => {
+                                              const prevItem = arr[index - 1];
+                                              const updated = newTemplate.fields.map(item => {
+                                                if (item.fieldId === tf.fieldId) return { ...item, order: prevItem.order };
+                                                if (item.fieldId === prevItem.fieldId) return { ...item, order: tf.order };
+                                                return item;
+                                              });
+                                              setNewTemplate({ ...newTemplate, fields: updated });
+                                            }}
+                                            className="btn btn-xs btn-outline-secondary py-0 px-2"
+                                            title="Move Up"
+                                          >
+                                            <i className="fa-solid fa-arrow-up"></i>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            disabled={index === arr.length - 1}
+                                            onClick={() => {
+                                              const nextItem = arr[index + 1];
+                                              const updated = newTemplate.fields.map(item => {
+                                                if (item.fieldId === tf.fieldId) return { ...item, order: nextItem.order };
+                                                if (item.fieldId === nextItem.fieldId) return { ...item, order: tf.order };
+                                                return item;
+                                              });
+                                              setNewTemplate({ ...newTemplate, fields: updated });
+                                            }}
+                                            className="btn btn-xs btn-outline-secondary py-0 px-2"
+                                            title="Move Down"
+                                          >
+                                            <i className="fa-solid fa-arrow-down"></i>
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              setNewTemplate({
+                                                ...newTemplate,
+                                                fields: newTemplate.fields.filter(item => item.fieldId !== tf.fieldId)
+                                              });
+                                            }}
+                                            className="btn btn-xs btn-outline-danger py-0 px-2"
+                                            title="Remove Field"
+                                          >
+                                            <i className="fa-solid fa-trash"></i>
+                                          </button>
+                                        </div>
+                                      </td>
+                                    </tr>
+
+                                    {editingTemplateFieldId === tf.fieldId && (
+                                      <tr>
+                                        <td colSpan="8" className="bg-light p-3 border-bottom">
+                                          <div className="card shadow-xs border p-3 bg-white">
+                                            <h6 className="fw-bold mb-3 text-primary"><i className="fa-solid fa-sliders me-2"></i>Configure Overrides for "{tf.fObj.label}"</h6>
+                                            <div className="row g-2">
+                                              <div className="col-md-4">
+                                                <label className="premium-label">Placeholder</label>
+                                                <input
+                                                  type="text"
+                                                  className="form-control form-control-sm premium-input"
+                                                  value={tf.placeholder || ''}
+                                                  onChange={e => {
+                                                    const updated = newTemplate.fields.map(item =>
+                                                      item.fieldId === tf.fieldId ? { ...item, placeholder: e.target.value } : item
+                                                    );
+                                                    setNewTemplate({ ...newTemplate, fields: updated });
+                                                  }}
+                                                />
+                                              </div>
+                                              <div className="col-md-4">
+                                                <label className="premium-label">Helper Text</label>
+                                                <input
+                                                  type="text"
+                                                  className="form-control form-control-sm premium-input"
+                                                  value={tf.helperText || ''}
+                                                  onChange={e => {
+                                                    const updated = newTemplate.fields.map(item =>
+                                                      item.fieldId === tf.fieldId ? { ...item, helperText: e.target.value } : item
+                                                    );
+                                                    setNewTemplate({ ...newTemplate, fields: updated });
+                                                  }}
+                                                />
+                                              </div>
+                                              <div className="col-md-4">
+                                                <label className="premium-label">Default Value</label>
+                                                <input
+                                                  type="text"
+                                                  className="form-control form-control-sm premium-input"
+                                                  value={tf.defaultValue !== undefined && tf.defaultValue !== null ? String(tf.defaultValue) : ''}
+                                                  onChange={e => {
+                                                    const updated = newTemplate.fields.map(item =>
+                                                      item.fieldId === tf.fieldId ? { ...item, defaultValue: e.target.value } : item
+                                                    );
+                                                    setNewTemplate({ ...newTemplate, fields: updated });
+                                                  }}
+                                                />
+                                              </div>
+
+                                              <div className="col-md-4">
+                                                <div className="form-check pt-3">
+                                                  <input
+                                                    type="checkbox"
+                                                    className="form-check-input"
+                                                    checked={!!tf.unique}
+                                                    onChange={e => {
+                                                      const updated = newTemplate.fields.map(item =>
+                                                        item.fieldId === tf.fieldId ? { ...item, unique: e.target.checked } : item
+                                                      );
+                                                      setNewTemplate({ ...newTemplate, fields: updated });
+                                                    }}
+                                                  />
+                                                  <span className="small text-muted ms-1">Enforce Unique Check</span>
+                                                </div>
+                                              </div>
+
+                                              {/* Validations Sub-block */}
+                                              <div className="col-12 border-top mt-3 pt-2">
+                                                <h6 className="fw-semibold text-muted d-block mb-2">Validation Rules</h6>
+                                                <div className="row g-2">
+                                                  {['number', 'currency', 'percentage', 'date', 'datetime', 'time'].includes(tf.fObj.type) && (
+                                                    <>
+                                                      <div className="col-md-3">
+                                                        <label className="premium-label">Min Value</label>
+                                                        <input
+                                                          type="number"
+                                                          className="form-control form-control-sm premium-input"
+                                                          value={tf.validation?.min !== undefined ? tf.validation.min : ''}
+                                                          onChange={e => {
+                                                            const val = e.target.value !== '' ? Number(e.target.value) : undefined;
+                                                            const updated = newTemplate.fields.map(item =>
+                                                              item.fieldId === tf.fieldId ? {
+                                                                ...item,
+                                                                validation: { ...(item.validation || {}), min: val }
+                                                              } : item
+                                                            );
+                                                            setNewTemplate({ ...newTemplate, fields: updated });
+                                                          }}
+                                                        />
+                                                      </div>
+                                                      <div className="col-md-3">
+                                                        <label className="premium-label">Max Value</label>
+                                                        <input
+                                                          type="number"
+                                                          className="form-control form-control-sm premium-input"
+                                                          value={tf.validation?.max !== undefined ? tf.validation.max : ''}
+                                                          onChange={e => {
+                                                            const val = e.target.value !== '' ? Number(e.target.value) : undefined;
+                                                            const updated = newTemplate.fields.map(item =>
+                                                              item.fieldId === tf.fieldId ? {
+                                                                ...item,
+                                                                validation: { ...(item.validation || {}), max: val }
+                                                              } : item
+                                                            );
+                                                            setNewTemplate({ ...newTemplate, fields: updated });
+                                                          }}
+                                                        />
+                                                      </div>
+                                                    </>
+                                                  )}
+
+                                                  {['text', 'textarea', 'email', 'phone', 'password'].includes(tf.fObj.type) && (
+                                                    <>
+                                                      <div className="col-md-3">
+                                                        <label className="premium-label">Min Characters</label>
+                                                        <input
+                                                          type="number"
+                                                          className="form-control form-control-sm premium-input"
+                                                          value={tf.validation?.minLength !== undefined ? tf.validation.minLength : ''}
+                                                          onChange={e => {
+                                                            const val = e.target.value !== '' ? Number(e.target.value) : undefined;
+                                                            const updated = newTemplate.fields.map(item =>
+                                                              item.fieldId === tf.fieldId ? {
+                                                                ...item,
+                                                                validation: { ...(item.validation || {}), minLength: val }
+                                                              } : item
+                                                            );
+                                                            setNewTemplate({ ...newTemplate, fields: updated });
+                                                          }}
+                                                        />
+                                                      </div>
+                                                      <div className="col-md-3">
+                                                        <label className="premium-label">Max Characters</label>
+                                                        <input
+                                                          type="number"
+                                                          className="form-control form-control-sm premium-input"
+                                                          value={tf.validation?.maxLength !== undefined ? tf.validation.maxLength : ''}
+                                                          onChange={e => {
+                                                            const val = e.target.value !== '' ? Number(e.target.value) : undefined;
+                                                            const updated = newTemplate.fields.map(item =>
+                                                              item.fieldId === tf.fieldId ? {
+                                                                ...item,
+                                                                validation: { ...(item.validation || {}), maxLength: val }
+                                                              } : item
+                                                            );
+                                                            setNewTemplate({ ...newTemplate, fields: updated });
+                                                          }}
+                                                        />
+                                                      </div>
+                                                      <div className="col-md-6">
+                                                        <label className="premium-label">Regex Pattern</label>
+                                                        <input
+                                                          type="text"
+                                                          placeholder="e.g. ^[0-9]{10}$"
+                                                          className="form-control form-control-sm premium-input"
+                                                          value={tf.validation?.pattern || ''}
+                                                          onChange={e => {
+                                                            const updated = newTemplate.fields.map(item =>
+                                                              item.fieldId === tf.fieldId ? {
+                                                                ...item,
+                                                                validation: { ...(item.validation || {}), pattern: e.target.value }
+                                                              } : item
+                                                            );
+                                                            setNewTemplate({ ...newTemplate, fields: updated });
+                                                          }}
+                                                        />
+                                                      </div>
+                                                    </>
+                                                  )}
+
+                                                  <div className="col-md-12">
+                                                    <label className="premium-label">Custom Validation Message</label>
+                                                    <input
+                                                      type="text"
+                                                      placeholder="Message to display when validation fails"
+                                                      className="form-control form-control-sm premium-input"
+                                                      value={tf.validation?.message || ''}
+                                                      onChange={e => {
+                                                        const updated = newTemplate.fields.map(item =>
+                                                          item.fieldId === tf.fieldId ? {
+                                                            ...item,
+                                                            validation: { ...(item.validation || {}), message: e.target.value }
+                                                          } : item
+                                                        );
+                                                        setNewTemplate({ ...newTemplate, fields: updated });
+                                                      }}
+                                                    />
+                                                  </div>
+                                                </div>
+                                              </div>
+                                            </div>
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                  </React.Fragment>
                                 );
                               })}
                           </tbody>
@@ -1804,7 +2036,7 @@ export default function Developer() {
                   <tr key={t._id}>
                     <td className="fw-bold">{t.key}</td>
                     <td>{t.label}</td>
-                    <td><span className="status-pill active">{t.entity}</span></td>
+                     <td><span className="status-pill active">{typeof t.entity === 'object' ? (t.entity?.label || t.entity?.key || '') : t.entity}</span></td>
                     <td><span className="status-pill draft">{t.scope}</span></td>
                     <td>{t.fields?.length || 0} fields</td>
                     <td><span className={`status-pill ${t.status}`}>{t.status}</span></td>
@@ -1848,8 +2080,8 @@ export default function Developer() {
                   onChange={e => setPreviewTemplateId(e.target.value)}
                 >
                   <option value="">-- Choose Template --</option>
-                  {templates.filter(t => t.status === 'active').map(t => (
-                    <option key={t._id} value={t._id}>{t.label} ({t.entity})</option>
+                   {templates.filter(t => t.status === 'active').map(t => (
+                    <option key={t._id} value={t._id}>{t.label} ({typeof t.entity === 'object' ? (t.entity?.label || t.entity?.key || '') : t.entity})</option>
                   ))}
                 </select>
               </div>
@@ -1861,21 +2093,49 @@ export default function Developer() {
             {previewForm && (
               <div className="row g-4">
                 <div className="col-md-6 premium-card">
+                  <div className="form-check form-switch mb-3 pt-2">
+                    <input
+                      type="checkbox"
+                      className="form-check-input"
+                      id="submitToBackendToggle"
+                      checked={submitToBackend}
+                      onChange={e => {
+                        setSubmitToBackend(e.target.checked);
+                        setBackendResponse(null);
+                      }}
+                    />
+                    <label className="form-check-label fw-semibold text-secondary" htmlFor="submitToBackendToggle">
+                      <i className="fa-solid fa-cloud-arrow-up me-1"></i> Submit to Backend Dispatcher
+                    </label>
+                  </div>
                   <DynamicForm
                     template={previewForm}
                     mode="preview"
-                    onSubmit={setFormSubmittedData}
+                    onSubmit={handlePreviewSubmit}
                   />
                 </div>
 
                 <div className="col-md-6 bg-light p-4 rounded border">
                   <h5 className="fw-bold mb-3 text-muted">Submitted Form Payload</h5>
                   {formSubmittedData ? (
-                    <pre className="bg-dark text-success p-3 rounded" style={{ fontSize: '13px', fontFamily: 'monospace' }}>
+                    <pre className="bg-dark text-success p-3 rounded mb-4" style={{ fontSize: '13px', fontFamily: 'monospace' }}>
                       {JSON.stringify(formSubmittedData, null, 2)}
                     </pre>
                   ) : (
-                    <p className="text-muted small">Submit the form preview to see dynamic key-value payload outputs.</p>
+                    <p className="text-muted small mb-4">Submit the form preview to see dynamic key-value payload outputs.</p>
+                  )}
+
+                  {submitToBackend && (
+                    <>
+                      <h5 className="fw-bold mb-3 text-muted border-top pt-3">Dispatcher Response</h5>
+                      {backendResponse ? (
+                        <pre className="bg-dark text-info p-3 rounded" style={{ fontSize: '13px', fontFamily: 'monospace' }}>
+                          {JSON.stringify(backendResponse, null, 2)}
+                        </pre>
+                      ) : (
+                        <p className="text-muted small">No response received yet.</p>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -2275,6 +2535,143 @@ export default function Developer() {
           </div>
         )
       }
+      <LoadingIndicator message={loadingMessage} active={loading} />
+      <ConfirmModal
+        isOpen={confirmDialog.isOpen}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        type={confirmDialog.type}
+        onConfirm={confirmDialog.onConfirm}
+        onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      {/* Entity Details View Modal */}
+      {selectedEntityForView && (
+        <div
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.4)',
+            backdropFilter: 'blur(3px)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: '20px'
+          }}
+          onClick={() => setSelectedEntityForView(null)}
+        >
+          <div
+            className="premium-card text-dark"
+            style={{
+              width: '100%',
+              maxWidth: '650px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              boxShadow: '0 8px 32px rgba(0, 0, 0, 0.15)',
+              backgroundColor: '#fff',
+              borderRadius: '12px',
+              padding: '24px'
+            }}
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="d-flex justify-content-between align-items-center border-bottom pb-3 mb-4">
+              <h5 className="fw-bold mb-0">
+                <i className={`fa-solid ${selectedEntityForView.icon || 'fa-cubes'} me-2`} style={{ color: selectedEntityForView.color || 'var(--button-color)' }}></i>
+                {selectedEntityForView.label} Entity Metadata
+              </h5>
+              <button className="btn-close" style={{ border: 'none', background: 'transparent', fontSize: '1.2rem', cursor: 'pointer' }} onClick={() => setSelectedEntityForView(null)}>&times;</button>
+            </div>
+
+            <div className="row g-3">
+              <div className="col-md-6 mb-3">
+                <strong className="d-block small text-secondary">Machine Key:</strong>
+                <code>{selectedEntityForView.key}</code>
+              </div>
+              <div className="col-md-6 mb-3">
+                <strong className="d-block small text-secondary">Friendly Name:</strong>
+                <span>{selectedEntityForView.label}</span>
+              </div>
+              <div className="col-md-6 mb-3">
+                <strong className="d-block small text-secondary">MongoDB Collection:</strong>
+                <code>{selectedEntityForView.collection}</code>
+              </div>
+              <div className="col-md-6 mb-3">
+                <strong className="d-block small text-secondary">Mongoose Model:</strong>
+                <code>{selectedEntityForView.model}</code>
+              </div>
+              <div className="col-md-6 mb-3">
+                <strong className="d-block small text-secondary">Category (Grouping):</strong>
+                <span>{selectedEntityForView.category || 'General'}</span>
+              </div>
+              <div className="col-md-6 mb-3">
+                <strong className="d-block small text-secondary">Backend Handler:</strong>
+                <span className="badge bg-primary text-white d-inline-block px-2 py-1 mt-1">{selectedEntityForView.handler}</span>
+              </div>
+              <div className="col-12 mb-3">
+                <strong className="d-block small text-secondary">Description:</strong>
+                <span className="text-muted small">{selectedEntityForView.description || 'No description provided.'}</span>
+              </div>
+
+              {/* Storage Config Details */}
+              <div className="col-12 border-top pt-3">
+                <h6 className="fw-bold mb-3"><i className="fa-solid fa-database me-2 text-info"></i>Storage Mapping Configurations</h6>
+                {(!selectedEntityForView.storage || selectedEntityForView.storage.length === 0) ? (
+                  <div className="alert alert-secondary py-2 small mb-0">No custom storage configuration defined. Defaults to standard MongoDB collection CRUD.</div>
+                ) : (
+                  selectedEntityForView.storage.map((store, sIdx) => (
+                    <div key={sIdx} className="p-3 rounded mb-3 border bg-light shadow-xs" style={{ border: '1px solid #dee2e6' }}>
+                      <div className="d-flex justify-content-between align-items-center border-bottom pb-2 mb-2">
+                        <strong className="text-secondary"><i className="fa-solid fa-table me-1"></i>Model: {store.model}</strong>
+                        {store.dynamicFieldContainer && (
+                          <span className="badge bg-warning text-dark small px-2 py-1">
+                            <i className="fa-solid fa-code me-1"></i>Container: {store.dynamicFieldContainer}
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="small">
+                        <strong className="d-block mb-1">Field Mappings (Field Registry Key &rarr; Mongoose Field):</strong>
+                        {(!store.fields || (store.fields instanceof Map ? store.fields.size === 0 : Object.keys(store.fields).length === 0)) ? (
+                          <div className="text-muted italic pt-1">No field maps configured. All properties stored inside default dynamic fields.</div>
+                        ) : (
+                          <table className="table table-sm table-bordered mt-2 mb-0 bg-white" style={{ border: '1px solid #dee2e6' }}>
+                            <thead>
+                              <tr className="table-light">
+                                <th>Registry Key</th>
+                                <th>Backend Schema Property</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {Object.entries(store.fields instanceof Map ? Object.fromEntries(store.fields) : store.fields).map(([regKey, schemaProp]) => {
+                                const renderKey = typeof regKey === 'object' ? (regKey.key || regKey.label || JSON.stringify(regKey)) : String(regKey);
+                                const renderVal = typeof schemaProp === 'object' ? (schemaProp.key || schemaProp.label || JSON.stringify(schemaProp)) : String(schemaProp);
+                                return (
+                                  <tr key={renderKey}>
+                                    <td><code>{renderKey}</code></td>
+                                    <td><code>{renderVal}</code></td>
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+            
+            <div className="d-flex justify-content-end border-top pt-3 mt-4">
+              <button className="btn btn-sm btn-outline-secondary px-4 py-1.5 fw-semibold" onClick={() => setSelectedEntityForView(null)}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div >
   );
 }

@@ -46,11 +46,25 @@ api.interceptors.response.use((response) => {
                         legacyStudent.additionalInfo.push({ key: name, value: df.value });
                     }
                     if (key) {
-                        if (key === 'admissionNo') legacyStudent.AdmissionNo = df.value;
-                        else if (key === 'freeStudent') legacyStudent.FreeStud = df.value;
-                        else if (key === 'caste') legacyStudent.Caste = df.value;
-                        else if (key === 'casteHindi') legacyStudent.CasteHindi = df.value;
-                        else legacyStudent[key] = df.value;
+                        const lowerKey = key.toLowerCase();
+                        if (lowerKey === 'admissionno' || lowerKey === 'admissionnumber') {
+                            legacyStudent.AdmissionNo = df.value;
+                            legacyStudent.admissionNo = df.value;
+                        } else if (lowerKey === 'freestudent' || lowerKey === 'freestud') {
+                            legacyStudent.FreeStud = df.value;
+                            legacyStudent.freeStudent = df.value;
+                        } else if (lowerKey === 'caste') {
+                            legacyStudent.Caste = df.value;
+                            legacyStudent.caste = df.value;
+                        } else if (lowerKey === 'castehindi') {
+                            legacyStudent.CasteHindi = df.value;
+                            legacyStudent.casteHindi = df.value;
+                        } else if (lowerKey === 'gender') {
+                            legacyStudent.gender = df.value;
+                        } else if (lowerKey === 'dateofbirth' || lowerKey === 'dob') {
+                            legacyStudent.dob = df.value;
+                        }
+                        legacyStudent[lowerKey] = df.value;
                     }
                 });
             }
@@ -212,6 +226,7 @@ export const publishTemplate = (id) => api.patch(`/api/metadata/templates/${id}/
 export const archiveTemplate = (id) => api.patch(`/api/metadata/templates/${id}/archive`);
 export const restoreTemplate = (id) => api.patch(`/api/metadata/templates/${id}/restore`);
 export const deleteTemplate = (id) => api.delete(`/api/metadata/templates/${id}`);
+export const submitTemplateForm = (templateId, payload) => api.post('/api/metadata/templates/submit', { templateId, payload });
 
 // ─── Payments & Fees ──────────────────────────────────────────────────────────
 export const getFees = () => api.get('/getFees');

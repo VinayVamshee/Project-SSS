@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, {
     getMasters, updateMaster, getAcademicYears, addAcademicYear as apiAddAcademicYear, deleteAcademicYear as apiDeleteAcademicYear,
@@ -9,11 +9,21 @@ import api, {
     getExams, addExam
 } from '../../API';
 import './Master.css';
+import Notification from '../Shared/Notification';
+import LoadingIndicator from '../Shared/LoadingIndicator';
+import ConfirmModal from '../Shared/ConfirmModal';
 
 export default function Master() {
     const navigate = useNavigate();
     const [activeTab, setActiveTab] = useState('profile');
     const [uploading, setUploading] = useState(false);
+    const [message, setMessage] = useState('');
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null, type: 'primary' });
+
+    const showMessage = useCallback((msg) => {
+        setMessage(msg);
+        setTimeout(() => setMessage(''), 5000);
+    }, []);
 
     useEffect(() => {
         const token = localStorage.getItem("token");
@@ -94,54 +104,64 @@ export default function Master() {
     };
 
     const updateLatestMaster = () => {
-        if (!latestId) return alert('⚠️ No school record to update.');
+        if (!latestId) return showMessage('⚠️ No school record to update.');
 
         const payload = { ...form, logoUrl: form.imageUrl };
         updateMaster(latestId, payload)
             .then(() => {
-                alert('✅ Settings saved successfully!');
+                showMessage('✅ Settings saved successfully!');
                 localStorage.setItem('schoolLogo', form.imageUrl);
                 localStorage.setItem('schoolName', form.name);
                 localStorage.setItem('theme', form.theme.themeName);
                 window.location.reload();
             })
-            .catch(err => alert('Error saving settings: ' + err.message));
+            .catch(err => showMessage('Error saving settings: ' + err.message));
     };
 
     // Sessions Setup States
     const [academicYear, setAcademicYear] = useState('');
     const [academicYears, setAcademicYears] = useState([]);
 
-    useEffect(() => {
-        fetchAcademicYears();
-    }, []);
-
-    const fetchAcademicYears = () => {
+    const fetchAcademicYears = useCallback(() => {
         getAcademicYears()
             .then(res => setAcademicYears(res.data.data))
-            .catch(() => alert("❌ Failed to load academic years."));
-    };
+            .catch(() => showMessage("❌ Failed to load academic years."));
+    }, [showMessage]);
+
+    useEffect(() => {
+        fetchAcademicYears();
+    }, [fetchAcademicYears]);
 
     const addAcademicYear = () => {
-        if (!academicYear) return alert("Please enter an academic year.");
+        if (!academicYear) return showMessage("Please enter an academic year.");
         apiAddAcademicYear({ year: academicYear })
             .then(() => {
                 setAcademicYear('');
                 fetchAcademicYears();
-                alert("✅ Academic Year Added Successfully!");
+                showMessage("✅ Academic Year Added Successfully!");
             })
-            .catch(() => alert("❌ Failed to add academic year"));
+            .catch(() => showMessage("❌ Failed to add academic year"));
     };
 
     const deleteAcademicYear = (id) => {
-        if (window.confirm("Are you sure you want to delete this academic year?")) {
-            apiDeleteAcademicYear(id)
-                .then(() => {
-                    fetchAcademicYears();
-                    alert("🗑️ Deleted");
-                })
-                .catch(() => alert("❌ Failed to delete"));
-        }
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Delete Academic Year',
+            message: 'Are you sure you want to delete this academic year? This action cannot be undone.',
+            type: 'danger',
+            onConfirm: () => {
+                setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                apiDeleteAcademicYear(id)
+                    .then(() => {
+                        fetchAcademicYears();
+                        showMessage("🗑️ Deleted");
+                    })
+                    .catch((err) => {
+                        const errMsg = err.response?.data?.message || "Failed to delete";
+                        showMessage(`❌ ${errMsg}`);
+                    });
+            }
+        });
     };
 
     // Academics Setup states
@@ -204,27 +224,35 @@ export default function Master() {
         try {
             await addClass({ className: newClassName.trim() });
             setNewClassName('');
-            alert('✅ Class added successfully!');
+            showMessage('✅ Class added successfully!');
             await fetchAcademicsData();
         } catch (err) {
-            alert('❌ Failed to add class');
+            showMessage('❌ Failed to add class');
         } finally {
             setUploading(false);
         }
     };
 
-    const handleDeleteClassSubmit = async (classId, name) => {
-        if (!window.confirm(`Are you sure you want to delete class "${name}"?`)) return;
-        setUploading(true);
-        try {
-            await deleteClassAPI(classId);
-            alert('🗑️ Class deleted successfully!');
-            await fetchAcademicsData();
-        } catch (err) {
-            alert('❌ Failed to delete class');
-        } finally {
-            setUploading(false);
-        }
+    const handleDeleteClassSubmit = (classId, name) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Delete Class',
+            message: `Are you sure you want to delete class "${name}"? This action cannot be undone.`,
+            type: 'danger',
+            onConfirm: async () => {
+                setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                setUploading(true);
+                try {
+                    await deleteClassAPI(classId);
+                    showMessage('🗑️ Class deleted successfully!');
+                    await fetchAcademicsData();
+                } catch (err) {
+                    showMessage('❌ Failed to delete class');
+                } finally {
+                    setUploading(false);
+                }
+            }
+        });
     };
 
     const handleAddSubjectSubmit = async (e) => {
@@ -234,10 +262,10 @@ export default function Master() {
         try {
             await addSubject({ subjectName: newSubjectName.trim() });
             setNewSubjectName('');
-            alert('✅ Subject added successfully!');
+            showMessage('✅ Subject added successfully!');
             await fetchAcademicsData();
         } catch (err) {
-            alert('❌ Failed to add subject');
+            showMessage('❌ Failed to add subject');
         } finally {
             setUploading(false);
         }
@@ -249,27 +277,35 @@ export default function Master() {
         try {
             await updateSubject(id, { name: editSubjectName.trim() });
             setEditSubjectId(null);
-            alert('✅ Subject updated successfully!');
+            showMessage('✅ Subject updated successfully!');
             await fetchAcademicsData();
         } catch (err) {
-            alert('❌ Failed to update subject');
+            showMessage('❌ Failed to update subject');
         } finally {
             setUploading(false);
         }
     };
 
-    const handleDeleteSubjectSubmit = async (id, name) => {
-        if (!window.confirm(`Are you sure you want to delete subject "${name}"?`)) return;
-        setUploading(true);
-        try {
-            await deleteSubject(id);
-            alert('🗑️ Subject deleted successfully!');
-            await fetchAcademicsData();
-        } catch (err) {
-            alert('❌ Failed to delete subject');
-        } finally {
-            setUploading(false);
-        }
+    const handleDeleteSubjectSubmit = (id, name) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Delete Subject',
+            message: `Are you sure you want to delete subject "${name}"? This action cannot be undone.`,
+            type: 'danger',
+            onConfirm: async () => {
+                setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                setUploading(true);
+                try {
+                    await deleteSubject(id);
+                    showMessage('🗑️ Subject deleted successfully!');
+                    await fetchAcademicsData();
+                } catch (err) {
+                    showMessage('❌ Failed to delete subject');
+                } finally {
+                    setUploading(false);
+                }
+            }
+        });
     };
 
     const handleClassLinkSelect = (classId) => {
@@ -295,17 +331,17 @@ export default function Master() {
 
     const handleSaveLinkageSubmit = async (e) => {
         e.preventDefault();
-        if (!selectedClassLink) return alert("Please select a class");
+        if (!selectedClassLink) return showMessage("Please select a class");
         setUploading(true);
         try {
             await linkClassSubject({
                 classId: selectedClassLink,
                 subjectIds: newSelectedSubjects
             });
-            alert('✅ Subject-class linkages updated!');
+            showMessage('✅ Subject-class linkages updated!');
             await fetchAcademicsData();
         } catch (err) {
-            alert('❌ Failed to save subject linkages');
+            showMessage('❌ Failed to save subject linkages');
         } finally {
             setUploading(false);
         }
@@ -359,9 +395,9 @@ export default function Master() {
             setNewChapterName('');
             const res = await getChaptersByClassAndSubject(selectedClassChapter, selectedSubjectChapter);
             setChapterList(res.data.chapters || []);
-            alert('✅ Chapter added successfully!');
+            showMessage('✅ Chapter added successfully!');
         } catch (err) {
-            alert('❌ Failed to add chapter');
+            showMessage('❌ Failed to add chapter');
         } finally {
             setUploading(false);
         }
@@ -378,27 +414,35 @@ export default function Master() {
             setEditChapterName('');
             const res = await getChaptersByClassAndSubject(selectedClassChapter, selectedSubjectChapter);
             setChapterList(res.data.chapters || []);
-            alert('✅ Chapter name updated!');
+            showMessage('✅ Chapter name updated!');
         } catch (err) {
-            alert('❌ Failed to update chapter');
+            showMessage('❌ Failed to update chapter');
         } finally {
             setUploading(false);
         }
     };
 
-    const handleDeleteChapterSubmit = async (chId, name) => {
-        if (!window.confirm(`Are you sure you want to delete chapter "${name}"?`)) return;
-        setUploading(true);
-        try {
-            await api.delete(`/chapters/${selectedClassChapter}/${selectedSubjectChapter}/${chId}`);
-            const res = await getChaptersByClassAndSubject(selectedClassChapter, selectedSubjectChapter);
-            setChapterList(res.data.chapters || []);
-            alert('🗑️ Chapter deleted!');
-        } catch (err) {
-            alert('❌ Failed to delete chapter');
-        } finally {
-            setUploading(false);
-        }
+    const handleDeleteChapterSubmit = (chId, name) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Delete Chapter',
+            message: `Are you sure you want to delete chapter "${name}"? This action cannot be undone.`,
+            type: 'danger',
+            onConfirm: async () => {
+                setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                setUploading(true);
+                try {
+                    await api.delete(`/chapters/${selectedClassChapter}/${selectedSubjectChapter}/${chId}`);
+                    const res = await getChaptersByClassAndSubject(selectedClassChapter, selectedSubjectChapter);
+                    setChapterList(res.data.chapters || []);
+                    showMessage('🗑️ Chapter deleted!');
+                } catch (err) {
+                    showMessage('❌ Failed to delete chapter');
+                } finally {
+                    setUploading(false);
+                }
+            }
+        });
     };
 
     const handleClassExamSelect = (classId) => {
@@ -432,7 +476,7 @@ export default function Master() {
 
     const handleSaveExamsSubmit = async (e) => {
         e.preventDefault();
-        if (!selectedClassExam) return alert("Select a class");
+        if (!selectedClassExam) return showMessage("Select a class");
         setUploading(true);
         try {
             await addExam({
@@ -440,10 +484,10 @@ export default function Master() {
                 numExams,
                 examNames
             });
-            alert('✅ Exams saved successfully!');
+            showMessage('✅ Exams saved successfully!');
             await fetchAcademicsData();
         } catch (err) {
-            alert('❌ Failed to save exams');
+            showMessage('❌ Failed to save exams');
         } finally {
             setUploading(false);
         }
@@ -980,6 +1024,16 @@ export default function Master() {
                     </div>
                 </div>
             )}
+            <Notification message={message} />
+            <LoadingIndicator message="Processing..." active={uploading} />
+            <ConfirmModal
+                isOpen={confirmDialog.isOpen}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+            />
         </div>
     );
 }

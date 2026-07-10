@@ -20,18 +20,31 @@ const dynamicValidator = (entityType) => {
         if (!fieldDef) continue;
 
         const val = fieldMap.get(fieldDef._id.toString());
-        const isRequired = tField.required || fieldDef.required;
+        const isRequired = tField.required;
 
         if (isRequired && (val === undefined || val === null || val === '')) {
           return res.status(400).json({ message: `Field '${fieldDef.label}' is required.` });
         }
 
         if (val !== undefined && val !== null && val !== '') {
-          if (fieldDef.validationPattern) {
-            const regex = new RegExp(fieldDef.validationPattern);
+          const validation = tField.validation || {};
+          if (validation.pattern) {
+            const regex = new RegExp(validation.pattern);
             if (!regex.test(val.toString())) {
-              return res.status(400).json({ message: fieldDef.validationMessage || `Field '${fieldDef.label}' is invalid.` });
+              return res.status(400).json({ message: validation.message || `Field '${fieldDef.label}' is invalid.` });
             }
+          }
+          if (validation.minLength !== undefined && validation.minLength !== null && val.toString().length < validation.minLength) {
+            return res.status(400).json({ message: validation.message || `Field '${fieldDef.label}' must be at least ${validation.minLength} characters.` });
+          }
+          if (validation.maxLength !== undefined && validation.maxLength !== null && val.toString().length > validation.maxLength) {
+            return res.status(400).json({ message: validation.message || `Field '${fieldDef.label}' must be at most ${validation.maxLength} characters.` });
+          }
+          if (validation.min !== undefined && validation.min !== null && Number(val) < validation.min) {
+            return res.status(400).json({ message: validation.message || `Field '${fieldDef.label}' must be at least ${validation.min}.` });
+          }
+          if (validation.max !== undefined && validation.max !== null && Number(val) > validation.max) {
+            return res.status(400).json({ message: validation.message || `Field '${fieldDef.label}' must be at most ${validation.max}.` });
           }
         }
       }

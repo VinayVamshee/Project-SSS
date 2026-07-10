@@ -34,7 +34,7 @@ export default function SearchFilterBar({
     };
 
     return (
-        <div className="w-100 mb-3">
+        <div className="w-100 mb-3 search-filter-wrapper">
             <div className="SearchFilter">
                 
                 {/* 1. Academic Year filter */}

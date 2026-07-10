@@ -131,7 +131,7 @@ export default function Navigation() {
                 </div>
 
 
-                <Link to='AddNewStudent' className="AddStudent">
+                <Link to='/AddNewStudent' className="AddStudent">
                     <i className="fa-solid fa-address-book fa-xl"></i>
                     {!isCollapsed && " Register Student"}
                 </Link>

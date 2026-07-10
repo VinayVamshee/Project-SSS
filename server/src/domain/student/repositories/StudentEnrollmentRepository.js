@@ -13,6 +13,7 @@ class StudentEnrollmentRepository {
     return StudentEnrollment.find(query)
       .populate('studentId')
       .populate('academicYearId', 'name status')
+      .populate('classId', 'class status')
       .populate('dynamicFields.fieldId', 'key label type sno');
   }
 

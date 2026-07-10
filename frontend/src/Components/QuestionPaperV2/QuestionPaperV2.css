@@ -490,7 +490,7 @@
   position: fixed;
   top: 0;
   right: 0;
-  width: 900px;
+  width: 1200px;
   max-width: 95vw;
   height: 100vh;
   background-color: #ffffff;
@@ -838,6 +838,164 @@
 
 .qpv2-live-paper-card {
   padding: 0; /* Let print paper use its own internal margins */
+}
+
+/* ─── High Contrast Contrast Overrides for SSS Themes ─── */
+.QuestionPaperV2,
+.QuestionPaperV2 p,
+.QuestionPaperV2 div:not(.qpv2-badge):not(.badge):not(.qpv2-badge-marks):not(.qpv2-badge-type):not(.qpv2-badge-id),
+.QuestionPaperV2 span:not(.qpv2-badge):not(.badge):not(.qpv2-badge-marks):not(.qpv2-badge-type):not(.qpv2-badge-id),
+.QuestionPaperV2 label,
+.QuestionPaperV2 li {
+    color: var(--text-color, #1e293b);
+}
+
+.QuestionPaperV2 h1,
+.QuestionPaperV2 h2,
+.QuestionPaperV2 h3,
+.QuestionPaperV2 h4,
+.QuestionPaperV2 h5,
+.QuestionPaperV2 h6,
+.QuestionPaperV2 strong {
+    color: var(--heading-color, var(--text-color)) !important;
+}
+
+.QuestionPaperV2 .text-muted,
+.QuestionPaperV2 .text-secondary,
+.QuestionPaperV2 .qpv2-switch-label,
+.QuestionPaperV2 .qpv2-form-label,
+.QuestionPaperV2 .qpv2-empty-state,
+.QuestionPaperV2 .qpv2-question-meta span,
+.QuestionPaperV2 .qpv2-option-label,
+.QuestionPaperV2 .qpv2-match-col-title {
+    color: var(--text-secondary, #64748b) !important;
+    opacity: 0.95;
+}
+
+/* Background card overrides */
+.QuestionPaperV2 .qpv2-toolbar-card,
+.QuestionPaperV2 .qpv2-question-card,
+.QuestionPaperV2 .qpv2-modal-content,
+.QuestionPaperV2 .qpv2-drawer,
+.QuestionPaperV2 .qpv2-builder-section-card,
+.QuestionPaperV2 .qpv2-preview-control-section,
+.QuestionPaperV2 .qpv2-instructions-checklist,
+.QuestionPaperV2 .qpv2-instruction-item {
+    background-color: var(--card-bg-color, #ffffff) !important;
+    border-color: var(--border-color, #cbd5e1) !important;
+}
+
+/* Header & sub-card backgrounds */
+.QuestionPaperV2 .qpv2-drawer-header,
+.QuestionPaperV2 .qpv2-drawer-footer,
+.QuestionPaperV2 .qpv2-modal-header,
+.QuestionPaperV2 .qpv2-modal-footer,
+.QuestionPaperV2 .qpv2-question-card-sub,
+.QuestionPaperV2 .qpv2-option-item,
+.QuestionPaperV2 .qpv2-section-card,
+.QuestionPaperV2 .qpv2-builder-added-qitem {
+    background-color: var(--table-header-bg, #f8fafc) !important;
+    border-color: var(--border-color, #cbd5e1) !important;
+}
+
+/* Form input styling */
+.QuestionPaperV2 .qpv2-select,
+.QuestionPaperV2 .qpv2-input,
+.QuestionPaperV2 .qpv2-form-control,
+.QuestionPaperV2 .SearchFilter select,
+.QuestionPaperV2 .SearchFilter input {
+    background-color: var(--input-bg-color, #ffffff) !important;
+    color: var(--input-text-color, var(--text-color)) !important;
+    border-color: var(--input-border-color, #cbd5e1) !important;
+}
+
+.QuestionPaperV2 .qpv2-select:focus,
+.QuestionPaperV2 .qpv2-input:focus,
+.QuestionPaperV2 .qpv2-form-control:focus,
+.QuestionPaperV2 .SearchFilter select:focus,
+.QuestionPaperV2 .SearchFilter input:focus {
+    border-color: var(--input-focus-border, var(--primary-color)) !important;
+}
+
+/* Sticky background overlays */
+.QuestionPaperV2 .SearchFilter,
+.QuestionPaperV2 .qpv2-builder-filters,
+.QuestionPaperV2 .qpv2-builder-footer {
+    background-color: var(--background-color, #f4f6f8) !important;
+    border-color: var(--border-color, #cbd5e1) !important;
+}
+
+/* Icon hover states */
+.QuestionPaperV2 .qpv2-icon-btn:hover {
+    background-color: var(--table-header-bg, #f3f4f6) !important;
+}
+
+/* Active elements */
+.QuestionPaperV2 .qpv2-builder-section-card.active {
+    background-color: var(--primary-light, rgba(254, 79, 45, 0.04)) !important;
+    border-color: var(--primary-color, #fe4f2d) !important;
+}
+
+.QuestionPaperV2 .qpv2-instruction-item.checked {
+    background-color: var(--primary-light, rgba(254, 79, 45, 0.04)) !important;
+    border-color: var(--primary-color, #fe4f2d) !important;
+    border-left: 4px solid var(--primary-color, #fe4f2d) !important;
+}
+
+.QuestionPaperV2 .qpv2-modal-close,
+.QuestionPaperV2 .qpv2-drawer-close {
+    color: var(--text-secondary, #64748b) !important;
+}
+.QuestionPaperV2 .qpv2-modal-close:hover,
+.QuestionPaperV2 .qpv2-drawer-close:hover {
+    color: var(--primary-color, #fe4f2d) !important;
+}
+
+/* A4 Live paper preview must remain white background for printing */
+.QuestionPaperV2 .qpv2-live-paper-outer {
+    background-color: #ffffff !important;
+}
+.QuestionPaperV2 .qpv2-live-paper-outer * {
+    color: #000000 !important;
+}
+
+/* Dark theme specific overrides for badges, sub-cards, option inputs */
+[data-theme="midnight-red"] .QuestionPaperV2,
+[data-theme="Deep Ocean"] .QuestionPaperV2,
+[data-theme="Dark"] .QuestionPaperV2,
+[data-theme="dark"] .QuestionPaperV2,
+[data-theme="Charcoal Cyan"] .QuestionPaperV2,
+[data-theme="Dracula Midnight"] .QuestionPaperV2 {
+    .qpv2-badge-marks {
+        background-color: rgba(56, 189, 248, 0.2) !important;
+        color: #38bdf8 !important;
+    }
+    .qpv2-badge-type {
+        background-color: rgba(74, 222, 128, 0.2) !important;
+        color: #4ade80 !important;
+    }
+    .qpv2-badge-id {
+        background-color: rgba(156, 163, 175, 0.2) !important;
+        color: #d1d5db !important;
+    }
+    
+    .qpv2-option-item,
+    .qpv2-instruction-item,
+    .qpv2-section-card {
+        background-color: var(--table-header-bg, rgba(255, 255, 255, 0.05)) !important;
+        border-color: var(--border-color, rgba(255, 255, 255, 0.1)) !important;
+    }
+    
+    .qpv2-option-item *,
+    .qpv2-instruction-item *,
+    .qpv2-section-card * {
+        color: var(--text-color, #ffffff) !important;
+    }
+
+    .qpv2-btn-secondary {
+        background-color: var(--table-header-bg, rgba(255, 255, 255, 0.1)) !important;
+        color: var(--text-color, #ffffff) !important;
+    }
 }
 
 

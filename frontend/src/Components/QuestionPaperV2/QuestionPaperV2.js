@@ -7,6 +7,9 @@ import DownloadQuestionBank from '../DownloadQuestionBank/DownloadQuestionBank';
 import TextEditor from '../TextEditor/TextEditor';
 
 import './QuestionPaperV2.css';
+import Notification from '../Shared/Notification';
+import LoadingIndicator from '../Shared/LoadingIndicator';
+import ConfirmModal from '../Shared/ConfirmModal';
 
 export default function QuestionPaperV2() {
     const navigate = useNavigate();
@@ -20,10 +23,12 @@ export default function QuestionPaperV2() {
         documentTitle: "QuestionPaper",
     });
 
-    const printRefFiltered = useRef(null);
-    const handleDownloadFiltered = useReactToPrint({
-        contentRef: printRefFiltered,
-        documentTitle: "Filtered_Question_Bank",
+
+
+    const qbPrintRef = useRef(null);
+    const triggerQBPrint = useReactToPrint({
+        contentRef: qbPrintRef,
+        documentTitle: "Question_Bank",
     });
 
     // ==========================================
@@ -52,6 +57,7 @@ export default function QuestionPaperV2() {
     // ==========================================
     const [viewMode, setViewMode] = useState('list'); // 'list' | 'builder' | 'preview'
     const [message, setMessage] = useState("");
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null, type: 'primary' });
     const [uploading, setUploading] = useState(false);
     const [previewImageUrl, setPreviewImageUrl] = useState("");
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -59,6 +65,307 @@ export default function QuestionPaperV2() {
     const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
     const [isTransferModalOpen, setIsTransferModalOpen] = useState(false);
     const [isViewSelectedDrawerOpen, setIsViewSelectedDrawerOpen] = useState(false);
+
+    // Download QB Modal States
+    const [isDownloadQBModalOpen, setIsDownloadQBModalOpen] = useState(false);
+    const [qbSelectedClass, setQbSelectedClass] = useState('');
+    const [qbSelectedSubject, setQbSelectedSubject] = useState('');
+    const [qbFilteredSubjects, setQbFilteredSubjects] = useState([]);
+    const [qbChapterList, setQbChapterList] = useState([]);
+    const [qbSelectedChapters, setQbSelectedChapters] = useState([]);
+    const [qbQuestions, setQbQuestions] = useState([]);
+    const [qbDownloading, setQbDownloading] = useState(false);
+    const [questionsLoading, setQuestionsLoading] = useState(false);
+
+    // Random QP Creator States
+    const [isQPChoiceModalOpen, setIsQPChoiceModalOpen] = useState(false);
+    const [isRandomQPModalOpen, setIsRandomQPModalOpen] = useState(false);
+    const [randomClass, setRandomClass] = useState('');
+    const [randomSubject, setRandomSubject] = useState('');
+    const [randomFilteredSubjects, setRandomFilteredSubjects] = useState([]);
+    const [randomChapterList, setRandomChapterList] = useState([]);
+    const [randomSelectedChapters, setRandomSelectedChapters] = useState([]);
+    const [randomCriteria, setRandomCriteria] = useState([{ id: 1, type: '', marks: '', count: 1 }]);
+
+    const handleRandomClassChange = (cls) => {
+        setRandomClass(cls);
+        setRandomSubject('');
+        setRandomChapterList([]);
+        setRandomSelectedChapters([]);
+
+        const link = classSubjects.find((x) => {
+            const linkClassId = (x.classId?._id || x.classId || '').toString();
+            return linkClassId === cls.toString();
+        });
+        if (link && link.subjectIds && link.subjectIds.length > 0) {
+            const linkedSubs = subjects.filter((s) => {
+                return link.subjectIds.some(id => {
+                    const subId = (id?._id || id || '').toString();
+                    const sId = (s._id || '').toString();
+                    return subId === sId;
+                });
+            });
+            setRandomFilteredSubjects(linkedSubs);
+        } else {
+            setRandomFilteredSubjects(subjects);
+        }
+    };
+
+    const handleRandomSubjectChange = (subj) => {
+        setRandomSubject(subj);
+        setRandomSelectedChapters([]);
+
+        if (randomClass && subj && allChapters.length > 0) {
+            const match = allChapters.find((item) => {
+                const isClassMatch = item.classId === randomClass || item.classId?._id === randomClass;
+                const isSubjectMatch = item.subjectId === subj || item.subjectId?._id === subj;
+                return isClassMatch && isSubjectMatch;
+            });
+            setRandomChapterList(match?.chapters || []);
+        } else {
+            setRandomChapterList([]);
+        }
+    };
+
+    const handleRandomChapterToggle = (chapId) => {
+        setRandomSelectedChapters(prev => {
+            if (prev.includes(chapId)) {
+                return prev.filter(id => id !== chapId);
+            } else {
+                return [...prev, chapId];
+            }
+        });
+    };
+
+    const handleToggleAllRandomChapters = () => {
+        if (randomSelectedChapters.length === randomChapterList.length) {
+            setRandomSelectedChapters([]);
+        } else {
+            setRandomSelectedChapters(randomChapterList.map(ch => ch._id));
+        }
+    };
+
+    const handleAddCriteriaRow = () => {
+        setRandomCriteria(prev => [
+            ...prev,
+            { id: Date.now(), type: '', marks: '', count: 1 }
+        ]);
+    };
+
+    const handleRemoveCriteriaRow = (id) => {
+        if (randomCriteria.length === 1) return;
+        setRandomCriteria(prev => prev.filter(row => row.id !== id));
+    };
+
+    const handleCriteriaChange = (id, field, value) => {
+        setRandomCriteria(prev => prev.map(row => {
+            if (row.id === id) {
+                return { ...row, [field]: value };
+            }
+            return row;
+        }));
+    };
+
+    const calculateTotalRandomMarks = () => {
+        return randomCriteria.reduce((sum, row) => {
+            const marksVal = parseFloat(row.marks || 0);
+            const countVal = parseInt(row.count || 0, 10);
+            return sum + (marksVal * countVal);
+        }, 0);
+    };
+
+    const handleGenerateRandomQP = async () => {
+        if (!randomClass || !randomSubject || randomSelectedChapters.length === 0) {
+            showMessage("Please fill all required selections.");
+            return;
+        }
+
+        try {
+            const res = await api.get(`/questions?class=${randomClass}&subject=${randomSubject}`);
+            const allQuestions = res.data.questions || [];
+
+            const chapterQuestions = allQuestions.filter(q => randomSelectedChapters.includes(q.chapter));
+            const selectedIds = [];
+            const statusMessages = [];
+            let totalRequested = 0;
+
+            for (const row of randomCriteria) {
+                if (!row.type || !row.marks || !row.count) continue;
+                totalRequested += row.count;
+
+                const eligible = chapterQuestions.filter(q => 
+                    q.questionType === row.type && 
+                    parseFloat(q.questionMarks || 0) === parseFloat(row.marks || 0) &&
+                    !selectedIds.includes(q.questionId)
+                );
+
+                const countToTake = Math.min(row.count, eligible.length);
+                const shuffled = [...eligible].sort(() => 0.5 - Math.random());
+                for (let i = 0; i < countToTake; i++) {
+                    selectedIds.push(shuffled[i].questionId);
+                }
+
+                if (countToTake < row.count) {
+                    statusMessages.push(
+                        `⚠️ For ${row.type} (${row.marks} Marks): Requested ${row.count}, but only found/selected ${eligible.length} questions.`
+                    );
+                }
+            }
+
+            if (selectedIds.length === 0) {
+                showMessage("No matching questions found for any of the criteria.");
+                return;
+            }
+
+            setSelectedQuestions(selectedIds);
+            setSelectedClass(randomClass);
+
+            const link = classSubjects.find((x) => {
+                const linkClassId = (x.classId?._id || x.classId || '').toString();
+                return linkClassId === randomClass.toString();
+            });
+            if (link && link.subjectIds && link.subjectIds.length > 0) {
+                const linkedSubs = subjects.filter((s) => {
+                    return link.subjectIds.some(id => {
+                        const subId = (id?._id || id || '').toString();
+                        const sId = (s._id || '').toString();
+                        return subId === sId;
+                    });
+                });
+                setFilteredSubjects(linkedSubs);
+            } else {
+                setFilteredSubjects(subjects);
+            }
+
+            setSelectedSubject(randomSubject);
+
+            if (allChapters.length > 0) {
+                const match = allChapters.find((item) => {
+                    const isClassMatch = item.classId === randomClass || item.classId?._id === randomClass;
+                    const isSubjectMatch = item.subjectId === randomSubject || item.subjectId?._id === randomSubject;
+                    return isClassMatch && isSubjectMatch;
+                });
+                setChapterList(match?.chapters || []);
+            }
+
+            setQuestions(allQuestions);
+            const newMap = {};
+            allQuestions.forEach(q => { newMap[q.questionId] = q; });
+            setGlobalQuestionMap(newMap);
+
+            setIsRandomQPModalOpen(false);
+
+            if (statusMessages.length > 0) {
+                setConfirmDialog({
+                    isOpen: true,
+                    title: "Criteria Mismatch Warnings",
+                    message: (
+                        <div>
+                            <p className="fw-semibold text-danger mb-3">Some criteria could not be fully satisfied:</p>
+                            <ul className="text-start mb-0" style={{ paddingLeft: '20px', listStyleType: 'disc' }}>
+                                {statusMessages.map((msg, i) => (
+                                    <li key={i} className="mb-2 text-slate-700 fw-semibold small">{msg}</li>
+                                ))}
+                            </ul>
+                            <p className="mt-3 mb-0 text-muted small">Generated {selectedIds.length} out of {totalRequested} requested questions.</p>
+                        </div>
+                    ),
+                    type: "warning",
+                    onConfirm: () => {
+                        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                        setViewMode('builder');
+                    }
+                });
+            } else {
+                setViewMode('builder');
+                showMessage(`Generated random paper with ${selectedIds.length} pre-selected questions.`);
+            }
+        } catch (err) {
+            console.error("Failed to generate random question paper:", err);
+            showMessage("Failed to generate random question paper.");
+        }
+    };
+
+    const handleQBClassChange = (cls) => {
+        setQbSelectedClass(cls);
+        setQbSelectedSubject('');
+        setQbChapterList([]);
+        setQbSelectedChapters([]);
+
+        const link = classSubjects.find((x) => {
+            const linkClassId = (x.classId?._id || x.classId || '').toString();
+            return linkClassId === cls.toString();
+        });
+        if (link && link.subjectIds && link.subjectIds.length > 0) {
+            const linkedSubs = subjects.filter((s) => {
+                return link.subjectIds.some(id => {
+                    const subId = (id?._id || id || '').toString();
+                    const sId = (s._id || '').toString();
+                    return subId === sId;
+                });
+            });
+            setQbFilteredSubjects(linkedSubs);
+        } else {
+            setQbFilteredSubjects(subjects);
+        }
+    };
+
+    const handleQBSubjectChange = (subj) => {
+        setQbSelectedSubject(subj);
+        setQbSelectedChapters([]);
+
+        if (qbSelectedClass && subj && allChapters.length > 0) {
+            const match = allChapters.find((item) => {
+                const isClassMatch = item.classId === qbSelectedClass || item.classId?._id === qbSelectedClass;
+                const isSubjectMatch = item.subjectId === subj || item.subjectId?._id === subj;
+                return isClassMatch && isSubjectMatch;
+            });
+            setQbChapterList(match?.chapters || []);
+        } else {
+            setQbChapterList([]);
+        }
+    };
+
+    const handleQBChapterToggle = (chapId) => {
+        setQbSelectedChapters(prev => {
+            if (prev.includes(chapId)) {
+                return prev.filter(id => id !== chapId);
+            } else {
+                return [...prev, chapId];
+            }
+        });
+    };
+
+    const handleToggleAllChapters = () => {
+        if (qbSelectedChapters.length === qbChapterList.length) {
+            setQbSelectedChapters([]);
+        } else {
+            setQbSelectedChapters(qbChapterList.map(ch => ch._id));
+        }
+    };
+
+    const handleQBDownloadSubmit = async () => {
+        if (!qbSelectedClass || !qbSelectedSubject || qbSelectedChapters.length === 0) return;
+        setQbDownloading(true);
+        try {
+            const res = await api.get(`/questions?class=${qbSelectedClass}&subject=${qbSelectedSubject}`);
+            const fetchedQuestions = res.data.questions || [];
+            
+            // Filter questions locally by chosen chapters
+            const filtered = fetchedQuestions.filter(q => qbSelectedChapters.includes(q.chapter));
+            setQbQuestions(filtered);
+
+            setTimeout(() => {
+                triggerQBPrint();
+                setQbDownloading(false);
+                setIsDownloadQBModalOpen(false);
+            }, 300);
+        } catch (err) {
+            console.error("Failed to download question bank:", err);
+            showMessage("Failed to download question bank");
+            setQbDownloading(false);
+        }
+    };
 
     const showMessage = useCallback((msg) => {
         setMessage(msg);
@@ -155,7 +462,11 @@ export default function QuestionPaperV2() {
         const subj = e.target.value;
         setSelectedSubject(subj);
         setSelectedChapter('');
-        setQuestions([]);
+        if (selectedClass && subj) {
+            fetchQuestions(selectedClass, subj);
+        } else {
+            setQuestions([]);
+        }
     };
 
     useEffect(() => {
@@ -177,10 +488,11 @@ export default function QuestionPaperV2() {
     const [questions, setQuestions] = useState([]);
     const [globalQuestionMap, setGlobalQuestionMap] = useState({});
 
-    const fetchQuestions = useCallback(async (cls = selectedClass, subj = selectedSubject, chap = selectedChapter) => {
-        if (cls && subj && chap) {
+    const fetchQuestions = useCallback(async (cls = selectedClass, subj = selectedSubject) => {
+        if (cls && subj) {
+            setQuestionsLoading(true);
             try {
-                const res = await api.get(`/questions?class=${cls}&subject=${subj}&chapter=${chap}`);
+                const res = await api.get(`/questions?class=${cls}&subject=${subj}`);
                 setQuestions(res.data.questions || []);
                 const newMap = {};
                 (res.data.questions || []).forEach(q => { newMap[q.questionId] = q; });
@@ -188,17 +500,18 @@ export default function QuestionPaperV2() {
             } catch (err) {
                 console.error("Failed to fetch questions:", err);
                 showMessage("Failed to fetch questions");
+            } finally {
+                setQuestionsLoading(false);
             }
         } else {
             setQuestions([]);
             setGlobalQuestionMap({});
         }
-    }, [selectedClass, selectedSubject, selectedChapter, showMessage]);
+    }, [selectedClass, selectedSubject, showMessage]);
 
     const onChapterChange = (e) => {
         const chap = e.target.value;
         setSelectedChapter(chap);
-        fetchQuestions(selectedClass, selectedSubject, chap);
     };
 
     // ==========================================
@@ -236,12 +549,13 @@ export default function QuestionPaperV2() {
                 return 0;
             })
             .filter(q => {
+                const chapterMatch = !selectedChapter || q.chapter === selectedChapter;
                 const textMatch = q.questionText?.toLowerCase().includes(searchText.toLowerCase()) ||
                     (q.questionId && q.questionId.toString().includes(searchText));
-                const marksMatch = filterMarks === '' || String(q.questionMarks) === String(filterMarks);
+                const marksMatch = filterMarks === '' || parseFloat(q.questionMarks || 0) === parseFloat(filterMarks || 0);
                 const typeMatch = filterType === '' || q.questionType === filterType ||
                     (q.subQuestions && q.subQuestions.some(sub => sub.questionType === filterType));
-                return textMatch && marksMatch && typeMatch;
+                return chapterMatch && textMatch && marksMatch && typeMatch;
             })
             .sort((a, b) => {
                 if (sortOrder === 'asc' || sortOrder === 'desc') {
@@ -255,7 +569,7 @@ export default function QuestionPaperV2() {
                 }
                 return 0;
             });
-    }, [questions, searchText, filterType, filterMarks, sortOrder, selectedQuestions]);
+    }, [questions, searchText, filterType, filterMarks, sortOrder, selectedQuestions, selectedChapter]);
 
     const [imageSizesMap, setImageSizesMap] = useState({});
     const [addAnsLine, setAddAnsLine] = useState([]);
@@ -285,8 +599,8 @@ export default function QuestionPaperV2() {
     };
 
     const handleAddQuestion = async () => {
-        if (!selectedClass || !selectedSubject || !selectedChapter) {
-            showMessage("Please select class, subject, and chapter first.");
+        if (!selectedClass || !selectedSubject) {
+            showMessage("Please select class and subject first.");
             return;
         }
         const cleanSubQuestions = (subQs) =>
@@ -353,18 +667,26 @@ export default function QuestionPaperV2() {
         }
     };
 
-    const handleDelete = async (mongoId) => {
-        if (!window.confirm('Are you sure you want to delete this question?')) return;
-        try {
-            await api.delete('/questions', {
-                data: { class: selectedClass, subject: selectedSubject, chapter: selectedChapter, mongoId },
-            });
-            fetchQuestions();
-            showMessage('✅ Question deleted successfully.');
-        } catch (error) {
-            console.error('❌ Error deleting question:', error);
-            showMessage('❌ Failed to delete the question.');
-        }
+    const handleDelete = (mongoId) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Delete Question',
+            message: 'Are you sure you want to delete this question? This action cannot be undone.',
+            type: 'danger',
+            onConfirm: async () => {
+                setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                try {
+                    await api.delete('/questions', {
+                        data: { class: selectedClass, subject: selectedSubject, chapter: selectedChapter, mongoId },
+                    });
+                    fetchQuestions();
+                    showMessage('✅ Question deleted successfully.');
+                } catch (error) {
+                    console.error('❌ Error deleting question:', error);
+                    showMessage('❌ Failed to delete the question.');
+                }
+            }
+        });
     };
 
     // ==========================================
@@ -524,17 +846,25 @@ export default function QuestionPaperV2() {
         }
     };
 
-    const handleDeleteTemplate = async (id) => {
-        if (!window.confirm("Are you sure you want to delete this template?")) return;
-        try {
-            await api.delete(`/delete-template/${id}`);
-            const res = await api.get('/get-all-templates');
-            setTemplates(res.data);
-            showMessage("Template Deleted");
-        } catch (error) {
-            console.error("Error deleting template:", error);
-            showMessage("Failed to delete template.");
-        }
+    const handleDeleteTemplate = (id) => {
+        setConfirmDialog({
+            isOpen: true,
+            title: 'Delete Template',
+            message: 'Are you sure you want to delete this template? This action cannot be undone.',
+            type: 'danger',
+            onConfirm: async () => {
+                setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                try {
+                    await api.delete(`/delete-template/${id}`);
+                    const res = await api.get('/get-all-templates');
+                    setTemplates(res.data);
+                    showMessage("Template Deleted");
+                } catch (error) {
+                    console.error("Error deleting template:", error);
+                    showMessage("Failed to delete template.");
+                }
+            }
+        });
     };
 
     // ==========================================
@@ -846,27 +1176,17 @@ export default function QuestionPaperV2() {
     return (
         <div className="QuestionPaperV2">
 
-            {message && (
-                <div className="qpv2-toast-container">
-                    <div className="qpv2-toast">
-                        <i className="fas fa-info-circle text-info"></i> {message}
-                    </div>
-                </div>
-            )}
-            {uploading && (
-                <div className="qpv2-toast-container" style={{ bottom: '80px' }}>
-                    <div className="qpv2-toast">
-                        <i className="fas fa-spinner fa-spin text-warning"></i> Uploading Image...
-                    </div>
-                </div>
-            )}
-            {questionUploading && (
-                <div className="qpv2-toast-container" style={{ bottom: '80px' }}>
-                    <div className="qpv2-toast">
-                        <i className="fas fa-spinner fa-spin text-primary"></i> Saving Question...
-                    </div>
-                </div>
-            )}
+            <Notification message={message} />
+            <LoadingIndicator message="Uploading Image..." active={uploading} />
+            <LoadingIndicator message="Saving Question..." active={questionUploading} />
+            <ConfirmModal
+                isOpen={confirmDialog.isOpen}
+                title={confirmDialog.title}
+                message={confirmDialog.message}
+                type={confirmDialog.type}
+                onConfirm={confirmDialog.onConfirm}
+                onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))}
+            />
 
             {viewMode === 'list' && (
                 <>
@@ -905,19 +1225,43 @@ export default function QuestionPaperV2() {
                         <button className="btn" disabled={!hasWriteAccess} onClick={() => setIsTemplateModalOpen(true)}>
                             <i className="fas fa-book me-2"></i>Templates
                         </button>
-                        <button className="btn" onClick={() => setViewMode('builder')}>
+                        <button className="btn" onClick={() => setIsQPChoiceModalOpen(true)}>
                             📝 Create Question Paper
                         </button>
-                        <button className="btn" disabled={!hasWriteAccess} onClick={() => handleDownloadFiltered()}>
+                        <button className="btn" disabled={!hasWriteAccess} onClick={() => {
+                            setQbSelectedClass(selectedClass || '');
+                            handleQBClassChange(selectedClass || '');
+                            if (selectedSubject) {
+                                setQbSelectedSubject(selectedSubject);
+                                if (selectedClass && allChapters.length > 0) {
+                                    const match = allChapters.find((item) => {
+                                        const isClassMatch = item.classId === selectedClass || item.classId?._id === selectedClass;
+                                        const isSubjectMatch = item.subjectId === selectedSubject || item.subjectId?._id === selectedSubject;
+                                        return isClassMatch && isSubjectMatch;
+                                    });
+                                    const chaps = match?.chapters || [];
+                                    setQbChapterList(chaps);
+                                    setQbSelectedChapters(chaps.map(ch => ch._id));
+                                }
+                            }
+                            setIsDownloadQBModalOpen(true);
+                        }}>
                             <i className="fa-solid fa-download me-2"></i>Download QB
                         </button>
                     </div>
 
                     <div className="qpv2-content-area qpv2-animate-fade" style={{ animationDelay: '0.1s' }}>
-                        {!selectedClass || !selectedSubject || !selectedChapter ? (
+                        {questionsLoading ? (
+                            <div className="d-flex flex-column align-items-center justify-content-center py-5 text-muted">
+                                <div className="spinner-border text-primary mb-3" role="status">
+                                    <span className="visually-hidden">Loading...</span>
+                                </div>
+                                <div className="fw-semibold">Loading questions...</div>
+                            </div>
+                        ) : !selectedClass || !selectedSubject ? (
                             <div className="qpv2-empty-state">
                                 <i className="fas fa-folder-open qpv2-empty-icon"></i>
-                                <div className="qpv2-empty-text">Select a Class, Subject, and Chapter to view questions.</div>
+                                <div className="qpv2-empty-text">Select a Class and Subject to view questions.</div>
                             </div>
                         ) : (
                             <>
@@ -998,12 +1342,19 @@ export default function QuestionPaperV2() {
                     </div>
 
                     <div className="qpv2-content-area" style={{ flex: 1, minHeight: '60vh' }}>
-                        {questions.length > 0 ? (
+                        {questionsLoading ? (
+                            <div className="d-flex flex-column align-items-center justify-content-center py-5 text-muted">
+                                <div className="spinner-border text-primary mb-3" role="status">
+                                    <span className="visually-hidden">Loading...</span>
+                                </div>
+                                <div className="fw-semibold">Loading questions...</div>
+                            </div>
+                        ) : questions.length > 0 ? (
                             <div className="qpv2-question-list">
                                 {filteredAndSortedQuestions.map((q, i) => renderQuestionBlock(q, i))}
                             </div>
                         ) : (
-                            <div className="text-center py-5 text-muted">Select a Class, Subject, and Chapter to list questions.</div>
+                            <div className="text-center py-5 text-muted">Select a Class and Subject to list questions.</div>
                         )}
                     </div>
 
@@ -1207,7 +1558,7 @@ export default function QuestionPaperV2() {
             }}></div>
 
             {/* View Selected Questions Drawer */}
-            <div className={`qpv2-drawer ${isViewSelectedDrawerOpen ? 'open' : ''}`} style={{ width: '650px' }}>
+            <div className={`qpv2-drawer ${isViewSelectedDrawerOpen ? 'open' : ''}`} style={{ width: '1000px' }}>
                 <div className="qpv2-drawer-header">
                     <h4>👁️ Selected Questions ({selectedQuestions.length})</h4>
                     <button className="qpv2-drawer-close" onClick={() => setIsViewSelectedDrawerOpen(false)}>&times;</button>
@@ -1559,6 +1910,326 @@ export default function QuestionPaperV2() {
                 </div>
             )}
 
+            {isQPChoiceModalOpen && (
+                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+                    <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: '450px' }}>
+                        <div className="modal-content shadow-lg border-0" style={{ borderRadius: '12px' }}>
+                            <div className="modal-header border-0 p-3 bg-light">
+                                <h5 className="fw-bold mb-0 text-dark">Create Question Paper</h5>
+                                <button type="button" className="btn-close" onClick={() => setIsQPChoiceModalOpen(false)} />
+                            </div>
+                            <div className="modal-body p-4 text-center">
+                                <p className="text-muted mb-4">Choose how you want to build this question paper:</p>
+                                <div className="d-grid gap-3">
+                                    <button 
+                                        className="btn btn-outline-primary py-3 d-flex align-items-center justify-content-center gap-2 fw-bold" 
+                                        style={{ borderRadius: '8px', borderWidth: '2px' }}
+                                        onClick={() => {
+                                            setIsQPChoiceModalOpen(false);
+                                            setViewMode('builder');
+                                        }}
+                                    >
+                                        <i className="fa-solid fa-hand-pointer fs-5"></i>
+                                        Manual Selection
+                                    </button>
+                                    <button 
+                                        className="btn text-white py-3 d-flex align-items-center justify-content-center gap-2 fw-bold" 
+                                        style={{ backgroundColor: 'var(--button-color)', borderRadius: '8px' }}
+                                        onClick={() => {
+                                            setIsQPChoiceModalOpen(false);
+                                            setRandomClass(selectedClass || '');
+                                            handleRandomClassChange(selectedClass || '');
+                                            if (selectedSubject) {
+                                                setRandomSubject(selectedSubject);
+                                                if (selectedClass && allChapters.length > 0) {
+                                                    const match = allChapters.find((item) => {
+                                                        const isClassMatch = item.classId === selectedClass || item.classId?._id === selectedClass;
+                                                        const isSubjectMatch = item.subjectId === selectedSubject || item.subjectId?._id === selectedSubject;
+                                                        return isClassMatch && isSubjectMatch;
+                                                    });
+                                                    const chaps = match?.chapters || [];
+                                                    setRandomChapterList(chaps);
+                                                    setRandomSelectedChapters(chaps.map(ch => ch._id));
+                                                }
+                                            }
+                                            setIsRandomQPModalOpen(true);
+                                        }}
+                                    >
+                                        <i className="fa-solid fa-shuffle fs-5"></i>
+                                        Random Selection
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isRandomQPModalOpen && (
+                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+                    <div className="modal-dialog modal-lg modal-dialog-centered">
+                        <div className="modal-content shadow-lg border-0" style={{ borderRadius: '12px' }}>
+                            <div className="modal-header bg-light border-bottom p-3">
+                                <h5 className="fw-bold mb-0 text-dark">
+                                    <i className="fa-solid fa-shuffle me-2 text-primary"></i>Random Question Paper Setup
+                                </h5>
+                                <button type="button" className="btn-close" onClick={() => setIsRandomQPModalOpen(false)} />
+                            </div>
+                            <div className="modal-body p-4" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+                                <div className="row g-3 mb-4">
+                                    <div className="col-6">
+                                        <label className="form-label fw-bold text-muted small">Class</label>
+                                        <select 
+                                            className="form-select shadow-sm" 
+                                            value={randomClass} 
+                                            onChange={(e) => handleRandomClassChange(e.target.value)}
+                                        >
+                                            <option value="">-- Class --</option>
+                                            {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="col-6">
+                                        <label className="form-label fw-bold text-muted small">Subject</label>
+                                        <select 
+                                            className="form-select shadow-sm" 
+                                            value={randomSubject} 
+                                            onChange={(e) => handleRandomSubjectChange(e.target.value)}
+                                            disabled={!randomClass}
+                                        >
+                                            <option value="">-- Subject --</option>
+                                            {randomFilteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="mb-4">
+                                    <div className="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                                        <span className="fw-bold text-slate-800 small">Chapters</span>
+                                        {randomChapterList.length > 0 && (
+                                            <div className="form-check form-switch">
+                                                <input 
+                                                    className="form-check-input" 
+                                                    type="checkbox" 
+                                                    id="toggleAllRandomChapters"
+                                                    checked={randomSelectedChapters.length === randomChapterList.length && randomChapterList.length > 0}
+                                                    onChange={handleToggleAllRandomChapters}
+                                                />
+                                                <label className="form-check-label small fw-semibold text-muted" htmlFor="toggleAllRandomChapters">Select All</label>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {randomChapterList.length === 0 ? (
+                                        <div className="text-center text-muted py-3 small italic bg-light rounded border">
+                                            {!randomSubject ? "Select Class and Subject to see chapters." : "No chapters configured for this subject."}
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-auto border rounded p-3 bg-white" style={{ maxHeight: '140px' }}>
+                                            <div className="d-flex flex-wrap gap-2">
+                                                {randomChapterList.map((ch, idx) => (
+                                                    <div className="form-check me-3" key={ch._id || idx} style={{ minWidth: '180px' }}>
+                                                        <input 
+                                                            className="form-check-input" 
+                                                            type="checkbox" 
+                                                            id={`rand-ch-${ch._id}`}
+                                                            checked={randomSelectedChapters.includes(ch._id)}
+                                                            onChange={() => handleRandomChapterToggle(ch._id)}
+                                                        />
+                                                        <label className="form-check-label small text-slate-700 fw-semibold" htmlFor={`rand-ch-${ch._id}`}>
+                                                            {ch.name}
+                                                        </label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div>
+                                    <div className="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                                        <span className="fw-bold text-slate-800 small">Questions Selection Criteria</span>
+                                        <button className="btn btn-xs btn-outline-primary fw-bold" onClick={handleAddCriteriaRow}>
+                                            <i className="fa-solid fa-plus me-1"></i>Add Criteria
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="d-flex flex-column gap-3 mt-3">
+                                        {randomCriteria.map((row, index) => (
+                                            <div className="row g-2 align-items-center border-bottom pb-3" key={row.id}>
+                                                <div className="col-4">
+                                                    <label className="form-label text-muted small mb-1">Question Type</label>
+                                                    <select 
+                                                        className="form-select form-select-sm"
+                                                        value={row.type}
+                                                        onChange={(e) => handleCriteriaChange(row.id, 'type', e.target.value)}
+                                                    >
+                                                        <option value="">-- Type --</option>
+                                                        <option value="MCQ">MCQ</option>
+                                                        <option value="Descriptive">Descriptive</option>
+                                                        <option value="Match">Match</option>
+                                                    </select>
+                                                </div>
+                                                <div className="col-3">
+                                                    <label className="form-label text-muted small mb-1">Marks Each</label>
+                                                    <input 
+                                                        type="number"
+                                                        className="form-control form-control-sm"
+                                                        placeholder="Marks"
+                                                        value={row.marks}
+                                                        onChange={(e) => handleCriteriaChange(row.id, 'marks', e.target.value)}
+                                                    />
+                                                </div>
+                                                <div className="col-3">
+                                                    <label className="form-label text-muted small mb-1">No. of Questions</label>
+                                                    <input 
+                                                        type="number"
+                                                        className="form-control form-control-sm"
+                                                        placeholder="Qty"
+                                                        value={row.count}
+                                                        min="1"
+                                                        onChange={(e) => handleCriteriaChange(row.id, 'count', parseInt(e.target.value, 10) || '')}
+                                                    />
+                                                </div>
+                                                <div className="col-2 text-end" style={{ paddingTop: '20px' }}>
+                                                    <button 
+                                                        className="btn btn-sm btn-outline-danger" 
+                                                        disabled={randomCriteria.length === 1}
+                                                        onClick={() => handleRemoveCriteriaRow(row.id)}
+                                                    >
+                                                        <i className="fa-solid fa-trash"></i>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+
+                                    <div className="d-flex justify-content-between align-items-center mt-3 bg-light p-3 rounded border">
+                                        <span className="fw-bold text-dark">Total Marks Calculated:</span>
+                                        <span className="fs-5 fw-extrabold text-primary">{calculateTotalRandomMarks()} Marks</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div className="modal-footer bg-light border-top p-3 d-flex justify-content-end gap-2">
+                                <button className="btn btn-sm btn-outline-secondary px-3" onClick={() => setIsRandomQPModalOpen(false)}>Cancel</button>
+                                <button 
+                                    className="btn btn-sm text-white fw-bold px-4" 
+                                    style={{ backgroundColor: 'var(--button-color)' }}
+                                    disabled={!randomClass || !randomSubject || randomSelectedChapters.length === 0}
+                                    onClick={handleGenerateRandomQP}
+                                >
+                                    <i className="fa-solid fa-gears me-2"></i>Generate Random Paper
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {isDownloadQBModalOpen && (
+                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1060 }}>
+                    <div className="modal-dialog modal-md modal-dialog-centered">
+                        <div className="modal-content shadow-lg border-0" style={{ borderRadius: '12px' }}>
+                            <div className="modal-header bg-light border-bottom p-3">
+                                <h5 className="fw-bold mb-0 text-dark">
+                                    <i className="fa-solid fa-download me-2 text-primary"></i>Download Question Bank
+                                </h5>
+                                <button type="button" className="btn-close" onClick={() => setIsDownloadQBModalOpen(false)} />
+                            </div>
+                            <div className="modal-body p-4">
+                                <div className="row g-3 mb-4">
+                                    <div className="col-6">
+                                        <label className="form-label fw-bold text-muted small">Select Class</label>
+                                        <select 
+                                            className="form-select shadow-sm" 
+                                            value={qbSelectedClass} 
+                                            onChange={(e) => handleQBClassChange(e.target.value)}
+                                        >
+                                            <option value="">-- Class --</option>
+                                            {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
+                                        </select>
+                                    </div>
+                                    <div className="col-6">
+                                        <label className="form-label fw-bold text-muted small">Select Subject</label>
+                                        <select 
+                                            className="form-select shadow-sm" 
+                                            value={qbSelectedSubject} 
+                                            onChange={(e) => handleQBSubjectChange(e.target.value)}
+                                            disabled={!qbSelectedClass}
+                                        >
+                                            <option value="">-- Subject --</option>
+                                            {qbFilteredSubjects.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="mb-3">
+                                    <div className="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">
+                                        <span className="fw-bold text-slate-800 small">Select Chapters</span>
+                                        {qbChapterList.length > 0 && (
+                                            <div className="form-check form-switch">
+                                                <input 
+                                                    className="form-check-input" 
+                                                    type="checkbox" 
+                                                    id="toggleAllChapters"
+                                                    checked={qbSelectedChapters.length === qbChapterList.length && qbChapterList.length > 0}
+                                                    onChange={handleToggleAllChapters}
+                                                />
+                                                <label className="form-check-label small fw-semibold text-muted" htmlFor="toggleAllChapters">Select All</label>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {qbChapterList.length === 0 ? (
+                                        <div className="text-center text-muted py-4 small italic bg-light rounded border">
+                                            {!qbSelectedSubject ? "Select Class and Subject to see chapters." : "No chapters configured for this subject."}
+                                        </div>
+                                    ) : (
+                                        <div className="overflow-auto border rounded p-3 bg-white" style={{ maxHeight: '200px' }}>
+                                            <div className="d-flex flex-column gap-2">
+                                                {qbChapterList.map((ch, idx) => (
+                                                    <div className="form-check" key={ch._id || idx}>
+                                                        <input 
+                                                            className="form-check-input" 
+                                                            type="checkbox" 
+                                                            id={`qb-ch-${ch._id}`}
+                                                            checked={qbSelectedChapters.includes(ch._id)}
+                                                            onChange={() => handleQBChapterToggle(ch._id)}
+                                                        />
+                                                        <label className="form-check-label small text-slate-700 fw-semibold" htmlFor={`qb-ch-${ch._id}`}>
+                                                            {ch.name}
+                                                        </label>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="modal-footer bg-light border-top p-3 d-flex justify-content-end gap-2">
+                                <button className="btn btn-sm btn-outline-secondary px-3" onClick={() => setIsDownloadQBModalOpen(false)}>Cancel</button>
+                                <button 
+                                    className="btn btn-sm text-white fw-bold px-4" 
+                                    style={{ backgroundColor: 'var(--button-color)' }}
+                                    disabled={!qbSelectedClass || !qbSelectedSubject || qbSelectedChapters.length === 0 || qbDownloading}
+                                    onClick={handleQBDownloadSubmit}
+                                >
+                                    {qbDownloading ? (
+                                        <>
+                                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
+                                            Downloading...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <i className="fa-solid fa-download me-2"></i>Download QB
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             <div style={{ display: 'none' }}>
                 <PrintQuestionPaper
                     ref={printRef}
@@ -1580,12 +2251,18 @@ export default function QuestionPaperV2() {
                 />
             </div>
 
+
+
             <div style={{ display: 'none' }}>
-                <div ref={printRefFiltered}>
+                <div ref={qbPrintRef}>
                     <DownloadQuestionBank
-                        questions={questions}
-                        selectedClass={classes.find(c => c._id === selectedClass)?.class}
-                        selectedSubject={subjects.find(s => s._id === selectedSubject)?.name}
+                        questions={qbQuestions}
+                        selectedClass={classes.find(c => c._id === qbSelectedClass)?.class}
+                        selectedSubject={subjects.find(s => s._id === qbSelectedSubject)?.name}
+                        selectedChapter={qbChapterList
+                            .filter(ch => qbSelectedChapters.includes(ch._id))
+                            .map(ch => ch.name)
+                            .join(", ")}
                     />
                 </div>
             </div>

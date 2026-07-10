@@ -1,4 +1,5 @@
 const MetadataService = require('../services/MetadataService');
+const DispatcherService = require('../services/DispatcherService');
 const { sendSuccess } = require('../../core/errors/apiResponse');
 
 // ─── Entity Registry ────────────────────────────────────────────────────────
@@ -221,6 +222,16 @@ exports.lookup = async (req, res, next) => {
     );
 
     sendSuccess(res, data);
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.submitForm = async (req, res, next) => {
+  try {
+    const { templateId, payload } = req.body;
+    const result = await DispatcherService.dispatch(req.schoolId, templateId, payload);
+    sendSuccess(res, result, 200);
   } catch (err) {
     next(err);
   }

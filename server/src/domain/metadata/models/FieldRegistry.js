@@ -1,120 +1,198 @@
 const mongoose = require("mongoose");
 
-const FieldRegistrySchema = new mongoose.Schema({
+const FieldRegistrySchema = new mongoose.Schema(
+{
     isGlobalRegistry: {
         type: Boolean,
         default: true
     },
+
+    // ===========================================================
+    // BASIC INFORMATION
+    // ===========================================================
+
     key: {
         type: String,
         required: true,
         unique: true,
-        trim: true
+        trim: true,
+        lowercase: true
     },
+
     label: {
         type: String,
         required: true,
         trim: true
     },
+
     description: {
         type: String,
         default: ""
     },
+
     category: {
         type: String,
         default: "General"
     },
+
+    // ===========================================================
+    // FIELD TYPE
+    // ===========================================================
+
     type: {
         type: String,
         required: true,
         enum: [
-            "text", "textarea", "number", "currency", "date", "datetime", "time",
-            "email", "phone", "password", "checkbox", "switch", "radio", "select",
-            "multiselect", "lookup", "file", "image"
+            "text",
+            "textarea",
+            "number",
+            "currency",
+            "percentage",
+            "date",
+            "datetime",
+            "time",
+            "email",
+            "phone",
+            "password",
+            "checkbox",
+            "switch",
+            "radio",
+            "select",
+            "multiselect",
+            "lookup",
+            "file",
+            "image"
         ]
     },
-    placeholder: {
-        type: String,
-        default: ""
-    },
-    helperText: {
-        type: String,
-        default: ""
-    },
-    required: {
-        type: Boolean,
-        default: false
-    },
-    unique: {
-        type: Boolean,
-        default: false
-    },
-    min: Number,
-    max: Number,
-    minLength: Number,
-    maxLength: Number,
-    validationPattern: {
-        type: String,
-        default: ""
-    },
-    validationMessage: {
-        type: String,
-        default: ""
-    },
-    defaultValue: {
-        type: mongoose.Schema.Types.Mixed,
-        default: null
-    },
-    options: [{
-        label: String,
-        value: String
-    }],
+
+    // ===========================================================
+    // STATIC OPTIONS
+    // (Only for Select / Radio / MultiSelect)
+    // ===========================================================
+
+    options: [
+        {
+            label: String,
+            value: String
+        }
+    ],
+
+    // ===========================================================
+    // LOOKUP CONFIGURATION
+    // ===========================================================
+
     lookup: {
+
+        // Entity to search
         entity: {
-            type: String,
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "EntityRegistry",
             default: null
         },
+
+        // Which field should be displayed
+
         displayField: {
-            type: String,
-            default: "name"
+
+            // field key OR core property
+            field: {
+                type: String,
+                default: null
+            },
+
+            source: {
+                type: String,
+                enum: [
+                    "core",
+                    "dynamic",
+                    "nested"
+                ],
+                default: "core"
+            },
+
+            path: {
+                type: String,
+                default: ""
+            }
         },
+
+        // Value stored in DB
+
         valueField: {
             type: String,
             default: "_id"
         },
+
+        searchable: {
+            type: Boolean,
+            default: true
+        },
+
         multiple: {
             type: Boolean,
             default: false
         },
-        searchable: {
-            type: Boolean,
-            default: true
-        }
+
+        // Static lookup filters
+
+        filters: [
+            {
+                field: String,
+
+                source: {
+                    type: String,
+                    enum: [
+                        "core",
+                        "dynamic",
+                        "nested"
+                    ],
+                    default: "core"
+                },
+
+                operator: {
+                    type: String,
+                    enum: [
+                        "equals",
+                        "notEquals",
+                        "contains",
+                        "startsWith",
+                        "endsWith",
+                        "in",
+                        "notIn",
+                        "greaterThan",
+                        "lessThan",
+                        "greaterThanOrEqual",
+                        "lessThanOrEqual"
+                    ],
+                    default: "equals"
+                },
+
+                value: mongoose.Schema.Types.Mixed
+            }
+        ]
     },
-    ui: {
-        icon: {
-            type: String,
-            default: ""
-        },
-        color: {
-            type: String,
-            default: ""
-        },
-        width: {
-            type: Number,
-            default: 12
-        }
-    },
+
+    // ===========================================================
+    // SYSTEM
+    // ===========================================================
+
     status: {
         type: String,
-        enum: ["draft", "active", "archived"],
+        enum: [
+            "draft",
+            "active",
+            "archived"
+        ],
         default: "draft"
     },
+
     version: {
         type: Number,
         default: 1
     }
-}, {
+
+},
+{
     timestamps: true
 });
 

@@ -9,8 +9,54 @@ import IdentityCard from "../IdentityCard/IdentityCard";
 import DefaultStudentPDF from "../DefaultStudentPDF/DefaultStudentPDF";
 import SearchFilterBar from "../Shared/SearchFilterBar";
 import './Students.css';
+// Helper to safely extract a printable string from dynamic values (primitives or nested objects)
+const getSafeStringValue = (val) => {
+    if (!val) return '';
+    if (typeof val === 'object') {
+        return val.label || val.name || val.fieldName || JSON.stringify(val);
+    }
+    return String(val);
+};
 
-
+// Systematic templates defining sections, icons, and order of fields for student details by school ID
+const STUDENT_TEMPLATES = {
+    // Vamshee Techno School
+    '6a496928e7b5f329b94a0775': [
+        {
+            sectionName: "Academic Enrollment Profile",
+            icon: "fa-graduation-cap",
+            fields: ["AdmissionNo", "admissionNo", "classId", "academicYearId"]
+        },
+        {
+            sectionName: "Personal Information",
+            icon: "fa-user",
+            fields: ["name", "nameHindi", "gender", "dob", "dobInWords", "bloodGroup", "aadharNo"]
+        },
+        {
+            sectionName: "Social & Caste Information",
+            icon: "fa-users",
+            fields: ["category", "caste", "Caste", "casteHindi", "CasteHindi", "FreeStud", "freeStudent"]
+        }
+    ],
+    // Default template (used for other schools or if not matched)
+    'default': [
+        {
+            sectionName: "Personal Details",
+            icon: "fa-user",
+            fields: ["nameHindi", "dob", "dobInWords", "gender", "bloodGroup", "aadharNo"]
+        },
+        {
+            sectionName: "Registration & Admission Details",
+            icon: "fa-id-card",
+            fields: ["admissionNo", "AdmissionNo", "freeStudent", "FreeStud"]
+        },
+        {
+            sectionName: "Social & Category Details",
+            icon: "fa-users",
+            fields: ["category", "caste", "Caste", "casteHindi", "CasteHindi"]
+        }
+    ]
+};
 
 export default function Students() {
 
@@ -42,6 +88,7 @@ export default function Students() {
 
     const [students, setStudents] = useState([]);
     const [selectedStudent, setSelectedStudent] = useState(null);
+    const [activeBatchAction, setActiveBatchAction] = useState(null); // 'promote' or 'drop'
     const [selectedYear, setSelectedYear] = useState("");
     const [academicYears, setAcademicYears] = useState([]);
     const [selectedClass, setSelectedClass] = useState("");
@@ -52,85 +99,91 @@ export default function Students() {
 
     const fetchPersonalInformationList = async () => {
         try {
-            const response = await api.get('/GetPersonalInformationList');
+            const response = await api.get('/api/metadata/fields');
             setpersonalInfoList(response.data.data || []); // Default to an empty array if no data is returned
         } catch (error) {
             console.error('Error fetching personal information list:', error);
         }
     };
 
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const studentResponse = await getStudents();
-                const fieldsRes = await api.get("/GetPersonalInformationList");
-                const fields = fieldsRes.data.data || [];
+    const fetchData = async (isInitial = false) => {
+        try {
+            const studentResponse = await getStudents();
+            const fieldsRes = await api.get("/api/metadata/fields");
+            const fields = fieldsRes.data.data || [];
 
-                const mapped = (studentResponse.data.students || []).map(s => {
-                    const legacyStudent = {
-                        ...s,
-                        academicYears: (s.enrollments || []).map(e => ({
-                            academicYear: e.academicYear?.name || e.academicYear?.toString() || "",
-                            class: e.class,
-                            status: e.status
-                        }))
-                    };
+            const mapped = (studentResponse.data.students || []).map(s => {
+                const legacyStudent = {
+                    ...s,
+                    academicYears: (s.enrollments || []).map(e => ({
+                        academicYear: e.academicYear?.name || e.academicYear?.toString() || "",
+                        class: e.class,
+                        status: e.status
+                    }))
+                };
 
-                    if (s.dynamicFields && Array.isArray(s.dynamicFields)) {
-                        s.dynamicFields.forEach(df => {
-
-                            const field = fields.find(
-                                p => p._id === (df.fieldId?._id || df.fieldId)
-                            );
-
-                            const key = df.fieldId?.fieldKey || field?.fieldKey;
-
-                            if (key) {
-                                if (key === "admissionNo")
-                                    legacyStudent.AdmissionNo = df.value;
-                                else if (key === "freeStudent")
-                                    legacyStudent.FreeStud = df.value;
-                                else if (key === "caste")
-                                    legacyStudent.Caste = df.value;
-                                else if (key === "casteHindi")
-                                    legacyStudent.CasteHindi = df.value;
-                                else
-                                    legacyStudent[key] = df.value;
+                if (s.dynamicFields && Array.isArray(s.dynamicFields)) {
+                    s.dynamicFields.forEach(df => {
+                        const field = fields.find(
+                            p => p._id === (df.fieldId?._id || df.fieldId)
+                        );
+                        const key = df.fieldId?.fieldKey || field?.fieldKey;
+                        if (key) {
+                            const lowerKey = key.toLowerCase();
+                            if (lowerKey === "admissionno" || lowerKey === "admissionnumber") {
+                                legacyStudent.AdmissionNo = df.value;
+                                legacyStudent.admissionNo = df.value;
+                            } else if (lowerKey === "freestudent" || lowerKey === "freestud") {
+                                legacyStudent.FreeStud = df.value;
+                                legacyStudent.freeStudent = df.value;
+                            } else if (lowerKey === "caste") {
+                                legacyStudent.Caste = df.value;
+                                legacyStudent.caste = df.value;
+                            } else if (lowerKey === "castehindi") {
+                                legacyStudent.CasteHindi = df.value;
+                                legacyStudent.casteHindi = df.value;
+                            } else if (lowerKey === "gender") {
+                                legacyStudent.gender = df.value;
+                            } else if (lowerKey === "dateofbirth" || lowerKey === "dob") {
+                                legacyStudent.dob = df.value;
                             }
-                        });
-                    }
-                    return legacyStudent;
-                });
-                setStudents(mapped);
-
-                const yearResponse = await getAcademicYears();
-                const sortedYears = (yearResponse.data.data || []).sort((a, b) => {
-                    const yearA = a.name || a.year || "";
-                    const yearB = b.name || b.year || "";
-                    return parseInt(yearB.split("-")[0] || 0) - parseInt(yearA.split("-")[0] || 0);
-                });
-
-                setAcademicYears(sortedYears);
-                if (sortedYears.length > 0) {
-                    setSelectedYear(sortedYears[0].name || sortedYears[0].year);
+                            legacyStudent[lowerKey] = df.value;
+                        }
+                    });
                 }
+                return legacyStudent;
+            });
+            setStudents(mapped);
 
-                const classResponse = await getClasses();
-                const sortedClasses = (classResponse.data.classes || []).sort((a, b) =>
-                    parseInt(a.class) - parseInt(b.class)
-                );
+            const yearResponse = await getAcademicYears();
+            const sortedYears = (yearResponse.data.data || []).sort((a, b) => {
+                const yearA = a.name || a.year || "";
+                const yearB = b.name || b.year || "";
+                return parseInt(yearB.split("-")[0] || 0) - parseInt(yearA.split("-")[0] || 0);
+            });
 
-                setClasses(sortedClasses);
-                if (sortedClasses.length > 0) {
-                    setSelectedClass(sortedClasses[0].class);
-                }
-
-            } catch (error) {
-                console.error("Error fetching data:", error);
+            setAcademicYears(sortedYears);
+            if (isInitial && sortedYears.length > 0) {
+                setSelectedYear(sortedYears[0].name || sortedYears[0].year);
             }
-        };
 
-        fetchData();
+            const classResponse = await getClasses();
+            const sortedClasses = (classResponse.data.classes || []).sort((a, b) =>
+                parseInt(a.class) - parseInt(b.class)
+            );
+
+            setClasses(sortedClasses);
+            if (isInitial && sortedClasses.length > 0) {
+                setSelectedClass(sortedClasses[0].class);
+            }
+
+        } catch (error) {
+            console.error("Error fetching data:", error);
+        }
+    };
+
+    useEffect(() => {
+        fetchData(true);
         fetchPersonalInformationList();
     }, []);
 
@@ -289,6 +342,7 @@ export default function Students() {
         try {
             const response = await passStudentsTo({
                 studentIds: selectedStudents,
+                currentAcademicYear: selectedYear,
                 newAcademicYear: passToSelectedYear,
                 newClass: passToSelectedClass,
             });
@@ -296,8 +350,19 @@ export default function Students() {
             if (response.status === 200) {
                 showMessage("✅ Students updated successfully!");
                 setSelectedStudents([]);
+
+                // Automatically update page filters to the new class and year
+                setSelectedYear(passToSelectedYear);
+                setSelectedClass(passToSelectedClass);
+
                 setPassToSelectedYear("");
                 setPassToSelectedClass("");
+
+                // Close the sidebar
+                setActiveBatchAction(null);
+
+                // Refresh the list with the new filters
+                fetchData();
             } else {
                 showMessage("❌ Failed to update students.");
             }
@@ -363,10 +428,19 @@ export default function Students() {
 
             showMessage("✅ Re-admission completed successfully!");
             setSelectedStudents([]);
+
+            // Automatically update page filters to the new class and year
+            setSelectedYear(passToSelectedYear);
+            setSelectedClass(passToSelectedClass);
+
             setPassToSelectedYear("");
             setPassToSelectedClass("");
-            document.getElementById("passtoModal").click();
 
+            // Close the sidebar
+            setActiveBatchAction(null);
+
+            // Refresh the list with the new filters
+            fetchData();
         } catch (error) {
             console.error("Re-admission error:", error);
             showMessage("❌ An error occurred during re-admission.");
@@ -396,6 +470,8 @@ export default function Students() {
                 showMessage(`✅ Students marked as ${dropStatus} successfully.`);
                 setDropStatus("");
                 setSelectedStudents([]);
+                setActiveBatchAction(null);
+                fetchData();
             } else {
                 showMessage("Failed to update students.");
             }
@@ -649,10 +725,24 @@ export default function Students() {
                 setFilters={setFilters}
                 filteredCount={filteredStudents.length}
             >
-                {/* Select All Checkbox */}
-                <div className="selectAll d-flex align-items-center me-2">
-                    <input type="checkbox" className="form-check-input" id="selectAllCheckbox" checked={selectAllChecked} onChange={handleSelectAll} />
-                    <label className="ms-1 small fw-bold text-dark cursor-pointer" htmlFor="selectAllCheckbox">Select All</label>
+                {/* Select All Toggle Switch */}
+                <div className="form-check form-switch selectAll d-flex align-items-center me-3" style={{ gap: '8px', paddingLeft: '2.5em' }}>
+                    <input
+                        type="checkbox"
+                        className="form-check-input cursor-pointer"
+                        role="switch"
+                        id="selectAllCheckbox"
+                        checked={selectAllChecked}
+                        onChange={handleSelectAll}
+                        style={{ height: '18px', width: '36px', margin: 0 }}
+                    />
+                    <label
+                        className="form-check-label small fw-bold cursor-pointer mb-0"
+                        htmlFor="selectAllCheckbox"
+                        style={{ color: 'var(--text-color)', userSelect: 'none' }}
+                    >
+                        Select All
+                    </label>
                 </div>
 
                 {/* Actions Dropdown */}
@@ -662,12 +752,24 @@ export default function Students() {
                     </button>
                     <ul className="dropdown-menu">
                         <li>
-                            <button className="dropdown-item" data-bs-toggle="modal" data-bs-target="#passtoModal">
+                            <button className="dropdown-item" onClick={() => {
+                                if (selectedStudents.length === 0) {
+                                    showMessage("Please select one or more students first.");
+                                    return;
+                                }
+                                setActiveBatchAction('promote');
+                            }}>
                                 <i className="fa-solid fa-forward me-2 fa-sm"></i>Pass Students
                             </button>
                         </li>
                         <li>
-                            <button className="dropdown-item" data-bs-toggle="modal" data-bs-target="#dropStudentModal">
+                            <button className="dropdown-item" onClick={() => {
+                                if (selectedStudents.length === 0) {
+                                    showMessage("Please select one or more students first.");
+                                    return;
+                                }
+                                setActiveBatchAction('drop');
+                            }}>
                                 <i className="fa-solid fa-user-xmark me-2 fa-sm"></i>Drop Student
                             </button>
                         </li>
@@ -728,11 +830,11 @@ export default function Students() {
                 isGrid ?
                     <div className="student-grid">
                         {filteredStudents.map((student, index) => (
-                            <div className="student-card" key={index} style={{ animationDelay: `${index * 0.1}s` }}>
-                                <div className="student-info" key={student._id} data-bs-toggle="modal" data-bs-target="#studentModal" onClick={() => setSelectedStudent(student)}>
+                            <div className="student-card" key={index} style={{ animationDelay: `${index * 0.05}s` }}>
+                                <div className="student-info" key={student._id} onClick={() => setSelectedStudent(student)}>
                                     <img src={student.image || boy} alt="..." />
                                     <strong>{student.name}</strong>
-                                    <p>Age: {calculateAge(student.dob)}</p>
+                                    <p className="admission-no">Admission No: {student.AdmissionNo || student.admissionNo || "N/A"}</p>
                                     <p>Class: {student.academicYears.find(y => y.academicYear === selectedYear)?.class || "N/A"}</p>
                                     <p>Year: {selectedYear}</p>
                                 </div>
@@ -750,7 +852,7 @@ export default function Students() {
                     :
                     <div className="students-list">
                         {filteredStudents.map((student, index) => (
-                            <div className="student-list" style={{ animationDelay: `${index * 0.1}s` }}>
+                            <div className="student-list" key={index} style={{ animationDelay: `${index * 0.05}s` }}>
                                 <input
                                     type="checkbox"
                                     className="select-checkbox"
@@ -759,12 +861,12 @@ export default function Students() {
                                         handleSelectStudent(student._id);
                                     }}
                                 />
-                                <div className="student-list-view" key={student._id} data-bs-toggle="modal" data-bs-target="#studentModal" onClick={() => setSelectedStudent(student)}>
+                                <div className="student-list-view" key={student._id} onClick={() => setSelectedStudent(student)}>
                                     <img src={student.image || boy} alt="..." />
-                                    <strong>{student.name}</strong>
-                                    <div style={{ width: '200px' }}><label>Admission No:</label> {student.AdmissionNo}</div>
-                                    <div><label>Age:</label> {calculateAge(student.dob)}</div>
-                                    <div style={{ width: '100px' }}><label>Class:</label> {student.academicYears.find(y => y.academicYear === selectedYear)?.class || "N/A"}</div>
+                                    <strong style={{ width: '220px' }}>{student.name}</strong>
+                                    <div style={{ width: '200px' }}><label>Admission No:</label> {student.AdmissionNo || student.admissionNo || "N/A"}</div>
+                                    <div style={{ width: '120px' }}><label>Age:</label> {calculateAge(student.dob)}</div>
+                                    <div style={{ width: '120px' }}><label>Class:</label> {student.academicYears.find(y => y.academicYear === selectedYear)?.class || "N/A"}</div>
                                     <div>Year: {selectedYear}</div>
                                 </div>
                             </div>
@@ -772,131 +874,148 @@ export default function Students() {
                     </div>
             }
 
-            {/* Student Modal */}
-            <div className="modal fade" id="studentModal" tabIndex="-1" aria-hidden="true">
-                <div className="modal-dialog modal-xl modal-dialog-scrollable">
-                    <div className="modal-content">
-                        {selectedStudent && (
-                            <>
-                                <div className="modal-header">
-                                    <h5 className="modal-title">{selectedStudent.name}</h5>
-                                    <button type="button" className="btn-close" data-bs-dismiss="modal"></button>
+            {/* Slide-out Student Sidebar */}
+            <div className={`student-sidebar-backdrop ${selectedStudent ? 'show' : ''}`} onClick={() => { if (!uploading) setSelectedStudent(null); }} />
+            <div className={`student-sidebar ${selectedStudent ? 'open' : ''}`}>
+                {selectedStudent && (
+                    <div className="sidebar-inner d-flex flex-column h-100">
+                        <div className="sidebar-header d-flex justify-content-between align-items-center p-3 border-bottom bg-light">
+                            <h5 className="fw-bold mb-0 text-slate-800"><i className="fas fa-user-circle text-primary me-2"></i>Student Details</h5>
+                            <button type="button" className="btn-close" onClick={() => { setIsEditMode(false); setSelectedStudent(null); }} />
+                        </div>
+
+                        <div className="sidebar-body flex-grow-1 p-3 overflow-auto">
+                            <div className="d-flex justify-content-end mb-2">
+                                <button className="btn btn-sm btn-outline-warning" onClick={() => {
+                                    setIsEditMode(!isEditMode);
+                                    setEditStudentData({ ...selectedStudent });
+                                }}
+                                    disabled={!canEdit}
+                                >
+                                    {isEditMode ? "Cancel" : "Edit"}
+                                </button>
+                            </div>
+
+                            <div className="student-profile-container">
+                                <div className="student-profile-header d-flex justify-content-between align-items-center mb-3 p-3 rounded border">
+                                    <div className="d-flex flex-column gap-1">
+                                        <span className="small text-muted text-uppercase fw-bold">Student Profile</span>
+                                        {isEditMode ? (
+                                            <div className="mb-2">
+                                                <label className="small text-muted fw-semibold d-block mb-1">Full Name</label>
+                                                <input className="form-control form-control-sm" value={editStudentData.name || ''} onChange={(e) => setEditStudentData(prev => ({ ...prev, name: e.target.value }))} />
+                                            </div>
+                                        ) : (
+                                            <h3 className="fw-bold mb-0">{selectedStudent.name}</h3>
+                                        )}
+                                        <div className="d-flex align-items-center gap-2 mt-1">
+                                            <span className="badge bg-primary px-2 py-1 small rounded-pill">
+                                                ID: {selectedStudent.AdmissionNo || selectedStudent.admissionNo || 'N/A'}
+                                            </span>
+                                            {selectedStudent.dob && (
+                                                <span className="text-secondary small fw-semibold">
+                                                    {calculateAge(selectedStudent.dob)} Years Old
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    <div className="d-flex flex-column align-items-end gap-1">
+                                        <img
+                                            src={isEditMode ? editStudentData.image || boy : selectedStudent.image || boy}
+                                            alt={selectedStudent.name}
+                                            className="student-avatar-img"
+                                            style={{ width: '80px', height: '80px' }}
+                                        />
+                                        {isEditMode && (
+                                            <input
+                                                type="file"
+                                                className="form-control form-control-sm"
+                                                id="imageUpload"
+                                                accept="image/*"
+                                                style={{ maxWidth: '120px', fontSize: '10px' }}
+                                                onChange={async (e) => {
+                                                    const file = e.target.files[0];
+                                                    if (file) {
+                                                        try {
+                                                            const imageUrl = await uploadToImgBB(file);
+                                                            setEditStudentData((prev) => ({ ...prev, image: imageUrl }));
+                                                        } catch (err) {
+                                                            showMessage("Image upload failed");
+                                                            console.error(err);
+                                                        }
+                                                    }
+                                                }}
+                                            />
+                                        )}
+                                    </div>
                                 </div>
 
-                                <div className="modal-body">
-                                    <div className="w-100 d-flex justify-content-end">
-                                        <button className="btn btn-sm btn-warning mb-2" onClick={() => {
-                                            setIsEditMode(!isEditMode);
-                                            setEditStudentData({ ...selectedStudent });
-                                        }}
-                                            disabled={!canEdit}
-                                        >
-                                            {isEditMode ? "Cancel" : "Edit"}
-                                        </button>
-                                    </div>
-                                    <div className="student-profile-container">
-                                        {/* Top Banner Row */}
-                                        <div className="student-profile-header d-flex justify-content-between align-items-center mb-4 p-4 rounded-3 bg-light border">
-                                            <div className="d-flex flex-column gap-1">
-                                                <span className="small text-muted text-uppercase fw-bold tracking-wider">Student Profile</span>
-                                                {isEditMode ? (
-                                                    <div className="mb-2">
-                                                        <label className="small text-muted fw-semibold d-block mb-1">Full Name</label>
-                                                        <input className="form-control" value={editStudentData.name || ''} onChange={(e) => setEditStudentData(prev => ({ ...prev, name: e.target.value }))} />
-                                                    </div>
-                                                ) : (
-                                                    <h2 className="fw-extrabold mb-0 text-slate-900" style={{ fontSize: '2rem', letterSpacing: '-0.03em' }}>{selectedStudent.name}</h2>
-                                                )}
+                                {(() => {
+                                    const currentSchoolId = localStorage.getItem('schoolId') || '';
+                                    const activeTemplate = STUDENT_TEMPLATES[currentSchoolId] || STUDENT_TEMPLATES['default'];
+                                    
+                                    return activeTemplate.map((section, sIdx) => {
+                                    const sectionFields = personalInfoList.filter(info => {
+                                        const key = info.fieldKey;
+                                        return section.fields.some(fKey => 
+                                            key === fKey ||
+                                            (fKey === 'AdmissionNo' && key === 'admissionNo') ||
+                                            (fKey === 'FreeStud' && key === 'freeStudent') ||
+                                            (fKey === 'Caste' && key === 'caste') ||
+                                            (fKey === 'CasteHindi' && key === 'casteHindi')
+                                        );
+                                    }).sort((a, b) => {
+                                        const aIndex = section.fields.findIndex(f => f === a.fieldKey || (f === 'AdmissionNo' && a.fieldKey === 'admissionNo') || (f === 'FreeStud' && a.fieldKey === 'freeStudent') || (f === 'Caste' && a.fieldKey === 'caste') || (f === 'CasteHindi' && a.fieldKey === 'casteHindi'));
+                                        const bIndex = section.fields.findIndex(f => f === b.fieldKey || (f === 'AdmissionNo' && b.fieldKey === 'admissionNo') || (f === 'FreeStud' && b.fieldKey === 'freeStudent') || (f === 'Caste' && b.fieldKey === 'caste') || (f === 'CasteHindi' && b.fieldKey === 'casteHindi'));
+                                        return aIndex - bIndex;
+                                    });
 
-                                                <div className="d-flex align-items-center gap-3 mt-1">
-                                                    <span className="badge bg-primary px-3 py-2 fs-6 rounded-pill">
-                                                        <i className="fas fa-id-badge me-1"></i>
-                                                        {selectedStudent.AdmissionNo || 'No Admission No'}
-                                                    </span>
-                                                    {selectedStudent.dob && (
-                                                        <span className="text-secondary fw-semibold">
-                                                            <i className="fas fa-birthday-cake me-1 text-danger"></i>
-                                                            {calculateAge(selectedStudent.dob)} Years Old
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </div>
+                                    if (sectionFields.length === 0) return null;
 
-                                            {/* Profile image container on the right of header */}
-                                            <div className="d-flex flex-column align-items-end gap-2">
-                                                <img
-                                                    src={isEditMode ? editStudentData.image || "default.jpg" : selectedStudent.image || "default.jpg"}
-                                                    alt={selectedStudent.name}
-                                                    className="student-avatar-img"
-                                                />
-                                                {isEditMode && (
-                                                    <input
-                                                        type="file"
-                                                        className="form-control form-control-sm"
-                                                        id="imageUpload"
-                                                        accept="image/*"
-                                                        onChange={async (e) => {
-                                                            const file = e.target.files[0];
-                                                            if (file) {
-                                                                try {
-                                                                    const imageUrl = await uploadToImgBB(file);
-                                                                    setEditStudentData((prev) => ({ ...prev, image: imageUrl }));
-                                                                } catch (err) {
-                                                                    showMessage("Image upload failed");
-                                                                    console.error(err);
-                                                                }
-                                                            }
-                                                        }}
-                                                        required
-                                                    />
-                                                )}
-                                            </div>
-                                        </div>
+                                    return (
+                                        <div className="student-attribute-grid p-3 rounded border mb-3" key={sIdx}>
+                                            <h6 className="fw-bold mb-3 border-bottom pb-2">
+                                                <i className={`fas ${section.icon} text-primary me-2`}></i>{section.sectionName}
+                                            </h6>
+                                            <div className="row g-3">
+                                                {sectionFields.map((info, idx) => {
+                                                    const key = info.fieldKey;
+                                                    const label = info.fieldName;
 
-                                        {/* Attribute Information Grid */}
-                                        <div className="student-attribute-grid p-4 rounded-3 border">
-                                            <h5 className="fw-bold mb-3 border-bottom pb-2 text-slate-800">
-                                                <i className="fas fa-info-circle text-primary me-2"></i>Registration Details
-                                            </h5>
-                                            <div className="row g-0 border-top border-start">
-                                                {personalInfoList
-                                                    .filter(f => f.fieldKey !== 'admissionNo') // Exclude admissionNo as it is in header
-                                                    .sort((a, b) => (a.sno || 99) - (b.sno || 99))
-                                                    .map((info, idx) => {
-                                                        const key = info.fieldKey;
-                                                        const label = info.fieldName;
+                                                    let displayValue = '';
+                                                    if (key === 'freeStudent') displayValue = selectedStudent.FreeStud;
+                                                    else if (key === 'caste') displayValue = selectedStudent.Caste;
+                                                    else if (key === 'casteHindi') displayValue = selectedStudent.CasteHindi;
+                                                    else displayValue = selectedStudent[key];
 
-                                                        // Resolve display value from flat fields
-                                                        let displayValue = '';
-                                                        if (key === 'freeStudent') displayValue = selectedStudent.FreeStud;
-                                                        else if (key === 'caste') displayValue = selectedStudent.Caste;
-                                                        else if (key === 'casteHindi') displayValue = selectedStudent.CasteHindi;
-                                                        else displayValue = selectedStudent[key];
+                                                    if (!displayValue && selectedStudent.additionalInfo) {
+                                                        displayValue = selectedStudent.additionalInfo.find(i => i.key === label)?.value || '';
+                                                    }
 
-                                                        if (!displayValue && selectedStudent.additionalInfo) {
-                                                            displayValue = selectedStudent.additionalInfo.find(i => i.key === label)?.value || '';
-                                                        }
+                                                    if (info.fieldType === 'date' && displayValue) {
+                                                        try {
+                                                            displayValue = new Date(displayValue).toLocaleDateString();
+                                                        } catch (e) { }
+                                                    }
 
-                                                        // Date formatting for UI display
-                                                        if (info.fieldType === 'date' && displayValue) {
-                                                            try {
-                                                                displayValue = new Date(displayValue).toLocaleDateString();
-                                                            } catch (e) { }
-                                                        }
+                                                    // Safely convert objects to displayable text
+                                                    displayValue = getSafeStringValue(displayValue);
 
-                                                        return (
-                                                            <div className="col-md-6 p-3 border-end border-bottom student-grid-cell" key={info._id || idx}>
-                                                                <span className="student-grid-label">{label}</span>
-                                                                <div className="student-grid-val-wrapper mt-1">
+                                                    return (
+                                                        <div className="col-md-6 border-bottom pb-2" key={info._id || idx}>
+                                                            <div className="d-flex flex-column gap-1">
+                                                                <span className="small text-muted fw-bold">{label}</span>
+                                                                <div className="text-start">
                                                                     {isEditMode ? (
                                                                         info.fieldType === 'select' ? (
                                                                             <select
                                                                                 className="form-select form-select-sm"
                                                                                 value={
-                                                                                    key === 'freeStudent' ? (editStudentData.FreeStud || '') :
-                                                                                        key === 'caste' ? (editStudentData.Caste || '') :
-                                                                                            key === 'casteHindi' ? (editStudentData.CasteHindi || '') :
-                                                                                                (editStudentData[key] || '')
+                                                                                    key === 'freeStudent' ? getSafeStringValue(editStudentData.FreeStud) :
+                                                                                        key === 'caste' ? getSafeStringValue(editStudentData.Caste) :
+                                                                                            key === 'casteHindi' ? getSafeStringValue(editStudentData.CasteHindi) :
+                                                                                                getSafeStringValue(editStudentData[key])
                                                                                 }
                                                                                 onChange={(e) => {
                                                                                     const val = e.target.value;
@@ -920,10 +1039,10 @@ export default function Students() {
                                                                                 type={info.fieldType === 'number' ? 'number' : info.fieldType === 'date' ? 'date' : 'text'}
                                                                                 className="form-control form-control-sm"
                                                                                 value={
-                                                                                    key === 'freeStudent' ? (editStudentData.FreeStud || '') :
-                                                                                        key === 'caste' ? (editStudentData.Caste || '') :
-                                                                                            key === 'casteHindi' ? (editStudentData.CasteHindi || '') :
-                                                                                                (editStudentData[key] || '')
+                                                                                    key === 'freeStudent' ? getSafeStringValue(editStudentData.FreeStud) :
+                                                                                        key === 'caste' ? getSafeStringValue(editStudentData.Caste) :
+                                                                                            key === 'casteHindi' ? getSafeStringValue(editStudentData.CasteHindi) :
+                                                                                                getSafeStringValue(editStudentData[key])
                                                                                 }
                                                                                 onChange={(e) => {
                                                                                     const val = e.target.value;
@@ -939,167 +1058,255 @@ export default function Students() {
                                                                             />
                                                                         )
                                                                     ) : (
-                                                                        <span className="student-grid-value">{displayValue || '—'}</span>
+                                                                        <span className="fw-semibold">{displayValue || '—'}</span>
                                                                     )}
                                                                 </div>
                                                             </div>
-                                                        );
-                                                    })}
+                                                        </div>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
-                                    </div>
-                                           {/* Unified Academic & Enrollment History Section */}
-                                 <div className="student-history-container mt-4 p-4 rounded-3 border">
-                                     <div className="d-flex align-items-center justify-content-between mb-3 border-bottom pb-2">
-                                         <h5 className="fw-bold mb-0 text-slate-800">
-                                             <i className="fas fa-history text-success me-2"></i>Academic & Enrollment History
-                                         </h5>
-                                         {selectedStudent?.previousStudentId && previousStudentData && (
-                                             <button
-                                                 className="btn btn-xs btn-premium btn-premium-primary"
-                                                 data-bs-dismiss="modal"
-                                                 data-bs-toggle="modal"
-                                                 data-bs-target="#previousStudentModal"
-                                             >
-                                                 <i className="fas fa-external-link-alt me-1"></i>View Full Readmission Profile
-                                             </button>
-                                         )}
-                                     </div>
+                                    );
+                                      });
+                                })()}
 
-                                     <div className="row g-3">
-                                         {selectedStudent.academicYears.map((entry, index) => {
-                                             let badgeColor = "bg-secondary text-white";
-                                             switch (entry.status) {
-                                                 case "Active":
-                                                     badgeColor = "bg-success text-white";
-                                                     break;
-                                                 case "Passed":
-                                                     badgeColor = "bg-primary text-white";
-                                                     break;
-                                                 case "Dropped":
-                                                     badgeColor = "bg-danger text-white";
-                                                     break;
-                                                 case "TC-Issued":
-                                                     badgeColor = "bg-warning text-dark";
-                                                     break;
-                                                 case "Failed":
-                                                     badgeColor = "bg-danger text-white";
-                                                     break;
-                                                 default:
-                                                     badgeColor = "bg-secondary text-white";
-                                             }
+                                {/* Remaining Fields not explicitly defined in the template sections */}
+                                {(() => {
+                                    const currentSchoolId = localStorage.getItem('schoolId') || '';
+                                    const activeTemplate = STUDENT_TEMPLATES[currentSchoolId] || STUDENT_TEMPLATES['default'];
+                                    const claimedKeys = activeTemplate.flatMap(s => s.fields);
+                                    const remainingFields = personalInfoList.filter(info => {
+                                        const key = info.fieldKey;
+                                        return !claimedKeys.some(fKey => 
+                                            key === fKey ||
+                                            (fKey === 'AdmissionNo' && key === 'admissionNo') ||
+                                            (fKey === 'FreeStud' && key === 'freeStudent') ||
+                                            (fKey === 'Caste' && key === 'caste') ||
+                                            (fKey === 'CasteHindi' && key === 'casteHindi')
+                                        );
+                                    }).sort((a, b) => (a.sno || 99) - (b.sno || 99));
 
-                                             return (
-                                                 <div key={index} className="col-sm-6 col-md-4 col-lg-3">
-                                                     <div className="academic-session-card p-3 rounded-3 border d-flex flex-column gap-2 bg-light">
-                                                         <span className="small text-muted fw-bold font-monospace"><i className="far fa-calendar-alt me-1"></i>{entry.academicYear}</span>
-                                                         <div className="d-flex justify-content-between align-items-center mt-1">
-                                                             <span className="fw-extrabold text-slate-900 fs-5">{entry.class}</span>
-                                                             <span className={`badge ${badgeColor} px-2 py-1 small rounded-pill`}>{entry.status || "N/A"}</span>
-                                                         </div>
-                                                     </div>
-                                                 </div>
-                                             );
-                                         })}
-                                     </div>
-                                 </div>
-                                </div>
+                                    if (remainingFields.length === 0) return null;
 
-                                <div className="modal-footer">
-                                    {isEditMode && (
-                                        <button
-                                            className="btn btn-success"
-                                            disabled={uploading}
-                                            onClick={async () => {
-                                                try {
-                                                    setUploading(true);
+                                    return (
+                                        <div className="student-attribute-grid p-3 rounded border mb-3">
+                                            <h6 className="fw-bold mb-3 border-bottom pb-2">
+                                                <i className="fas fa-info-circle text-primary me-2"></i>Additional Information
+                                            </h6>
+                                            <div className="row g-3">
+                                                {remainingFields.map((info, idx) => {
+                                                    const key = info.fieldKey;
+                                                    const label = info.fieldName;
 
-                                                    // Pack flat fields back to EAV dynamicFields
-                                                    const dynamicFields = personalInfoList.map(field => {
-                                                        let val = '';
-                                                        const key = field.fieldKey;
-                                                        if (key === 'admissionNo') {
-                                                            val = editStudentData.AdmissionNo;
-                                                        } else if (key === 'freeStudent') {
-                                                            val = editStudentData.FreeStud;
-                                                        } else if (key === 'caste') {
-                                                            val = editStudentData.Caste;
-                                                        } else if (key === 'casteHindi') {
-                                                            val = editStudentData.CasteHindi;
-                                                        } else {
-                                                            // Fallback to additionalInfo array or flat fieldKey property
-                                                            const addInfoObj = editStudentData.additionalInfo?.find(i => i.key === field.fieldName);
-                                                            val = addInfoObj ? addInfoObj.value : editStudentData[key];
-                                                        }
-                                                        return { fieldId: field._id, value: val !== undefined && val !== null ? String(val) : '' };
-                                                    });
+                                                    let displayValue = '';
+                                                    if (key === 'freeStudent') displayValue = selectedStudent.FreeStud;
+                                                    else if (key === 'caste') displayValue = selectedStudent.Caste;
+                                                    else if (key === 'casteHindi') displayValue = selectedStudent.CasteHindi;
+                                                    else displayValue = selectedStudent[key];
 
-                                                    const payload = {
-                                                        name: editStudentData.name,
-                                                        image: editStudentData.image,
-                                                        academicYearId: editStudentData.academicYearId,
-                                                        dynamicFields
-                                                    };
-
-                                                    const response = await updateStudent(selectedStudent._id, payload);
-                                                    if (response.status === 200) {
-                                                        showMessage("Student updated successfully!");
-                                                        setIsEditMode(false);
-
-                                                        // Map response data back to flat format for local state
-                                                        const updatedStudent = {
-                                                            ...response.data.data,
-                                                            academicYears: (response.data.data.enrollments || []).map(e => ({
-                                                                academicYear: e.academicYear?.name || e.academicYear?.toString() || "",
-                                                                class: e.class,
-                                                                status: e.status
-                                                            }))
-                                                        };
-                                                        if (response.data.data.dynamicFields) {
-                                                            response.data.data.dynamicFields.forEach(df => {
-                                                                const field = personalInfoList.find(
-                                                                    p => p._id === (df.fieldId?._id || df.fieldId)
-                                                                );
-
-                                                                const key = df.fieldId?.fieldKey || field?.fieldKey;
-                                                                if (key) {
-                                                                    if (key === 'admissionNo') updatedStudent.AdmissionNo = df.value;
-                                                                    else if (key === 'freeStudent') updatedStudent.FreeStud = df.value;
-                                                                    else if (key === 'caste') updatedStudent.Caste = df.value;
-                                                                    else if (key === 'casteHindi') updatedStudent.CasteHindi = df.value;
-                                                                    else updatedStudent[key] = df.value;
-                                                                }
-                                                            });
-                                                        }
-
-                                                        setSelectedStudent(updatedStudent);
-                                                        const updatedList = students.map(s =>
-                                                            s._id === selectedStudent._id ? updatedStudent : s
-                                                        );
-                                                        setStudents(updatedList);
+                                                    if (!displayValue && selectedStudent.additionalInfo) {
+                                                        displayValue = selectedStudent.additionalInfo.find(i => i.key === label)?.value || '';
                                                     }
-                                                } catch (err) {
-                                                    showMessage("Failed to update student");
-                                                    console.error(err);
-                                                } finally {
-                                                    setUploading(false);
-                                                }
-                                            }}
-                                        >
-                                            {uploading ? "Editing..." : "Save Changes"}
-                                        </button>
-                                    )}
 
-                                    <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
-                                        Close
-                                    </button>
+                                                    if (info.fieldType === 'date' && displayValue) {
+                                                        try {
+                                                            displayValue = new Date(displayValue).toLocaleDateString();
+                                                        } catch (e) { }
+                                                    }
+
+                                                    // Safely convert objects to displayable text
+                                                    displayValue = getSafeStringValue(displayValue);
+
+                                                    return (
+                                                        <div className="col-md-6 border-bottom pb-2" key={info._id || idx}>
+                                                            <div className="d-flex flex-column gap-1">
+                                                                <span className="small text-muted fw-bold">{label}</span>
+                                                                <div className="text-start">
+                                                                    {isEditMode ? (
+                                                                        info.fieldType === 'select' ? (
+                                                                            <select
+                                                                                className="form-select form-select-sm"
+                                                                                value={
+                                                                                    key === 'freeStudent' ? getSafeStringValue(editStudentData.FreeStud) :
+                                                                                        key === 'caste' ? getSafeStringValue(editStudentData.Caste) :
+                                                                                            key === 'casteHindi' ? getSafeStringValue(editStudentData.CasteHindi) :
+                                                                                                getSafeStringValue(editStudentData[key])
+                                                                                }
+                                                                                onChange={(e) => {
+                                                                                    const val = e.target.value;
+                                                                                    setEditStudentData(prev => {
+                                                                                        const updated = { ...prev };
+                                                                                        if (key === 'freeStudent') updated.FreeStud = val;
+                                                                                        else if (key === 'caste') updated.Caste = val;
+                                                                                        else if (key === 'casteHindi') updated.CasteHindi = val;
+                                                                                        else updated[key] = val;
+                                                                                        return updated;
+                                                                                    });
+                                                                                }}
+                                                                            >
+                                                                                <option value="">Select</option>
+                                                                                {(info.options || []).map((opt, oIdx) => (
+                                                                                    <option key={oIdx} value={opt}>{opt}</option>
+                                                                                ))}
+                                                                            </select>
+                                                                        ) : (
+                                                                            <input
+                                                                                type={info.fieldType === 'number' ? 'number' : info.fieldType === 'date' ? 'date' : 'text'}
+                                                                                className="form-control form-control-sm"
+                                                                                value={
+                                                                                    key === 'freeStudent' ? getSafeStringValue(editStudentData.FreeStud) :
+                                                                                        key === 'caste' ? getSafeStringValue(editStudentData.Caste) :
+                                                                                            key === 'casteHindi' ? getSafeStringValue(editStudentData.CasteHindi) :
+                                                                                                getSafeStringValue(editStudentData[key])
+                                                                                }
+                                                                                onChange={(e) => {
+                                                                                    const val = e.target.value;
+                                                                                    setEditStudentData(prev => {
+                                                                                        const updated = { ...prev };
+                                                                                        if (key === 'freeStudent') updated.FreeStud = val;
+                                                                                        else if (key === 'caste') updated.Caste = val;
+                                                                                        else if (key === 'casteHindi') updated.CasteHindi = val;
+                                                                                        else updated[key] = val;
+                                                                                        return updated;
+                                                                                    });
+                                                                                }}
+                                                                            />
+                                                                        )
+                                                                    ) : (
+                                                                        <span className="fw-semibold">{displayValue || '—'}</span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+
+                                <div className="student-history-container mt-3 p-3 rounded border">
+                                    <h6 className="fw-bold mb-3 border-bottom pb-2">
+                                        <i className="fas fa-history text-success me-2"></i>Academic History
+                                    </h6>
+                                    <div className="d-flex flex-column gap-2">
+                                        {selectedStudent.academicYears.map((entry, index) => {
+                                            let badgeColor = "bg-secondary";
+                                            if (entry.status === "Active") badgeColor = "bg-success";
+                                            else if (entry.status === "Passed") badgeColor = "bg-primary";
+                                            else if (entry.status === "Dropped" || entry.status === "Failed") badgeColor = "bg-danger";
+                                            else if (entry.status === "TC-Issued") badgeColor = "bg-warning text-dark";
+
+                                            return (
+                                                <div key={index} className="d-flex justify-content-between align-items-center p-2 rounded border academic-session-card">
+                                                    <span className="small text-muted fw-bold">{entry.academicYear}</span>
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <span className="fw-bold">{entry.class}</span>
+                                                        <span className={`badge ${badgeColor} px-2 py-1 small rounded-pill`}>{entry.status || "N/A"}</span>
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
+                            </div>
+                        </div>
 
+                        <div className="sidebar-footer p-3 border-top bg-light text-end">
+                            {isEditMode ? (
+                                <button
+                                    className="btn btn-success me-2"
+                                    disabled={uploading}
+                                    onClick={async () => {
+                                        try {
+                                            setUploading(true);
+                                            const dynamicFields = personalInfoList.map(field => {
+                                                let val = '';
+                                                const key = field.fieldKey;
+                                                if (key === 'admissionNo') {
+                                                    val = editStudentData.AdmissionNo;
+                                                } else if (key === 'freeStudent') {
+                                                    val = editStudentData.FreeStud;
+                                                } else if (key === 'caste') {
+                                                    val = editStudentData.Caste;
+                                                } else if (key === 'casteHindi') {
+                                                    val = editStudentData.CasteHindi;
+                                                } else {
+                                                    const addInfoObj = editStudentData.additionalInfo?.find(i => i.key === field.fieldName);
+                                                    val = addInfoObj ? addInfoObj.value : editStudentData[key];
+                                                }
+                                                return { fieldId: field._id, value: val !== undefined && val !== null ? String(val) : '' };
+                                            });
 
-                            </>
-                        )}
+                                            const payload = {
+                                                name: editStudentData.name,
+                                                image: editStudentData.image,
+                                                academicYearId: editStudentData.academicYearId,
+                                                dynamicFields
+                                            };
+
+                                            const response = await updateStudent(selectedStudent._id, payload);
+                                            if (response.status === 200) {
+                                                showMessage("Student updated successfully!");
+                                                setIsEditMode(false);
+
+                                                const updatedStudent = {
+                                                    ...response.data.data,
+                                                    academicYears: (response.data.data.enrollments || []).map(e => ({
+                                                        academicYear: e.academicYear?.name || e.academicYear?.toString() || "",
+                                                        class: e.class,
+                                                        status: e.status
+                                                    }))
+                                                };
+                                                if (response.data.data.dynamicFields) {
+                                                    response.data.data.dynamicFields.forEach(df => {
+                                                        const field = personalInfoList.find(p => p._id === (df.fieldId?._id || df.fieldId));
+                                                        const key = df.fieldId?.fieldKey || field?.fieldKey;
+                                                        if (key) {
+                                                            const lowerKey = key.toLowerCase();
+                                                            if (lowerKey === 'admissionno' || lowerKey === 'admissionnumber') {
+                                                                updatedStudent.AdmissionNo = df.value;
+                                                                updatedStudent.admissionNo = df.value;
+                                                            } else if (lowerKey === 'freestudent' || lowerKey === 'freestud') {
+                                                                updatedStudent.FreeStud = df.value;
+                                                                updatedStudent.freeStudent = df.value;
+                                                            } else if (lowerKey === 'caste') {
+                                                                updatedStudent.Caste = df.value;
+                                                                updatedStudent.caste = df.value;
+                                                            } else if (lowerKey === 'castehindi') {
+                                                                updatedStudent.CasteHindi = df.value;
+                                                                updatedStudent.casteHindi = df.value;
+                                                            } else if (lowerKey === 'gender') {
+                                                                updatedStudent.gender = df.value;
+                                                            } else if (lowerKey === 'dateofbirth' || lowerKey === 'dob') {
+                                                                updatedStudent.dob = df.value;
+                                                            }
+                                                            updatedStudent[lowerKey] = df.value;
+                                                        }
+                                                    });
+                                                }
+                                                setSelectedStudent(updatedStudent);
+                                                const updatedList = students.map(s => s._id === selectedStudent._id ? updatedStudent : s);
+                                                setStudents(updatedList);
+                                            }
+                                        } catch (err) {
+                                            showMessage("Failed to update student");
+                                            console.error(err);
+                                        } finally {
+                                            setUploading(false);
+                                        }
+                                    }}
+                                >
+                                    {uploading ? "Editing..." : "Save Changes"}
+                                </button>
+                            ) : null}
+                            <button type="button" className="btn btn-secondary" onClick={() => { setIsEditMode(false); setSelectedStudent(null); }}>
+                                Close
+                            </button>
+                        </div>
                     </div>
-                </div>
+                )}
             </div>
 
             {/* Previous Student Modal */}
@@ -1250,7 +1457,6 @@ export default function Students() {
                                 </table>
                             </div>
                         </div>
-
                         <div className="modal-footer">
                             <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">
                                 Close
@@ -1260,130 +1466,156 @@ export default function Students() {
                 </div>
             </div>
 
-            {/* Pass to Modal */}
-            <div className="modal fade" id="passtoModal" tabIndex="-1" aria-labelledby="passtoModalLabel" aria-hidden="true">
-                <div className="modal-dialog modal-lg">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h5 className="modal-title">
-                                {isReAdmissionMode ? "Re-Admission Students" : "Pass Students To"}
-                            </h5>
-                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div className="modal-body">
-                            <p><strong>Selected Year:</strong> {selectedYear}</p>
-                            <p><strong>Selected Class:</strong> {selectedClass}</p>
-
-                            <div className="mb-3">
-                                <label htmlFor="newAcademicYear" className="form-label">Select New Academic Year</label>
-                                <select id="newAcademicYear" className="form-control" value={passToSelectedYear} onChange={(e) => setPassToSelectedYear(e.target.value)} >
-                                    <option value="">Select Year</option>
-                                    {academicYears.map((year, index) => (
-                                        <option key={index} value={year.name || year.year}>{year.name || year.year}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div className="mb-3">
-                                <label htmlFor="newClass" className="form-label">Select New Class</label>
-                                <select id="newClass" className="form-control" value={passToSelectedClass} onChange={(e) => setPassToSelectedClass(e.target.value)} >
-                                    <option value="">Select Class</option>
-                                    {classes.map((cls, idx) => (
-                                        <option key={idx} value={cls.class}>{cls.class}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            {selectedStudents.length > 0 ? (
-                                <table className="table table-bordered mt-3">
-                                    <thead className="table-dark">
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Current Academic Year</th>
-                                            <th>Current Class</th>
-                                            <th>Selected Academic Year</th>
-                                            <th>Selected Class</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {students
-                                            .filter((student) => selectedStudents.includes(student._id))
-                                            .map((student) => {
-                                                // Get the latest academic year and class of the student
-                                                const latestAcademicRecord = student.academicYears[student.academicYears.length - 1];
-
-                                                return (
-                                                    <tr key={student._id}>
-                                                        <td>{student.name}</td>
-                                                        <td>{latestAcademicRecord?.academicYear || "N/A"}</td>
-                                                        <td>{latestAcademicRecord?.class || "N/A"}</td>
-                                                        <td>{passToSelectedYear}</td>
-                                                        <td>{passToSelectedClass}</td>
-                                                    </tr>
-                                                );
-                                            })}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <p className="text-danger">No students selected.</p>
-                            )}
-                        </div>
-
-                        <div className="modal-footer">
-                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button
-                                type="button"
-                                className="btn btn-primary"
-                                onClick={async () => {
-                                    setUploading(true);
-                                    const selectedStudentData = students.filter((student) =>
-                                        selectedStudents.includes(student._id)
-                                    );
-
-                                    try {
-                                        if (isReAdmissionMode) {
-                                            await handleReAdmission(selectedStudentData);
-                                        } else {
-                                            await handlePassStudents();
-                                        }
-                                    } catch (err) {
-                                        console.error(err);
-                                    } finally {
-                                        setUploading(false);
-                                    }
-                                }}
-                                disabled={!canEdit || uploading}
-                            >
-                                {uploading
-                                    ? isReAdmissionMode
-                                        ? "Re-Admitting..."
-                                        : "Passing..."
-                                    : isReAdmissionMode
-                                        ? "Re-Admission Students"
-                                        : "Pass Students"}
-                            </button>
-                        </div>
-                    </div>
+            {/* Batch Actions Sidebar */}
+            <div className={`student-sidebar-backdrop ${activeBatchAction ? 'show' : ''}`} onClick={() => { if (!uploading) setActiveBatchAction(null); }} />
+            <div className={`student-sidebar ${activeBatchAction ? 'open' : ''}`} style={{ width: '520px' }}>
+                <div className="student-sidebar-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '16px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600, color: 'var(--text-color)' }}>
+                        {activeBatchAction === 'promote' ? (isReAdmissionMode ? 'Batch Re-Admission' : 'Batch Promotion') : 'Batch Status Update'}
+                    </h3>
+                    <button 
+                        className="btn-close-sidebar" 
+                        onClick={() => setActiveBatchAction(null)} 
+                        disabled={uploading}
+                        style={{ background: 'none', border: 'none', color: 'var(--text-color)', fontSize: '1.25rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '4px' }}
+                    >
+                        <i className="fa-solid fa-xmark"></i>
+                    </button>
                 </div>
-            </div>
+                
+                <div className="student-sidebar-body" style={{ padding: '24px', overflowY: 'auto', height: 'calc(100% - 70px)' }}>
+                    {activeBatchAction === 'promote' ? (() => {
+                        const selectedStudentClasses = students
+                            .filter(s => selectedStudents.includes(s._id))
+                            .map(s => s.academicYears[s.academicYears.length - 1]?.class || "N/A");
+                        const uniqueClasses = Array.from(new Set(selectedStudentClasses));
+                        const isSameClass = uniqueClasses.length <= 1;
 
-            {/* Drop Student Modal */}
-            <div className="modal fade" id="dropStudentModal" tabIndex="-1" aria-labelledby="dropStudentModalLabel" aria-hidden="true">
-                <div className="modal-dialog modal-lg">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h5 className="modal-title">Drop Students from Academic Year</h5>
-                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div className="modal-body">
-                            <p><strong>Academic Year to Drop:</strong> {selectedYear}</p>
-                            <div className="mb-3">
-                                <label htmlFor="dropStatus" className="form-label">Select Drop Status</label>
-                                <select
-                                    id="dropStatus"
-                                    className="form-control"
-                                    value={dropStatus}
-                                    onChange={(e) => setDropStatus(e.target.value)}
+                        return (
+                            <div className="batch-action-form">
+                                <div className="batch-context-info" style={{ backgroundColor: 'var(--hover-bg-color)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                                        <span style={{ color: 'var(--text-color)', opacity: 0.7, fontSize: '0.9rem' }}>Current Academic Year:</span>
+                                        <span style={{ fontWeight: 'bold', color: 'var(--text-color)', fontSize: '0.9rem' }}>{selectedYear || 'N/A'}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                        <span style={{ color: 'var(--text-color)', opacity: 0.7, fontSize: '0.9rem' }}>Current Class:</span>
+                                        <span style={{ fontWeight: 'bold', color: 'var(--text-color)', fontSize: '0.9rem' }}>{selectedClass || 'N/A'}</span>
+                                    </div>
+                                </div>
+
+                                {!isSameClass && (
+                                    <div style={{ backgroundColor: 'rgba(239, 68, 68, 0.1)', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '8px', padding: '14px', marginBottom: '20px', color: '#ef4444', fontSize: '0.85rem', lineHeight: '1.4' }}>
+                                        <strong>⚠️ Promotion Blocked:</strong> Selected students belong to different classes ({uniqueClasses.join(", ")}). Batch promotion is only possible for students of the same class.
+                                    </div>
+                                )}
+
+                                <div style={{ display: 'flex', gap: '16px', marginBottom: '20px' }}>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)', marginBottom: '8px' }}>Target Year *</label>
+                                        <select 
+                                            value={passToSelectedYear} 
+                                            onChange={(e) => setPassToSelectedYear(e.target.value)} 
+                                            style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', backgroundColor: 'var(--card-bg-color)', color: 'var(--text-color)', borderColor: 'var(--border-color)', fontSize: '0.9rem', outline: 'none' }}
+                                        >
+                                            <option value="">Select Year</option>
+                                            {academicYears.map((year, index) => (
+                                                <option key={index} value={year.name || year.year}>{year.name || year.year}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                    <div style={{ flex: 1 }}>
+                                        <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)', marginBottom: '8px' }}>Target Class *</label>
+                                        <select 
+                                            value={passToSelectedClass} 
+                                            onChange={(e) => setPassToSelectedClass(e.target.value)} 
+                                            style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', backgroundColor: 'var(--card-bg-color)', color: 'var(--text-color)', borderColor: 'var(--border-color)', fontSize: '0.9rem', outline: 'none' }}
+                                        >
+                                            <option value="">Select Class</option>
+                                            {classes.map((cls, idx) => (
+                                                <option key={idx} value={cls.class}>{cls.class}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div className="selected-students-preview" style={{ marginBottom: '24px' }}>
+                                    <h5 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-color)', marginBottom: '12px' }}>Selected Students ({selectedStudents.length})</h5>
+                                    <div style={{ maxHeight: '240px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--hover-bg-color)' }}>
+                                        <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-color)' }}>
+                                            <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--card-bg-color)', zIndex: 1 }}>
+                                                <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                                                    <th style={{ padding: '10px 14px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-color)', opacity: 0.7 }}>Student Name</th>
+                                                    <th style={{ padding: '10px 14px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-color)', opacity: 0.7, textAlign: 'right' }}>Current Class</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {students
+                                                    .filter(s => selectedStudents.includes(s._id))
+                                                    .map(s => {
+                                                        const latestRec = s.academicYears[s.academicYears.length - 1];
+                                                        return (
+                                                            <tr key={s._id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                                <td style={{ padding: '10px 14px', fontSize: '0.85rem' }}>{s.name}</td>
+                                                                <td style={{ padding: '10px 14px', fontSize: '0.85rem', textAlign: 'right', color: 'var(--text-color)', opacity: 0.7 }}>{latestRec?.class || "N/A"}</td>
+                                                            </tr>
+                                                        );
+                                                    })
+                                                }
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+
+                                <div className="sidebar-footer-actions" style={{ display: 'flex', gap: '16px', marginTop: '24px' }}>
+                                    <button 
+                                        className="btn btn-secondary w-50" 
+                                        onClick={() => setActiveBatchAction(null)} 
+                                        disabled={uploading}
+                                        style={{ padding: '10px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 600 }}
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button 
+                                        className="btn btn-primary w-50" 
+                                        disabled={!canEdit || uploading || !passToSelectedYear || !passToSelectedClass || !isSameClass}
+                                        onClick={async () => {
+                                            setUploading(true);
+                                            try {
+                                                if (isReAdmissionMode) {
+                                                    await handleReAdmission();
+                                                } else {
+                                                    await handlePassStudents();
+                                                }
+                                            } catch (err) {
+                                                console.error(err);
+                                            } finally {
+                                                setUploading(false);
+                                            }
+                                        }}
+                                        style={{ padding: '10px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 600 }}
+                                    >
+                                        {uploading ? 'Processing...' : (isReAdmissionMode ? 'Confirm Re-Admission' : 'Confirm Promotion')}
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })() : activeBatchAction === 'drop' ? (
+                        <div className="batch-action-form">
+                            <div className="batch-context-info" style={{ backgroundColor: 'var(--hover-bg-color)', padding: '16px', borderRadius: '8px', border: '1px solid var(--border-color)', marginBottom: '20px' }}>
+                                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                                    <span style={{ color: 'var(--text-color)', opacity: 0.7, fontSize: '0.9rem' }}>Current Academic Year:</span>
+                                    <span style={{ fontWeight: 'bold', color: 'var(--text-color)', fontSize: '0.9rem' }}>{selectedYear || 'N/A'}</span>
+                                </div>
+                            </div>
+
+                            <div className="mb-4">
+                                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-color)', marginBottom: '8px' }}>Select Drop Status *</label>
+                                <select 
+                                    className="form-select" 
+                                    value={dropStatus} 
+                                    onChange={(e) => setDropStatus(e.target.value)} 
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', backgroundColor: 'var(--card-bg-color)', color: 'var(--text-color)', borderColor: 'var(--border-color)', fontSize: '0.9rem', outline: 'none' }}
                                 >
                                     <option value="">Select Status</option>
                                     <option value="Dropped">Dropped</option>
@@ -1392,313 +1624,296 @@ export default function Students() {
                                 </select>
                             </div>
 
+                            <div className="selected-students-preview" style={{ marginBottom: '24px' }}>
+                                <h5 style={{ fontSize: '0.95rem', fontWeight: 600, color: 'var(--text-color)', marginBottom: '12px' }}>Selected Students ({selectedStudents.length})</h5>
+                                <div style={{ maxHeight: '240px', overflowY: 'auto', border: '1px solid var(--border-color)', borderRadius: '8px', backgroundColor: 'var(--hover-bg-color)' }}>
+                                    <table style={{ width: '100%', borderCollapse: 'collapse', color: 'var(--text-color)' }}>
+                                        <thead style={{ position: 'sticky', top: 0, backgroundColor: 'var(--card-bg-color)', zIndex: 1 }}>
+                                            <tr style={{ borderBottom: '1px solid var(--border-color)', textAlign: 'left' }}>
+                                                <th style={{ padding: '10px 14px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-color)', opacity: 0.7 }}>Student Name</th>
+                                                <th style={{ padding: '10px 14px', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-color)', opacity: 0.7, textAlign: 'right' }}>Class</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {students
+                                                .filter(s => selectedStudents.includes(s._id))
+                                                .map(s => {
+                                                    const rec = s.academicYears.find(y => y.academicYear === selectedYear);
+                                                    return (
+                                                        <tr key={s._id} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                                            <td style={{ padding: '10px 14px', fontSize: '0.85rem' }}>{s.name}</td>
+                                                            <td style={{ padding: '10px 14px', fontSize: '0.85rem', textAlign: 'right', color: 'var(--text-color)', opacity: 0.7 }}>{rec?.class || "N/A"}</td>
+                                                        </tr>
+                                                    );
+                                                })
+                                            }
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
 
-                            {selectedStudents.length > 0 ? (
-                                <table className="table table-bordered mt-3">
-                                    <thead className="table-dark">
-                                        <tr>
-                                            <th>Name</th>
-                                            <th>Academic Year</th>
-                                            <th>Class</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {students
-                                            .filter(student => selectedStudents.includes(student._id))
-                                            .map(student => {
-                                                const academicRecord = student.academicYears.find(y => y.academicYear === selectedYear);
-
-                                                return (
-                                                    <tr key={student._id}>
-                                                        <td>{student.name}</td>
-                                                        <td>{academicRecord?.academicYear || "N/A"}</td>
-                                                        <td>{academicRecord?.class || "N/A"}</td>
-                                                    </tr>
-                                                );
-                                            })}
-                                    </tbody>
-                                </table>
-                            ) : (
-                                <p className="text-danger">No students selected.</p>
-                            )}
+                            <div className="sidebar-footer-actions" style={{ display: 'flex', gap: '16px', marginTop: '24px' }}>
+                                <button 
+                                    className="btn btn-secondary w-50" 
+                                    onClick={() => setActiveBatchAction(null)} 
+                                    disabled={uploading}
+                                    style={{ padding: '10px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 600 }}
+                                >
+                                    Cancel
+                                </button>
+                                <button 
+                                    className="btn btn-danger w-50" 
+                                    disabled={!canEdit || uploading || !dropStatus}
+                                    onClick={async () => {
+                                        setUploading(true);
+                                        try {
+                                            await handleDropStudents();
+                                        } catch (err) {
+                                            console.error(err);
+                                        } finally {
+                                            setUploading(false);
+                                        }
+                                    }}
+                                    style={{ padding: '10px', borderRadius: '6px', fontSize: '0.9rem', fontWeight: 600 }}
+                                >
+                                    {uploading ? 'Processing...' : 'Apply Status Update'}
+                                </button>
+                            </div>
                         </div>
-
-                        <div className="modal-footer">
-                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                            <button
-                                type="button"
-                                className="btn btn-danger"
-                                onClick={async () => {
-                                    setUploading(true);
-                                    try {
-                                        await handleDropStudents();
-                                    } catch (err) {
-                                        console.error(err);
-                                    } finally {
-                                        setUploading(false);
-                                    }
-                                }}
-                                disabled={!canEdit || uploading}
-                            >
-                                {uploading ? "Dropping..." : "Drop Selected Students"}
-                            </button>
-                        </div>
-                    </div>
+                    ) : null}
                 </div>
             </div>
 
-            {/* Download Data */}
-            <div className="modal fade" id="downloadDataModal" tabIndex="-1" aria-hidden="true">
-                <div className="modal-dialog modal-lg modal-dialog-scrollable">
-                    <div className="modal-content">
-                        <div className="modal-header bg-primary text-white">
-                            <h5 className="modal-title">Select Fields to Download</h5>
-                            <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                        </div>
+                {/* Download Data */}
+                <div className="modal fade" id="downloadDataModal" tabIndex="-1" aria-hidden="true">
+                    <div className="modal-dialog modal-lg modal-dialog-scrollable">
+                        <div className="modal-content">
+                            <div className="modal-header bg-primary text-white">
+                                <h5 className="modal-title">Select Fields to Download</h5>
+                                <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
 
-                        <div className="modal-body">
-                            <div className="d-flex justify-content-between align-items-center mb-3">
-                                <h6 className="m-0">Choose Fields</h6>
+                            <div className="modal-body">
+                                <div className="d-flex justify-content-between align-items-center mb-3">
+                                    <h6 className="m-0">Choose Fields</h6>
+                                    <button
+                                        className="btn btn-sm btn-outline-primary"
+                                        onClick={() => {
+                                            const allKeys = [
+                                                "name", "nameHindi", "dob", "dobInWords", "gender", "aadharNo",
+                                                "bloodGroup", "category", "AdmissionNo", "Caste", "CasteHindi",
+                                                "FreeStud", "academicYear", "class",
+                                                ...Array.from(
+                                                    new Set(
+                                                        students.flatMap((s) => s.additionalInfo || []).map((info) => `additional_${info.key}`)
+                                                    )
+                                                ),
+                                            ];
+                                            const allSelected = allKeys.every((key) => selectedFields.includes(key));
+                                            if (allSelected) {
+                                                setSelectedFields([]);
+                                            } else {
+                                                setSelectedFields(allKeys);
+                                            }
+                                        }}
+                                    >
+                                        {selectedFields.length ===
+                                            (14 +
+                                                Array.from(
+                                                    new Set(
+                                                        students.flatMap((s) => s.additionalInfo || []).map((info) => info.key)
+                                                    )
+                                                ).length)
+                                            ? "Deselect All"
+                                            : "Select All"}
+                                    </button>
+                                </div>
+
+                                {/* Default Fields */}
+                                <div className="border rounded p-3 mb-3">
+                                    <h6 className="text-primary">Basic Student Fields</h6>
+                                    <div className="row">
+                                        {[
+                                            { key: "name", label: "Name" },
+                                            { key: "nameHindi", label: "Name (Hindi)" },
+                                            { key: "dob", label: "Date of Birth" },
+                                            { key: "dobInWords", label: "DOB in Words" },
+                                            { key: "gender", label: "Gender" },
+                                            { key: "aadharNo", label: "Aadhar No" },
+                                            { key: "bloodGroup", label: "Blood Group" },
+                                            { key: "category", label: "Category" },
+                                            { key: "AdmissionNo", label: "Admission No" },
+                                            { key: "Caste", label: "Caste" },
+                                            { key: "CasteHindi", label: "Caste (Hindi)" },
+                                            { key: "FreeStud", label: "Free Student" },
+                                            { key: "academicYear", label: "Academic Year" },
+                                            { key: "class", label: "Class" },
+                                            { key: "status", label: "Status" }
+                                        ].map((field, index) => (
+                                            <div className="col-md-4 col-sm-6 mb-2" key={index}>
+                                                <div className="form-check">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id={`field-${field.key}`}
+                                                        checked={selectedFields.includes(field.key)}
+                                                        onChange={() => toggleField(field.key)}
+                                                    />
+                                                    <label className="form-check-label" htmlFor={`field-${field.key}`}>
+                                                        {field.label}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Additional Info Fields */}
+                                <div className="border rounded p-3">
+                                    <h6 className="text-primary">Additional Info Fields</h6>
+                                    <div className="row">
+                                        {Array.from(
+                                            new Set(
+                                                students
+                                                    .flatMap((s) => s.additionalInfo || [])
+                                                    .map((info) => info.key)
+                                            )
+                                        ).map((key, index) => (
+                                            <div className="col-md-4 col-sm-6 mb-2" key={`add-${index}`}>
+                                                <div className="form-check">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id={`field-additional-${key}`}
+                                                        checked={selectedFields.includes(`additional_${key}`)}
+                                                        onChange={() => toggleField(`additional_${key}`)}
+                                                    />
+                                                    <label className="form-check-label" htmlFor={`field-additional-${key}`}>
+                                                        {key}
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="modal-footer">
+                                <button className="btn btn-success" onClick={handleDownloadExcel} data-bs-dismiss="modal" disabled={!canEdit}>
+                                    Download Excel
+                                </button>
+                                <button className="btn btn-success" onClick={handleDownloadSummaryExcel}>
+                                    Download Student Summary
+                                </button>
+                                <button className="btn btn-primary" onClick={handlePrint} disabled={!canEdit}>
+                                    Download PDF
+                                </button>
                                 <button
-                                    className="btn btn-sm btn-outline-primary"
+                                    className="btn btn-info"
                                     onClick={() => {
-                                        const allKeys = [
-                                            "name", "nameHindi", "dob", "dobInWords", "gender", "aadharNo",
-                                            "bloodGroup", "category", "AdmissionNo", "Caste", "CasteHindi",
-                                            "FreeStud", "academicYear", "class",
+                                        // Send all possible fields (basic + additional)
+                                        const allFields = [
+                                            "name",
+                                            "nameHindi",
+                                            "dob",
+                                            "dobInWords",
+                                            "gender",
+                                            "aadharNo",
+                                            "bloodGroup",
+                                            "category",
+                                            "AdmissionNo",
+                                            "Caste",
+                                            "CasteHindi",
+                                            "FreeStud",
+                                            "academicYear",
+                                            "class",
+                                            "status",
+                                            "ADate",
+                                            "AClass",
+                                            "StudentID",
+                                            "fatherName",
+                                            "motherName",
+                                            "fatherPhone",
+                                            "address",
+                                            "RollNo",
+                                            "permanentAddress",
+                                            "admissionDate",
+                                            // Add all additionalInfo keys dynamically
                                             ...Array.from(
                                                 new Set(
                                                     students.flatMap((s) => s.additionalInfo || []).map((info) => `additional_${info.key}`)
                                                 )
-                                            ),
+                                            )
                                         ];
-                                        const allSelected = allKeys.every((key) => selectedFields.includes(key));
-                                        if (allSelected) {
-                                            setSelectedFields([]);
-                                        } else {
-                                            setSelectedFields(allKeys);
-                                        }
+
+                                        // Set selected fields to everything
+                                        setSelectedFields(allFields);
+
+                                        // Trigger print using the default PDF ref
+                                        setTimeout(() => {
+                                            handleDeafultPDFPrint();
+                                        }, 100);
                                     }}
+                                    disabled={!canEdit}
                                 >
-                                    {selectedFields.length ===
-                                        (14 +
-                                            Array.from(
-                                                new Set(
-                                                    students.flatMap((s) => s.additionalInfo || []).map((info) => info.key)
-                                                )
-                                            ).length)
-                                        ? "Deselect All"
-                                        : "Select All"}
+                                    Download Default PDF
+                                </button>
+
+                                <button className="btn btn-secondary" data-bs-dismiss="modal">
+                                    Cancel
                                 </button>
                             </div>
-
-                            {/* Default Fields */}
-                            <div className="border rounded p-3 mb-3">
-                                <h6 className="text-primary">Basic Student Fields</h6>
-                                <div className="row">
-                                    {[
-                                        { key: "name", label: "Name" },
-                                        { key: "nameHindi", label: "Name (Hindi)" },
-                                        { key: "dob", label: "Date of Birth" },
-                                        { key: "dobInWords", label: "DOB in Words" },
-                                        { key: "gender", label: "Gender" },
-                                        { key: "aadharNo", label: "Aadhar No" },
-                                        { key: "bloodGroup", label: "Blood Group" },
-                                        { key: "category", label: "Category" },
-                                        { key: "AdmissionNo", label: "Admission No" },
-                                        { key: "Caste", label: "Caste" },
-                                        { key: "CasteHindi", label: "Caste (Hindi)" },
-                                        { key: "FreeStud", label: "Free Student" },
-                                        { key: "academicYear", label: "Academic Year" },
-                                        { key: "class", label: "Class" },
-                                        { key: "status", label: "Status" }
-                                    ].map((field, index) => (
-                                        <div className="col-md-4 col-sm-6 mb-2" key={index}>
-                                            <div className="form-check">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    id={`field-${field.key}`}
-                                                    checked={selectedFields.includes(field.key)}
-                                                    onChange={() => toggleField(field.key)}
-                                                />
-                                                <label className="form-check-label" htmlFor={`field-${field.key}`}>
-                                                    {field.label}
-                                                </label>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-
-                            {/* Additional Info Fields */}
-                            <div className="border rounded p-3">
-                                <h6 className="text-primary">Additional Info Fields</h6>
-                                <div className="row">
-                                    {Array.from(
-                                        new Set(
-                                            students
-                                                .flatMap((s) => s.additionalInfo || [])
-                                                .map((info) => info.key)
-                                        )
-                                    ).map((key, index) => (
-                                        <div className="col-md-4 col-sm-6 mb-2" key={`add-${index}`}>
-                                            <div className="form-check">
-                                                <input
-                                                    className="form-check-input"
-                                                    type="checkbox"
-                                                    id={`field-additional-${key}`}
-                                                    checked={selectedFields.includes(`additional_${key}`)}
-                                                    onChange={() => toggleField(`additional_${key}`)}
-                                                />
-                                                <label className="form-check-label" htmlFor={`field-additional-${key}`}>
-                                                    {key}
-                                                </label>
-                                            </div>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="modal-footer">
-                            <button className="btn btn-success" onClick={handleDownloadExcel} data-bs-dismiss="modal" disabled={!canEdit}>
-                                Download Excel
-                            </button>
-                            <button className="btn btn-success" onClick={handleDownloadSummaryExcel}>
-                                Download Student Summary
-                            </button>
-                            <button className="btn btn-primary" onClick={handlePrint} disabled={!canEdit}>
-                                Download PDF
-                            </button>
-                            <button
-                                className="btn btn-info"
-                                onClick={() => {
-                                    // Send all possible fields (basic + additional)
-                                    const allFields = [
-                                        "name",
-                                        "nameHindi",
-                                        "dob",
-                                        "dobInWords",
-                                        "gender",
-                                        "aadharNo",
-                                        "bloodGroup",
-                                        "category",
-                                        "AdmissionNo",
-                                        "Caste",
-                                        "CasteHindi",
-                                        "FreeStud",
-                                        "academicYear",
-                                        "class",
-                                        "status",
-                                        "ADate",
-                                        "AClass",
-                                        "StudentID",
-                                        "fatherName",
-                                        "motherName",
-                                        "fatherPhone",
-                                        "address",
-                                        "RollNo",
-                                        "permanentAddress",
-                                        "admissionDate",
-                                        // Add all additionalInfo keys dynamically
-                                        ...Array.from(
-                                            new Set(
-                                                students.flatMap((s) => s.additionalInfo || []).map((info) => `additional_${info.key}`)
-                                            )
-                                        )
-                                    ];
-
-                                    // Set selected fields to everything
-                                    setSelectedFields(allFields);
-
-                                    // Trigger print using the default PDF ref
-                                    setTimeout(() => {
-                                        handleDeafultPDFPrint();
-                                    }, 100);
-                                }}
-                                disabled={!canEdit}
-                            >
-                                Download Default PDF
-                            </button>
-
-                            <button className="btn btn-secondary" data-bs-dismiss="modal">
-                                Cancel
-                            </button>
                         </div>
                     </div>
                 </div>
-            </div>
 
-            <div style={{ display: "none" }}>
-                <StudentDataPage
-                    ref={printRef}
-                    selectedStudents={selectedStudents}
-                    selectedFields={selectedFields}
-                    students={students}
-                    selectedYear={selectedYear}
-                    latestMaster={latestMaster}
-                />
-            </div>
+                <div style={{ display: "none" }}>
+                    <StudentDataPage
+                        ref={printRef}
+                        selectedStudents={selectedStudents}
+                        selectedFields={selectedFields}
+                        students={students}
+                        selectedYear={selectedYear}
+                        latestMaster={latestMaster}
+                    />
+                </div>
 
-            <div style={{ display: 'none' }}>
-                <IdentityCard
-                    ref={identityRef}
-                    selectedStudents={selectedStudents}
-                    students={students}
-                    selectedYear={selectedYear}
-                    latestMaster={latestMaster}
-                />
-            </div>
+                <div style={{ display: 'none' }}>
+                    <IdentityCard
+                        ref={identityRef}
+                        selectedStudents={selectedStudents}
+                        students={students}
+                        selectedYear={selectedYear}
+                        latestMaster={latestMaster}
+                    />
+                </div>
 
-            <div style={{ display: "none" }}>
-                <DefaultStudentPDF
-                    ref={defaultPDF}
-                    selectedStudents={selectedStudents} // already filtered
-                    students={students}
-                    selectedYear={selectedYear}
-                    latestMaster={latestMaster}
-                />
-            </div>
+                <div style={{ display: "none" }}>
+                    <DefaultStudentPDF
+                        ref={defaultPDF}
+                        selectedStudents={selectedStudents} // already filtered
+                        students={students}
+                        selectedYear={selectedYear}
+                        latestMaster={latestMaster}
+                    />
+                </div>
 
-            {message && (
-                <div
-                    className="position-fixed fade-in"
-                    style={{
-                        bottom: "20px",
-                        right: "20px",
-                        zIndex: 9999,
-                        backgroundColor:
-                            message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
-                                ? "#f8d7da"
-                                : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
-                                    ? "#d1e7dd"
-                                    : message.toLowerCase().includes("please")
-                                        ? "#fff3cd"
-                                        : "#e2e3e5",
-                        color:
-                            message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
-                                ? "#842029"
-                                : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
-                                    ? "#0f5132"
-                                    : message.toLowerCase().includes("please")
-                                        ? "#664d03"
-                                        : "#41464b",
-                        padding: "12px 18px 18px",
-                        borderRadius: "8px",
-                        boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
-                        fontWeight: "500",
-                        maxWidth: "300px",
-                        overflow: "hidden",
-                    }}
-                >
-                    {message}
-
+                {message && (
                     <div
-                        className="progress-bar-animate mt-2"
+                        className="position-fixed fade-in"
                         style={{
-                            height: "4px",
+                            bottom: "20px",
+                            right: "20px",
+                            zIndex: 9999,
                             backgroundColor:
+                                message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                    ? "#f8d7da"
+                                    : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                        ? "#d1e7dd"
+                                        : message.toLowerCase().includes("please")
+                                            ? "#fff3cd"
+                                            : "#e2e3e5",
+                            color:
                                 message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
                                     ? "#842029"
                                     : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
@@ -1706,11 +1921,34 @@ export default function Students() {
                                         : message.toLowerCase().includes("please")
                                             ? "#664d03"
                                             : "#41464b",
+                            padding: "12px 18px 18px",
+                            borderRadius: "8px",
+                            boxShadow: "0 4px 12px rgba(0,0,0,0.2)",
+                            fontWeight: "500",
+                            maxWidth: "300px",
+                            overflow: "hidden",
                         }}
-                    />
-                </div>
-            )}
+                    >
+                        {message}
 
-        </div>
+                        <div
+                            className="progress-bar-animate mt-2"
+                            style={{
+                                height: "4px",
+                                backgroundColor:
+                                    message.toLowerCase().includes("delete") || message.toLowerCase().includes("error")
+                                        ? "#842029"
+                                        : message.toLowerCase().includes("success") || message.toLowerCase().includes("updated")
+                                            ? "#0f5132"
+                                            : message.toLowerCase().includes("please")
+                                                ? "#664d03"
+                                                : "#41464b",
+                            }}
+                        />
+                    </div>
+                )}
+
+            </div>
+
     );
 }

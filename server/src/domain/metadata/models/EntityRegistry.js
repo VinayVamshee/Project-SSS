@@ -1,22 +1,16 @@
 const mongoose = require("mongoose");
 
-/**
- * EntityRegistry
- *
- * Master catalog of all business entities in SSS.
- * Every Template, Lookup, Report and Dynamic Form references an Entity
- * instead of hardcoding model names.
- */
-
-const EntityRegistrySchema = new mongoose.Schema({
-
-    // Excluded from multi-tenant plugin
+const EntityRegistrySchema = new mongoose.Schema(
+{
     isGlobalRegistry: {
         type: Boolean,
         default: true
     },
 
-    // Stable machine key
+    // ===========================================================
+    // BASIC INFORMATION
+    // ===========================================================
+
     key: {
         type: String,
         required: true,
@@ -25,7 +19,6 @@ const EntityRegistrySchema = new mongoose.Schema({
         trim: true
     },
 
-    // Human readable name
     label: {
         type: String,
         required: true,
@@ -37,25 +30,61 @@ const EntityRegistrySchema = new mongoose.Schema({
         default: ""
     },
 
-    // Mongo collection name
+    // ===========================================================
+    // DATABASE
+    // ===========================================================
+
     collection: {
         type: String,
         required: true
     },
 
-    // Mongoose model name
     model: {
         type: String,
         required: true
     },
 
-    // Sidebar grouping
+    // Generic | Student | Employee | Payment | FeeStructure
+    handler: {
+        type: String,
+        required: true
+    },
+
+    // ===========================================================
+    // CORE STORAGE MAPPING
+    // ===========================================================
+
+    storage: [
+        {
+            model: {
+                type: String,
+                required: true
+            },
+
+            // Backend Schema Mapping
+            fields: {
+                type: Map,
+                of: String,
+                default: {}
+            },
+
+            // If this model stores dynamic fields
+            dynamicFieldContainer: {
+                type: String,
+                default: null
+            }
+        }
+    ],
+
+    // ===========================================================
+    // UI
+    // ===========================================================
+
     category: {
         type: String,
         default: "General"
     },
 
-    // UI
     icon: {
         type: String,
         default: ""
@@ -66,7 +95,10 @@ const EntityRegistrySchema = new mongoose.Schema({
         default: "#6366f1"
     },
 
-    // Capabilities
+    // ===========================================================
+    // FEATURES
+    // ===========================================================
+
     allowTemplates: {
         type: Boolean,
         default: true
@@ -82,11 +114,14 @@ const EntityRegistrySchema = new mongoose.Schema({
         default: true
     },
 
-    // Prevent deletion of core entities
     system: {
         type: Boolean,
         default: false
     },
+
+    // ===========================================================
+    // STATUS
+    // ===========================================================
 
     status: {
         type: String,
@@ -102,8 +137,8 @@ const EntityRegistrySchema = new mongoose.Schema({
         type: Number,
         default: 1
     }
-
-}, {
+},
+{
     timestamps: true
 });
 

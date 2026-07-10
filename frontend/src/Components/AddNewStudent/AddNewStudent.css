@@ -34,3 +34,43 @@
     background-color: var(--button-hover);
     color: white;
 }
+
+/* Premium A4 Print Preview Sheet */
+.a4-sheet {
+    width: 100%;
+    max-width: 595px; /* A4 standard pixels width at 72dpi */
+    height: 842px;    /* A4 standard pixels height at 72dpi */
+    aspect-ratio: 1 / 1.414;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1) !important;
+    background: #ffffff;
+    border: 1px solid #dee2e6;
+    box-sizing: border-box;
+    padding: 40px !important;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+    color: #212529;
+}
+
+.a4-sheet .section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: #495057;
+    border-bottom: 2px solid #ced4da;
+    padding-bottom: 2px;
+    margin-bottom: 12px;
+    letter-spacing: 0.5px;
+}
+
+.a4-sheet table {
+    margin-bottom: 0;
+}
+
+.a4-sheet code {
+    font-size: 11px;
+    color: #212529;
+    background-color: #f8f9fa;
+    padding: 1px 4px;
+    border-radius: 3px;
+}

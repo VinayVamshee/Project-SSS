@@ -18,7 +18,7 @@ import ImageField from './ImageField';
  *   mode     – Form mode: "preview" | "create" | "edit" | "readonly"
  */
 export default function DynamicField({ field, value, onChange, readOnly, mode }) {
-  const { key, label, type, placeholder, required, options, lookup } = field;
+  const { key, label, type, placeholder, required, options, lookup, helperText } = field;
 
   const handleChange = (val) => onChange(key, val);
 
@@ -28,6 +28,11 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
       {label} {required && <span className="df-required">*</span>}
     </label>
   );
+
+  const renderHelperText = () => {
+    if (!helperText) return null;
+    return <div className="form-text text-muted small mt-1" style={{ fontSize: '0.78rem' }}>{helperText}</div>;
+  };
 
   // ─── Text / Email / Phone / Password / Number / Currency / Date / DateTime / Time
   if (['text', 'email', 'phone', 'password', 'number', 'currency', 'date', 'datetime', 'time'].includes(type)) {
@@ -48,6 +53,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
           value={value || ''}
           onChange={e => handleChange(e.target.value)}
         />
+        {renderHelperText()}
       </>
     );
   }
@@ -66,6 +72,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
           onChange={e => handleChange(e.target.value)}
           rows={3}
         />
+        {renderHelperText()}
       </>
     );
   }
@@ -82,6 +89,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
           required={required}
           readOnly={readOnly}
         />
+        {renderHelperText()}
       </>
     );
   }
@@ -98,6 +106,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
           required={required}
           readOnly={readOnly}
         />
+        {renderHelperText()}
       </>
     );
   }
@@ -125,6 +134,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
             </div>
           ))}
         </div>
+        {renderHelperText()}
       </>
     );
   }
@@ -145,6 +155,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
           />
           <span className="small text-muted">Confirm selection</span>
         </div>
+        {renderHelperText()}
       </>
     );
   }
@@ -165,6 +176,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
           />
           <span className="small text-muted">Toggle Switch Status</span>
         </div>
+        {renderHelperText()}
       </>
     );
   }
@@ -181,6 +193,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
           onChange={handleChange}
           readOnly={readOnly}
         />
+        {renderHelperText()}
       </>
     );
   }
@@ -197,6 +210,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
           required={required}
           readOnly={readOnly}
         />
+        {renderHelperText()}
       </>
     );
   }
@@ -213,6 +227,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
           required={required}
           readOnly={readOnly}
         />
+        {renderHelperText()}
       </>
     );
   }
@@ -230,6 +245,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
         value={value || ''}
         onChange={e => handleChange(e.target.value)}
       />
+      {renderHelperText()}
     </>
   );
 }

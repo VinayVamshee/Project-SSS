@@ -175,7 +175,7 @@ exports.addAcademicYear = async (req, res) => {
 
 exports.getAcademicYears = async (req, res) => {
     try {
-        const years = await AcademicYear.find();
+        const years = await AcademicYear.find().sort({ name: -1 });
         const legacyFormattedYears = years.map(y => {
             const doc = y.toObject();
             doc.year = doc.name;
@@ -189,7 +189,30 @@ exports.getAcademicYears = async (req, res) => {
 
 exports.deleteAcademicYear = async (req, res) => {
     try {
-        const deletedYear = await AcademicYear.findByIdAndDelete(req.params.id);
+        const mongoose = require('mongoose');
+        const yearId = req.params.id;
+
+        // Load models dynamically to check references
+        const StudentEnrollment = mongoose.model('StudentEnrollment');
+        const FeeStructure = mongoose.model('FeeStructure');
+        const Payment = mongoose.model('Payment');
+
+        const inEnrollment = await StudentEnrollment.findOne({ academicYearId: yearId });
+        if (inEnrollment) {
+            return res.status(400).json({ message: "This academic year is referenced in student enrollments and cannot be deleted." });
+        }
+
+        const inFee = await FeeStructure.findOne({ academicYear: yearId });
+        if (inFee) {
+            return res.status(400).json({ message: "This academic year is referenced in a fee structure and cannot be deleted." });
+        }
+
+        const inPayment = await Payment.findOne({ "academicYears.academicYear": yearId });
+        if (inPayment) {
+            return res.status(400).json({ message: "This academic year is referenced in payment records and cannot be deleted." });
+        }
+
+        const deletedYear = await AcademicYear.findByIdAndDelete(yearId);
         if (!deletedYear) {
             return res.status(404).json({ message: 'Academic Year not found' });
         }
