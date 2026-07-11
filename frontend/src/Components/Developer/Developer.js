@@ -4,7 +4,8 @@ import {
   getFieldDefinitions, addFieldDefinition, updateFieldDefinition, deleteFieldDefinition, archiveFieldDefinition, activateFieldDefinition,
   getTemplates, getTemplateForm, createTemplate, updateTemplate, publishTemplate, archiveTemplate, restoreTemplate, deleteTemplate, submitTemplateForm,
   getAllMasters, createMaster, deleteMaster, setMasterInUse,
-  devGetUsers, devCreateUser, devUpdateUser, login
+  devGetUsers, devCreateUser, devUpdateUser, login,
+  bulkImportStudents, getAcademicYears, bulkImportFees
 } from '../../API';
 import DynamicForm from '../Shared/DynamicForm';
 import Notification from '../Shared/Notification';
@@ -124,7 +125,30 @@ export default function Developer() {
   const [editingUserId, setEditingUserId] = useState(null);
   const [editUserData, setEditUserData] = useState({ password: '', role: '' });
 
+  // 7. Bulk Import States
+  const [importType, setImportType] = useState('students'); // 'students' or 'fees'
+  const [bulkSchool, setBulkSchool] = useState('');
+  const [bulkAcademicYear, setBulkAcademicYear] = useState('');
+  const [academicYears, setAcademicYears] = useState([]);
+  const [bulkFileText, setBulkFileText] = useState('');
+  const [bulkFileName, setBulkFileName] = useState('');
+  const [importLogs, setImportLogs] = useState([]);
+  const [importStats, setImportStats] = useState(null);
+  const [isImporting, setIsImporting] = useState(false);
+
+
   // Loaders
+  const loadAcademicYears = async () => {
+    try {
+      const res = await getAcademicYears();
+      setAcademicYears(res.data.data || []);
+      if (res.data.data && res.data.data.length > 0 && !bulkAcademicYear) {
+        setBulkAcademicYear(res.data.data[0]._id);
+      }
+    } catch (e) {
+      showNotification('Failed to load academic years.', 'error');
+    }
+  };
   const loadEntities = async () => {
     try {
       const res = await getEntities();
@@ -155,13 +179,16 @@ export default function Developer() {
   const loadSchools = async () => {
     try {
       const res = await getAllMasters();
-      setSchools(res.data || []);
+      const data = res.data || [];
+      setSchools(data);
       const currentActiveSlug = localStorage.getItem('schoolSlug');
-      const activeSchool = res.data?.find(s => s.slug === currentActiveSlug);
+      const activeSchool = data.find(s => s.slug === currentActiveSlug);
       if (activeSchool) {
         setSelectedSchoolForUsers(activeSchool._id);
-      } else if (res.data && res.data.length > 0 && !selectedSchoolForUsers) {
-        setSelectedSchoolForUsers(res.data[0]._id);
+        setBulkSchool(activeSchool._id);
+      } else if (data.length > 0) {
+        if (!selectedSchoolForUsers) setSelectedSchoolForUsers(data[0]._id);
+        if (!bulkSchool) setBulkSchool(data[0]._id);
       }
     } catch (e) {
       showNotification('Failed to load schools.', 'error');
@@ -194,6 +221,10 @@ export default function Developer() {
     if (activeTab === 'users') {
       loadSchools();
       loadUsers();
+    }
+    if (activeTab === 'bulk_import') {
+      loadSchools();
+      loadAcademicYears();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, selectedSchoolForUsers]);
@@ -778,6 +809,65 @@ export default function Developer() {
     }
   };
 
+  const handleBulkImport = async (e) => {
+    e.preventDefault();
+    if (!bulkSchool || !bulkAcademicYear || !bulkFileText) {
+      showNotification('School, Academic Year, and File content are required.', 'error');
+      return;
+    }
+
+    setIsImporting(true);
+    setImportLogs([]);
+    setImportStats(null);
+    setLoading(true);
+    setLoadingMessage('Processing bulk import...');
+
+    try {
+      const payload = {
+        schoolId: bulkSchool,
+        academicYearId: bulkAcademicYear,
+        fileContent: bulkFileText
+      };
+      
+      const res = importType === 'fees' 
+        ? await bulkImportFees(payload) 
+        : await bulkImportStudents(payload);
+        
+      const data = res.data?.data || {};
+      setImportStats({
+        successCount: data.successCount || 0,
+        failCount: data.failCount || 0
+      });
+      setImportLogs(data.logs || []);
+      showNotification(res.data?.message || 'Bulk import completed!');
+    } catch (err) {
+      showNotification(err.response?.data?.message || 'Bulk import failed.', 'error');
+      if (err.response?.data?.data?.logs) {
+        setImportLogs(err.response.data.data.logs);
+      } else {
+        setImportLogs([`[ERROR] Fatal: ${err.message}`]);
+      }
+    } finally {
+      setIsImporting(false);
+      setLoading(false);
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setBulkFileName(file.name);
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setBulkFileText(event.target.result);
+    };
+    reader.onerror = () => {
+      showNotification('Error reading file.', 'error');
+    };
+    reader.readAsText(file);
+  };
+
   return (
     <div className="developer-container" style={{ backgroundColor: 'var(--background-color)', color: 'var(--text-color)' }}>
       <Notification message={notification.message} type={notification.type} />
@@ -791,7 +881,8 @@ export default function Developer() {
           { key: 'templates', label: 'Templates', icon: 'fa-solid fa-file-invoice' },
           { key: 'preview', label: 'Form Preview', icon: 'fa-solid fa-eye' },
           { key: 'schools', label: 'School Tenants', icon: 'fa-solid fa-school' },
-          { key: 'users', label: 'User Accounts', icon: 'fa-solid fa-users' }
+          { key: 'users', label: 'User Accounts', icon: 'fa-solid fa-users' },
+          { key: 'bulk_import', label: 'Bulk Import', icon: 'fa-solid fa-file-import' }
         ].map(t => (
           <button
             key={t.key}
@@ -2556,6 +2647,174 @@ export default function Developer() {
                 </tbody>
               </table>
             </div>
+          </div>
+        )
+      }
+
+      {/* Tab 7: Bulk Import */}
+      {
+        activeTab === 'bulk_import' && (
+          <div className="premium-card p-4 bg-white mb-4 text-dark">
+            <h4 className="fw-bold text-dark mb-3"><i className="fa-solid fa-file-import me-2" style={{ color: 'var(--button-color)' }}></i>Bulk Data Importer</h4>
+
+            {/* Import Type Toggle Switch */}
+            <div className="d-flex gap-3 mb-4 border-bottom pb-3">
+              <button 
+                type="button" 
+                onClick={() => {
+                  setImportType('students');
+                  setBulkFileName('');
+                  setBulkFileText('');
+                  setImportStats(null);
+                  setImportLogs([]);
+                }}
+                className={`btn btn-sm px-4 py-2 fw-semibold rounded ${importType === 'students' ? 'btn-primary text-white' : 'btn-light border text-dark'}`}
+                style={importType === 'students' ? { backgroundColor: 'var(--button-color)', borderColor: 'var(--button-color)' } : {}}
+              >
+                <i className="fa-solid fa-users me-2"></i>Students Info
+              </button>
+              <button 
+                type="button" 
+                onClick={() => {
+                  setImportType('fees');
+                  setBulkFileName('');
+                  setBulkFileText('');
+                  setImportStats(null);
+                  setImportLogs([]);
+                }}
+                className={`btn btn-sm px-4 py-2 fw-semibold rounded ${importType === 'fees' ? 'btn-primary text-white' : 'btn-light border text-dark'}`}
+                style={importType === 'fees' ? { backgroundColor: 'var(--button-color)', borderColor: 'var(--button-color)' } : {}}
+              >
+                <i className="fa-solid fa-money-bill-wave me-2"></i>Fee Structures
+              </button>
+            </div>
+
+            <form onSubmit={handleBulkImport} className="row g-3 mb-4">
+              <div className="col-md-6">
+                <label className="premium-label text-secondary">Select Tenant Context School *</label>
+                <select
+                  className="form-select premium-input text-dark"
+                  value={bulkSchool}
+                  onChange={e => setBulkSchool(e.target.value)}
+                  required
+                >
+                  <option value="">-- Select School --</option>
+                  {schools.map(s => (
+                    <option key={s._id} value={s._id}>{s.name} ({s.slug})</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="col-md-6">
+                <label className="premium-label text-secondary">Select Target Academic Year *</label>
+                <select
+                  className="form-select premium-input text-dark"
+                  value={bulkAcademicYear}
+                  onChange={e => setBulkAcademicYear(e.target.value)}
+                  required
+                >
+                  <option value="">-- Select Academic Year --</option>
+                  {academicYears.map(ay => (
+                    <option key={ay._id} value={ay._id}>{ay.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="col-12 mt-4">
+                <label className="premium-label d-block mb-2 text-secondary">Upload Excel / TSV / CSV Data Sheet *</label>
+                <div 
+                  className="p-4 border rounded text-center cursor-pointer bg-light hover-bg-light transition-02"
+                  style={{ borderStyle: 'dashed !important', borderColor: 'var(--button-color) !important' }}
+                  onClick={() => document.getElementById('bulkFileField').click()}
+                >
+                  <i className="fa-solid fa-cloud-arrow-up fs-2 mb-2" style={{ color: 'var(--button-color)' }}></i>
+                  <p className="mb-1 fw-semibold">{bulkFileName ? `Selected: ${bulkFileName}` : 'Drag & Drop or Click to upload TSV/CSV/TXT file'}</p>
+                  
+                  {importType === 'students' ? (
+                    <span className="small text-muted">File must contain headers matching Student Registry keys (e.g. <code>fullname</code>, <code>gender</code>, <code>class</code>, <code>section</code>, <code>rollnumber</code>, <code>dateofbirth</code>)</span>
+                  ) : (
+                    <span className="small text-muted">First column must be <code>class</code>. Remaining columns must match Fee Registry keys (e.g. <code>admission_fees</code>, <code>tuition_fee</code>, <code>development_fee</code>)</span>
+                  )}
+                  
+                  <input
+                    type="file"
+                    id="bulkFileField"
+                    accept=".tsv,.csv,.txt"
+                    onChange={handleFileChange}
+                    style={{ display: 'none' }}
+                  />
+                </div>
+              </div>
+
+              {bulkFileText && (
+                <div className="col-12 mt-3">
+                  <label className="premium-label text-secondary">File Preview (First 5 lines)</label>
+                  <pre className="p-3 bg-light border rounded font-monospace small mb-0 overflow-auto" style={{ maxHeight: '150px' }}>
+                    {bulkFileText.split('\n').slice(0, 5).join('\n')}
+                  </pre>
+                </div>
+              )}
+
+              <div className="col-12 d-flex justify-content-end mt-4">
+                <button 
+                  type="submit" 
+                  disabled={isImporting || !bulkFileText} 
+                  className="btn px-5 py-2.5 fw-bold text-white w-100 w-md-auto" 
+                  style={{ backgroundColor: 'var(--button-color)', border: 'none' }}
+                >
+                  {isImporting ? (
+                    <>
+                      <i className="fa-solid fa-circle-notch fa-spin me-2"></i>Importing Students...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fa-solid fa-upload me-2"></i>Run Bulk Import
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+
+            {/* Results Console */}
+            {(importStats || importLogs.length > 0) && (
+              <div className="border-top pt-4 mt-4">
+                <h5 className="fw-bold text-dark mb-3"><i className="fa-solid fa-terminal me-2"></i>Import Results Console</h5>
+                
+                {importStats && (
+                  <div className="row g-2 mb-3">
+                    <div className="col-sm-6 col-md-3">
+                      <div className="p-3 bg-success bg-opacity-10 border border-success rounded text-success">
+                        <span className="small d-block fw-semibold">SUCCESSFULLY IMPORTED</span>
+                        <strong className="fs-4">{importStats.successCount}</strong> students
+                      </div>
+                    </div>
+                    <div className="col-sm-6 col-md-3">
+                      <div className="p-3 bg-danger bg-opacity-10 border border-danger rounded text-danger">
+                        <span className="small d-block fw-semibold">FAILED ENTRIES</span>
+                        <strong className="fs-4">{importStats.failCount}</strong> errors
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                <div 
+                  className="p-3 bg-dark text-white rounded font-monospace small overflow-auto" 
+                  style={{ maxHeight: '300px', WebkitFontSmoothing: 'antialiased' }}
+                >
+                  {importLogs.map((log, idx) => {
+                    let color = '#fff';
+                    if (log.startsWith('[OK]')) color = '#4ade80';
+                    if (log.startsWith('[ERROR]')) color = '#f87171';
+                    return (
+                      <div key={idx} style={{ color, marginBottom: '4px' }}>
+                        {log}
+                      </div>
+                    );
+                  })}
+                  {importLogs.length === 0 && <span className="text-muted">Waiting for import logs...</span>}
+                </div>
+              </div>
+            )}
           </div>
         )
       }

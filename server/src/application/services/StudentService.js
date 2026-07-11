@@ -120,25 +120,68 @@ class StudentService {
 
   async getAllStudents() {
     const enrollments = await StudentEnrollmentRepository.find();
-    return enrollments.map(e => {
-      const nameField = e.dynamicFields.find(f => f.fieldId?.key === 'fullname' || f.fieldId?.key === 'firstname');
-      return {
-        _id: e.studentId?._id || e._id,
-        studentCode: e.studentId?.studentCode,
-        lifecycleStatus: e.studentId?.lifecycleStatus,
-        name: nameField ? nameField.value : 'Unknown',
-        image: e.profilePhoto || '',
-        academicYearId: e.academicYearId?._id || e.academicYearId,
-        enrollmentClass: e.classId?._id || e.classId,
-        enrollments: [{
-          academicYear: e.academicYearId,
-          class: e.classId?.class || 'N/A',
-          status: e.academicStatus
-        }],
-        dynamicFields: e.dynamicFields,
-        enrollmentId: e._id
+
+    // Group ALL enrollments by studentId so we can show full academic history
+    const studentMap = new Map();
+
+    for (const e of enrollments) {
+      const sid = (e.studentId?._id || e._id).toString();
+
+      // Resolve name from dynamicFields — populated field uses .key (not .fieldKey)
+      const nameField = e.dynamicFields.find(
+        f => f.fieldId?.key === 'fullname' || f.fieldId?.key === 'firstname'
+      );
+
+      const enrollmentEntry = {
+        enrollmentId: e._id,
+        academicYear: e.academicYearId,          // populated object { _id, name, status }
+        class: e.classId?.class || 'N/A',
+        section: e.sectionId || '',
+        admissionNumber: e.admissionNumber || '',
+        rollNumber: e.rollNumber || '',
+        academicStatus: e.academicStatus || 'Active',
       };
-    });
+
+      if (!studentMap.has(sid)) {
+        studentMap.set(sid, {
+          _id: e.studentId?._id || e._id,
+          studentCode: e.studentId?.studentCode,
+          lifecycleStatus: e.studentId?.lifecycleStatus,
+          name: nameField ? nameField.value : 'Unknown',
+          image: e.profilePhoto || '',
+          // Expose most-recent enrollment's core fields at the top level for easy display
+          academicYearId: e.academicYearId?._id || e.academicYearId,
+          enrollmentClass: e.classId?._id || e.classId,
+          sectionId: e.sectionId || '',
+          admissionNumber: e.admissionNumber || '',
+          rollNumber: e.rollNumber || '',
+          academicStatus: e.academicStatus || 'Active',
+          enrollmentId: e._id,
+          dynamicFields: e.dynamicFields,
+          enrollments: [enrollmentEntry],
+        });
+      } else {
+        // Append additional enrollment years
+        const existing = studentMap.get(sid);
+        existing.enrollments.push(enrollmentEntry);
+        // Keep the most-recent enrollment's profilePhoto if later one has it
+        if (e.profilePhoto) existing.image = e.profilePhoto;
+        // Update name if found in a later enrollment
+        if (nameField && existing.name === 'Unknown') existing.name = nameField.value;
+        // Update dynamic fields to the most recent enrollment's version
+        existing.dynamicFields = e.dynamicFields;
+        // Update top-level enrollment core fields to latest
+        existing.academicYearId = e.academicYearId?._id || e.academicYearId;
+        existing.enrollmentClass = e.classId?._id || e.classId;
+        existing.sectionId = e.sectionId || '';
+        existing.admissionNumber = e.admissionNumber || '';
+        existing.rollNumber = e.rollNumber || '';
+        existing.academicStatus = e.academicStatus || 'Active';
+        existing.enrollmentId = e._id;
+      }
+    }
+
+    return Array.from(studentMap.values());
   }
 
   async promoteStudents(schoolId, data) {
@@ -244,9 +287,24 @@ class StudentService {
 
   async dropAcademicYear(data) {
     const { studentIds, academicYear, status } = data;
+
+    // Resolve academicYear (name string like "2024-25" OR ObjectId) → ObjectId
+    const AcademicYear = mongoose.models.AcademicYear || require('../../domain/academics/models/AcademicYear');
+    let yearId = academicYear;
+    if (academicYear && !mongoose.Types.ObjectId.isValid(academicYear)) {
+      const yearDoc = await AcademicYear.findOne({
+        $or: [{ name: academicYear }, { year: academicYear }],
+      });
+      if (!yearDoc) throw new Error(`Academic year "${academicYear}" not found`);
+      yearId = yearDoc._id;
+    }
+
+    // Map frontend display value "TC-Issued" → schema enum value "TC"
+    const resolvedStatus = status === 'TC-Issued' ? 'TC' : status;
+
     return StudentEnrollmentRepository.updateMany(
-      { studentId: { $in: studentIds }, academicYearId: academicYear },
-      { $set: { academicStatus: status } }
+      { studentId: { $in: studentIds }, academicYearId: yearId },
+      { $set: { academicStatus: resolvedStatus } }
     );
   }
 }

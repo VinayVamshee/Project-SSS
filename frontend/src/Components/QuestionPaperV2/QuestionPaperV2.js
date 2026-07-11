@@ -11,6 +11,46 @@ import Notification from '../Shared/Notification';
 import LoadingIndicator from '../Shared/LoadingIndicator';
 import ConfirmModal from '../Shared/ConfirmModal';
 
+const normalizeMarks = (value) => {
+    if (value === null || value === undefined) return null;
+
+    const num = Number(String(value).replace(/[^\d.]/g, "").trim());
+
+    return Number.isNaN(num) ? null : num;
+};
+
+const buildQuestionMap = (questionsList) => {
+    const newMap = {};
+    const addToMap = (item) => {
+        if (item.questionId) {
+            newMap[item.questionId] = item;
+        }
+        if (item.subQuestions && item.subQuestions.length > 0) {
+            item.subQuestions.forEach(addToMap);
+        }
+    };
+    (questionsList || []).forEach(addToMap);
+    return newMap;
+};
+
+const getQuestionDisplayLabel = (targetQ, questionsList) => {
+    for (let i = 0; i < questionsList.length; i++) {
+        const parent = questionsList[i];
+        if (parent.questionId === targetQ.questionId) {
+            return `Q${i + 1}`;
+        }
+        if (parent.subQuestions && parent.subQuestions.length > 0) {
+            const subIdx = parent.subQuestions.findIndex(sub => sub.questionId === targetQ.questionId);
+            if (subIdx !== -1) {
+                const roman = ['(i)', '(ii)', '(iii)', '(iv)', '(v)', '(vi)', '(vii)', '(viii)', '(ix)', '(x)'];
+                const subLabel = roman[subIdx] || `(${subIdx + 1})`;
+                return `Q${i + 1} ${subLabel}`;
+            }
+        }
+    }
+    return targetQ.questionId || 'Question';
+};
+
 export default function QuestionPaperV2() {
     const navigate = useNavigate();
 
@@ -193,16 +233,29 @@ export default function QuestionPaperV2() {
                 if (!row.type || !row.marks || !row.count) continue;
                 totalRequested += row.count;
 
-                const eligible = chapterQuestions.filter(q => 
-                    q.questionType === row.type && 
-                    parseFloat(q.questionMarks || 0) === parseFloat(row.marks || 0) &&
-                    !selectedIds.includes(q.questionId)
-                );
+                const eligible = [];
+                for (const q of chapterQuestions) {
+                    const selfMatch = q.questionType === row.type && 
+                                      normalizeMarks(q.questionMarks) === normalizeMarks(row.marks);
+                    if (selfMatch && !selectedIds.includes(q.questionId)) {
+                        eligible.push({ parentId: q.questionId, targetId: q.questionId });
+                    }
+                    if (q.subQuestions && q.subQuestions.length > 0) {
+                        for (const sub of q.subQuestions) {
+                            const subMatch = sub.questionType === row.type && 
+                                             normalizeMarks(sub.questionMarks) === normalizeMarks(row.marks);
+                            if (subMatch && !selectedIds.includes(sub.questionId)) {
+                                eligible.push({ parentId: q.questionId, targetId: sub.questionId });
+                            }
+                        }
+                    }
+                }
 
                 const countToTake = Math.min(row.count, eligible.length);
                 const shuffled = [...eligible].sort(() => 0.5 - Math.random());
                 for (let i = 0; i < countToTake; i++) {
-                    selectedIds.push(shuffled[i].questionId);
+                    selectedIds.push(shuffled[i].parentId);
+                    selectedIds.push(shuffled[i].targetId);
                 }
 
                 if (countToTake < row.count) {
@@ -217,7 +270,7 @@ export default function QuestionPaperV2() {
                 return;
             }
 
-            setSelectedQuestions(selectedIds);
+            setSelectedQuestions([...new Set(selectedIds)]);
             setSelectedClass(randomClass);
 
             const link = classSubjects.find((x) => {
@@ -249,9 +302,7 @@ export default function QuestionPaperV2() {
             }
 
             setQuestions(allQuestions);
-            const newMap = {};
-            allQuestions.forEach(q => { newMap[q.questionId] = q; });
-            setGlobalQuestionMap(newMap);
+            setGlobalQuestionMap(buildQuestionMap(allQuestions));
 
             setIsRandomQPModalOpen(false);
 
@@ -494,9 +545,7 @@ export default function QuestionPaperV2() {
             try {
                 const res = await api.get(`/questions?class=${cls}&subject=${subj}`);
                 setQuestions(res.data.questions || []);
-                const newMap = {};
-                (res.data.questions || []).forEach(q => { newMap[q.questionId] = q; });
-                setGlobalQuestionMap(newMap);
+                setGlobalQuestionMap(buildQuestionMap(res.data.questions));
             } catch (err) {
                 console.error("Failed to fetch questions:", err);
                 showMessage("Failed to fetch questions");
@@ -842,7 +891,8 @@ export default function QuestionPaperV2() {
             setIsTemplateModalOpen(false);
         } catch (error) {
             console.error('Error saving template:', error);
-            showMessage('Failed to save template.');
+            const detail = error.response?.data?.details || error.response?.data?.error || error.message;
+            showMessage(`Failed to save template: ${detail}`);
         }
     };
 
@@ -1470,45 +1520,104 @@ export default function QuestionPaperV2() {
                             </div>
 
                             {/* Question Images Scale Section FOURTH */}
-                            {selectedQuestions.some(id => globalQuestionMap[id]?.questionImage) && (
-                                <div className="qpv2-preview-control-section">
-                                    <h5>4. Question Images Scaling</h5>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                                        {selectedQuestions.filter(id => globalQuestionMap[id]?.questionImage).map((id) => {
-                                            const currentSize = imageSizesMap[id] || '120px';
-                                            const actualQIndex = selectedQuestions.indexOf(id);
-                                            return (
-                                                <div key={id} style={{ display: 'flex', flexDirection: 'column', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9', gap: '6px' }}>
-                                                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
-                                                            Q{actualQIndex + 1} Image Size
-                                                        </span>
-                                                        <span className="badge bg-secondary" style={{ fontSize: '0.75rem' }}>
-                                                            {currentSize}
-                                                        </span>
+                            {(() => {
+                                const scalableTargets = [];
+                                selectedQuestions.forEach((id) => {
+                                    const q = globalQuestionMap[id];
+                                    if (!q) return;
+
+                                    const qLabel = getQuestionDisplayLabel(q, questions);
+
+                                    // 1. Main image
+                                    if (q.questionImage) {
+                                        scalableTargets.push({
+                                            id: q.questionId,
+                                            label: `${qLabel} Image`,
+                                            defaultVal: 120,
+                                            min: 50,
+                                            max: 600,
+                                            step: 10,
+                                            toDisplay: (val) => val === '600' ? '100%' : `${val}px`,
+                                            fromDisplay: (str) => str.endsWith('%') ? 600 : parseInt(str, 10) || 120,
+                                            minLabel: '50px',
+                                            maxLabel: 'Full'
+                                        });
+                                    }
+
+                                    // 2. MCQ options images
+                                    if (q.questionType === 'MCQ' && q.options?.some(opt => opt.imageUrl)) {
+                                        scalableTargets.push({
+                                            id: `${q.questionId}-options`,
+                                            label: `${qLabel} Option Images`,
+                                            defaultVal: 50,
+                                            min: 20,
+                                            max: 300,
+                                            step: 5,
+                                            toDisplay: (val) => `${val}px`,
+                                            fromDisplay: (str) => parseInt(str, 10) || 50,
+                                            minLabel: '20px',
+                                            maxLabel: '300px'
+                                        });
+                                    }
+
+                                    // 3. Match pairs images
+                                    if (q.questionType === 'Match' && q.pairs?.some(pair => pair.leftImage || pair.rightImage)) {
+                                        scalableTargets.push({
+                                            id: `${q.questionId}-pairs`,
+                                            label: `${qLabel} Match Images`,
+                                            defaultVal: 36,
+                                            min: 15,
+                                            max: 200,
+                                            step: 2,
+                                            toDisplay: (val) => `${val}px`,
+                                            fromDisplay: (str) => parseInt(str, 10) || 36,
+                                            minLabel: '15px',
+                                            maxLabel: '200px'
+                                        });
+                                    }
+                                });
+
+                                if (scalableTargets.length === 0) return null;
+
+                                return (
+                                    <div className="qpv2-preview-control-section">
+                                        <h5>4. Question Images Scaling</h5>
+                                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                            {scalableTargets.map((target) => {
+                                                const currentSize = imageSizesMap[target.id] || `${target.defaultVal}px`;
+                                                return (
+                                                    <div key={target.id} style={{ display: 'flex', flexDirection: 'column', paddingBottom: '12px', borderBottom: '1px solid #f1f5f9', gap: '6px' }}>
+                                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                            <span style={{ fontSize: '0.8rem', fontWeight: 600 }}>
+                                                                {target.label} Size
+                                                            </span>
+                                                            <span className="badge bg-secondary" style={{ fontSize: '0.75rem' }}>
+                                                                {currentSize}
+                                                            </span>
+                                                        </div>
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                                            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{target.minLabel}</span>
+                                                            <input
+                                                                type="range"
+                                                                min={target.min}
+                                                                max={target.max}
+                                                                step={target.step}
+                                                                value={target.fromDisplay(currentSize)}
+                                                                onChange={e => {
+                                                                    const val = target.toDisplay(e.target.value);
+                                                                    setImageSizesMap(prev => ({ ...prev, [target.id]: val }));
+                                                                }}
+                                                                style={{ flex: 1, accentColor: 'var(--button-color)', cursor: 'pointer' }}
+                                                            />
+                                                            <span style={{ fontSize: '0.7rem', color: '#64748b' }}>{target.maxLabel}</span>
+                                                        </div>
                                                     </div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                                                        <span style={{ fontSize: '0.7rem', color: '#64748b' }}>50px</span>
-                                                        <input
-                                                            type="range"
-                                                            min="50"
-                                                            max="600"
-                                                            step="10"
-                                                            value={currentSize.endsWith('%') ? 600 : parseInt(currentSize, 10) || 120}
-                                                            onChange={e => {
-                                                                const val = e.target.value === '600' ? '100%' : `${e.target.value}px`;
-                                                                setImageSizesMap(prev => ({ ...prev, [id]: val }));
-                                                            }}
-                                                            style={{ flex: 1, accentColor: 'var(--button-color)', cursor: 'pointer' }}
-                                                        />
-                                                        <span style={{ fontSize: '0.7rem', color: '#64748b' }}>Full</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            )}
+                                );
+                            })()}
                         </div>
 
                         {/* Right Side: Live Document Print Preview */}
@@ -1516,6 +1625,7 @@ export default function QuestionPaperV2() {
                             <div className="qpv2-live-paper-outer">
                                 <div className="qpv2-live-paper-card">
                                     <PrintQuestionPaper
+                                        questions={questions}
                                         sections={questionPaperSections}
                                         questionMap={globalQuestionMap}
                                         selectedQuestions={selectedQuestions}
@@ -1568,7 +1678,7 @@ export default function QuestionPaperV2() {
                         Questions listed below are ordered exactly in the chronological sequence you selected them.
                     </p>
                     <div className="qpv2-question-list">
-                        {selectedQuestions.map((qId, idx) => {
+                        {selectedQuestions.filter(id => questions.some(q => q.questionId === id)).map((qId, idx) => {
                             const questionObj = globalQuestionMap[qId];
                             if (!questionObj) return null;
                             return (
@@ -1741,7 +1851,7 @@ export default function QuestionPaperV2() {
                                                 <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{t.examTitle}</div>
                                             </div>
                                             <div className="qpv2-d-flex qpv2-gap-2">
-                                                <button className="qpv2-icon-btn edit" disabled={!hasWriteAccess} onClick={() => setNewTemplate(t)}><i className="fas fa-edit"></i></button>
+                                                <button className="qpv2-icon-btn edit" disabled={!hasWriteAccess} onClick={() => { const { _id, __v, ...rest } = t; setNewTemplate(rest); }}><i className="fas fa-edit"></i></button>
                                                 <button className="qpv2-icon-btn delete" disabled={!canDelete} onClick={() => handleDeleteTemplate(t._id)}><i className="fas fa-trash"></i></button>
                                             </div>
                                         </div>
@@ -1889,7 +1999,7 @@ export default function QuestionPaperV2() {
                                                 <div style={{ fontSize: '0.8rem', color: '#6b7280' }}>{t.examTitle}</div>
                                             </div>
                                             <div className="qpv2-d-flex qpv2-gap-2">
-                                                <button className="qpv2-icon-btn edit" disabled={!hasWriteAccess} onClick={() => setNewTemplate(t)}><i className="fas fa-edit"></i></button>
+                                                <button className="qpv2-icon-btn edit" disabled={!hasWriteAccess} onClick={() => { const { _id, __v, ...rest } = t; setNewTemplate(rest); }}><i className="fas fa-edit"></i></button>
                                                 <button className="qpv2-icon-btn delete" disabled={!canDelete} onClick={() => handleDeleteTemplate(t._id)}><i className="fas fa-trash"></i></button>
                                             </div>
                                         </div>
@@ -2233,6 +2343,7 @@ export default function QuestionPaperV2() {
             <div style={{ display: 'none' }}>
                 <PrintQuestionPaper
                     ref={printRef}
+                    questions={questions}
                     sections={questionPaperSections}
                     questionMap={globalQuestionMap}
                     selectedQuestions={selectedQuestions}

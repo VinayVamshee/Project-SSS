@@ -260,11 +260,15 @@ exports.getAllTemplates = async (req, res) => {
 
 exports.saveTemplate = async (req, res) => {
     try {
-        const newTemplate = new InstructionTemplate(req.body);
+        console.log('Saving instruction template. Body:', req.body, 'schoolId:', req.schoolId);
+        const { _id, __v, ...cleanBody } = req.body;
+        const payload = { ...cleanBody, schoolId: req.schoolId };
+        const newTemplate = new InstructionTemplate(payload);
         const saved = await newTemplate.save();
         res.status(201).json(saved);
     } catch (err) {
-        res.status(400).json({ error: 'Failed to save template' });
+        console.error('Failed to save instruction template:', err);
+        res.status(400).json({ error: 'Failed to save template', details: err.message });
     }
 };
 

@@ -14,5 +14,7 @@ router.put('/updateStudent/:id', dynamicValidator('StudentEnrollment'), studentC
 router.put('/updateAcademicYearStatus/:id', studentController.updateAcademicYearStatus);
 router.post('/pass-students-to', studentController.passStudentsTo);
 router.post('/drop-academic-year', studentController.dropAcademicYear);
+router.post('/dev/bulk-import-students', studentController.bulkImportStudents);
+
 
 module.exports = router;

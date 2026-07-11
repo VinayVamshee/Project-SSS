@@ -13,6 +13,8 @@ router.get('/getFees', financeController.getFees);
 router.post('/class-fees', financeController.saveClassFees);
 router.get('/class-fees', financeController.getClassFees);
 router.post('/copy-class-fees', financeController.copyClassFees);
+router.post('/dev/bulk-import-fees', financeController.bulkImportFees);
+
 
 router.get('/receiptBook', financeController.getReceiptBook);
 router.post('/updateReceiptBook', financeController.updateReceiptBook);

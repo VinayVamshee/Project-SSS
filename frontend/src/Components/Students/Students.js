@@ -19,43 +19,61 @@ const getSafeStringValue = (val) => {
 };
 
 // Systematic templates defining sections, icons, and order of fields for student details by school ID
+// NOTE: Fields listed here must match the fieldKey values from FieldRegistry (dynamic fields)
+//       OR one of these special core-schema keys resolved in the sidebar:
+//         admissionNumber, rollNumber, sectionId, academicStatus  (core enrollment schema fields)
 const STUDENT_TEMPLATES = {
     // Vamshee Techno School
     '6a496928e7b5f329b94a0775': [
         {
             sectionName: "Academic Enrollment Profile",
             icon: "fa-graduation-cap",
-            fields: ["AdmissionNo", "admissionNo", "classId", "academicYearId"]
+            // Use core-schema keys: admissionNumber, rollNumber, sectionId, academicStatus
+            fields: ["admissionNumber", "rollNumber", "sectionId", "academicStatus"]
         },
         {
             sectionName: "Personal Information",
             icon: "fa-user",
-            fields: ["name", "nameHindi", "gender", "dob", "dobInWords", "bloodGroup", "aadharNo"]
+            fields: ["fullname", "namehindi", "gender", "dateofbirth", "dobinwords", "bloodgroup", "aadharno"]
+        },
+        {
+            sectionName: "Contact & Family",
+            icon: "fa-phone",
+            fields: ["fathersname", "mothersname", "mobilenumber", "alternatemobile", "address"]
         },
         {
             sectionName: "Social & Caste Information",
             icon: "fa-users",
-            fields: ["category", "caste", "Caste", "casteHindi", "CasteHindi", "FreeStud", "freeStudent"]
+            fields: ["category", "caste", "castehindi", "freestudent", "religion", "mothertongue"]
         }
     ],
     // Default template (used for other schools or if not matched)
     'default': [
         {
-            sectionName: "Personal Details",
-            icon: "fa-user",
-            fields: ["nameHindi", "dob", "dobInWords", "gender", "bloodGroup", "aadharNo"]
+            sectionName: "Academic Enrollment Profile",
+            icon: "fa-graduation-cap",
+            fields: ["admissionNumber", "rollNumber", "sectionId", "academicStatus"]
         },
         {
-            sectionName: "Registration & Admission Details",
-            icon: "fa-id-card",
-            fields: ["admissionNo", "AdmissionNo", "freeStudent", "FreeStud"]
+            sectionName: "Personal Details",
+            icon: "fa-user",
+            fields: ["fullname", "namehindi", "dateofbirth", "dobinwords", "gender", "bloodgroup", "aadharno"]
         },
         {
             sectionName: "Social & Category Details",
             icon: "fa-users",
-            fields: ["category", "caste", "Caste", "casteHindi", "CasteHindi"]
+            fields: ["category", "caste", "castehindi", "freestudent"]
         }
     ]
+};
+
+// Core enrollment schema fields that come directly from StudentEnrollment (not dynamicFields)
+// These are resolved directly from the student object rather than from FieldRegistry
+const CORE_ENROLLMENT_FIELD_LABELS = {
+    admissionNumber: { label: 'Admission No', type: 'text' },
+    rollNumber: { label: 'Roll Number', type: 'text' },
+    sectionId: { label: 'Section', type: 'text' },
+    academicStatus: { label: 'Academic Status', type: 'text' },
 };
 
 export default function Students() {
@@ -115,44 +133,66 @@ export default function Students() {
             const mapped = (studentResponse.data.students || []).map(s => {
                 const legacyStudent = {
                     ...s,
+                    // Map the full academic history from all enrollments
                     academicYears: (s.enrollments || []).map(e => ({
-                        academicYear: e.academicYear?.name || e.academicYear?.toString() || "",
-                        class: e.class,
-                        status: e.status
-                    }))
+                        enrollmentId: e.enrollmentId,
+                        academicYear: e.academicYear?.name || e.academicYear?.toString() || '',
+                        class: e.class || 'N/A',
+                        section: e.section || '',
+                        admissionNumber: e.admissionNumber || '',
+                        rollNumber: e.rollNumber || '',
+                        status: e.academicStatus || 'Active',
+                    })),
+                    // Surface core enrollment fields to top level for sidebar display
+                    admissionNumber: s.admissionNumber || '',
+                    rollNumber: s.rollNumber || '',
+                    sectionId: s.sectionId || '',
+                    academicStatus: s.academicStatus || 'Active',
                 };
 
                 if (s.dynamicFields && Array.isArray(s.dynamicFields)) {
                     s.dynamicFields.forEach(df => {
-                        const field = fields.find(
+                        // Populated FieldRegistry uses .key (not .fieldKey)
+                        const fieldKey = df.fieldId?.key;
+                        const fallbackField = fields.find(
                             p => p._id === (df.fieldId?._id || df.fieldId)
                         );
-                        const key = df.fieldId?.fieldKey || field?.fieldKey;
+                        const key = fieldKey || fallbackField?.key;
                         if (key) {
                             const lowerKey = key.toLowerCase();
-                            if (lowerKey === "admissionno" || lowerKey === "admissionnumber") {
+                            if (lowerKey === 'admissionno' || lowerKey === 'admissionnumber') {
                                 legacyStudent.AdmissionNo = df.value;
                                 legacyStudent.admissionNo = df.value;
-                            } else if (lowerKey === "freestudent" || lowerKey === "freestud") {
+                            } else if (lowerKey === 'freestudent' || lowerKey === 'freestud') {
                                 legacyStudent.FreeStud = df.value;
                                 legacyStudent.freeStudent = df.value;
-                            } else if (lowerKey === "caste") {
+                            } else if (lowerKey === 'caste') {
                                 legacyStudent.Caste = df.value;
                                 legacyStudent.caste = df.value;
-                            } else if (lowerKey === "castehindi") {
+                            } else if (lowerKey === 'castehindi') {
                                 legacyStudent.CasteHindi = df.value;
                                 legacyStudent.casteHindi = df.value;
-                            } else if (lowerKey === "gender") {
+                            } else if (lowerKey === 'gender') {
                                 legacyStudent.gender = df.value;
-                            } else if (lowerKey === "dateofbirth" || lowerKey === "dob") {
+                            } else if (lowerKey === 'dateofbirth' || lowerKey === 'dob') {
                                 legacyStudent.dob = df.value;
                             }
                             legacyStudent[lowerKey] = df.value;
                         }
                     });
                 }
+
+                // Admission number is a CORE schema field (s.admissionNumber).
+                // If no dynamic field with key 'admissionno' overwrote the legacy aliases,
+                // fall back to the core field so cards display correctly.
+                if (!legacyStudent.AdmissionNo && legacyStudent.admissionNumber) {
+                    legacyStudent.AdmissionNo = legacyStudent.admissionNumber;
+                    legacyStudent.admissionNo = legacyStudent.admissionNumber;
+                }
+
                 return legacyStudent;
             });
+
             setStudents(mapped);
 
             const yearResponse = await getAcademicYears();
@@ -954,137 +994,158 @@ export default function Students() {
                                 {(() => {
                                     const currentSchoolId = localStorage.getItem('schoolId') || '';
                                     const activeTemplate = STUDENT_TEMPLATES[currentSchoolId] || STUDENT_TEMPLATES['default'];
-                                    
+
                                     return activeTemplate.map((section, sIdx) => {
-                                    const sectionFields = personalInfoList.filter(info => {
-                                        const key = info.fieldKey;
-                                        return section.fields.some(fKey => 
-                                            key === fKey ||
-                                            (fKey === 'AdmissionNo' && key === 'admissionNo') ||
-                                            (fKey === 'FreeStud' && key === 'freeStudent') ||
-                                            (fKey === 'Caste' && key === 'caste') ||
-                                            (fKey === 'CasteHindi' && key === 'casteHindi')
-                                        );
-                                    }).sort((a, b) => {
-                                        const aIndex = section.fields.findIndex(f => f === a.fieldKey || (f === 'AdmissionNo' && a.fieldKey === 'admissionNo') || (f === 'FreeStud' && a.fieldKey === 'freeStudent') || (f === 'Caste' && a.fieldKey === 'caste') || (f === 'CasteHindi' && a.fieldKey === 'casteHindi'));
-                                        const bIndex = section.fields.findIndex(f => f === b.fieldKey || (f === 'AdmissionNo' && b.fieldKey === 'admissionNo') || (f === 'FreeStud' && b.fieldKey === 'freeStudent') || (f === 'Caste' && b.fieldKey === 'caste') || (f === 'CasteHindi' && b.fieldKey === 'casteHindi'));
-                                        return aIndex - bIndex;
-                                    });
+                                        // Build a unified list of field descriptors for this section:
+                                        //   1) Core enrollment fields (admissionNumber, rollNumber, etc.)
+                                        //   2) Dynamic FieldRegistry fields (matched by info.key)
+                                        const sectionItems = [];
 
-                                    if (sectionFields.length === 0) return null;
+                                        section.fields.forEach(fKey => {
+                                            const lowerFKey = fKey.toLowerCase();
 
-                                    return (
-                                        <div className="student-attribute-grid p-3 rounded border mb-3" key={sIdx}>
-                                            <h6 className="fw-bold mb-3 border-bottom pb-2">
-                                                <i className={`fas ${section.icon} text-primary me-2`}></i>{section.sectionName}
-                                            </h6>
-                                            <div className="row g-3">
-                                                {sectionFields.map((info, idx) => {
-                                                    const key = info.fieldKey;
-                                                    const label = info.fieldName;
+                                            // Check if it's a core enrollment schema field
+                                            if (CORE_ENROLLMENT_FIELD_LABELS[fKey]) {
+                                                sectionItems.push({
+                                                    type: 'core',
+                                                    fieldKey: fKey,
+                                                    label: CORE_ENROLLMENT_FIELD_LABELS[fKey].label,
+                                                    fieldType: CORE_ENROLLMENT_FIELD_LABELS[fKey].type,
+                                                });
+                                                return;
+                                            }
 
-                                                    let displayValue = '';
-                                                    if (key === 'freeStudent') displayValue = selectedStudent.FreeStud;
-                                                    else if (key === 'caste') displayValue = selectedStudent.Caste;
-                                                    else if (key === 'casteHindi') displayValue = selectedStudent.CasteHindi;
-                                                    else displayValue = selectedStudent[key];
+                                            // Otherwise look it up in FieldRegistry (match by .key lowercase)
+                                            const info = personalInfoList.find(p =>
+                                                (p.key || '').toLowerCase() === lowerFKey ||
+                                                (p.fieldKey || '').toLowerCase() === lowerFKey
+                                            );
+                                            if (info) {
+                                                sectionItems.push({
+                                                    type: 'dynamic',
+                                                    fieldKey: info.key || info.fieldKey,
+                                                    label: info.label || info.fieldName || fKey,
+                                                    fieldType: info.type || info.fieldType || 'text',
+                                                    options: info.options || [],
+                                                    _id: info._id,
+                                                });
+                                            }
+                                        });
 
-                                                    if (!displayValue && selectedStudent.additionalInfo) {
-                                                        displayValue = selectedStudent.additionalInfo.find(i => i.key === label)?.value || '';
-                                                    }
+                                        if (sectionItems.length === 0) return null;
 
-                                                    if (info.fieldType === 'date' && displayValue) {
-                                                        try {
-                                                            displayValue = new Date(displayValue).toLocaleDateString();
-                                                        } catch (e) { }
-                                                    }
+                                        return (
+                                            <div className="student-attribute-grid p-3 rounded border mb-3" key={sIdx}>
+                                                <h6 className="fw-bold mb-3 border-bottom pb-2">
+                                                    <i className={`fas ${section.icon} text-primary me-2`}></i>{section.sectionName}
+                                                </h6>
+                                                <div className="row g-3">
+                                                    {sectionItems.map((item, idx) => {
+                                                        const { fieldKey, label, fieldType } = item;
+                                                        const lowerKey = fieldKey.toLowerCase();
 
-                                                    // Safely convert objects to displayable text
-                                                    displayValue = getSafeStringValue(displayValue);
+                                                        // Resolve display value
+                                                        let displayValue = '';
+                                                        if (item.type === 'core') {
+                                                            // Core enrollment fields sit directly on the student object
+                                                            displayValue = selectedStudent[fieldKey] || '';
+                                                        } else {
+                                                            // Dynamic fields: the student object has them flattened with lowerKey
+                                                            displayValue = selectedStudent[lowerKey] ?? selectedStudent[fieldKey] ?? '';
+                                                            // Legacy aliases
+                                                            if (!displayValue && lowerKey === 'freestudent') displayValue = selectedStudent.FreeStud || '';
+                                                            if (!displayValue && lowerKey === 'caste') displayValue = selectedStudent.Caste || '';
+                                                            if (!displayValue && lowerKey === 'castehindi') displayValue = selectedStudent.CasteHindi || '';
+                                                        }
 
-                                                    return (
-                                                        <div className="col-md-6 border-bottom pb-2" key={info._id || idx}>
-                                                            <div className="d-flex flex-column gap-1">
-                                                                <span className="small text-muted fw-bold">{label}</span>
-                                                                <div className="text-start">
-                                                                    {isEditMode ? (
-                                                                        info.fieldType === 'select' ? (
-                                                                            <select
-                                                                                className="form-select form-select-sm"
-                                                                                value={
-                                                                                    key === 'freeStudent' ? getSafeStringValue(editStudentData.FreeStud) :
-                                                                                        key === 'caste' ? getSafeStringValue(editStudentData.Caste) :
-                                                                                            key === 'casteHindi' ? getSafeStringValue(editStudentData.CasteHindi) :
-                                                                                                getSafeStringValue(editStudentData[key])
-                                                                                }
-                                                                                onChange={(e) => {
-                                                                                    const val = e.target.value;
-                                                                                    setEditStudentData(prev => {
-                                                                                        const updated = { ...prev };
-                                                                                        if (key === 'freeStudent') updated.FreeStud = val;
-                                                                                        else if (key === 'caste') updated.Caste = val;
-                                                                                        else if (key === 'casteHindi') updated.CasteHindi = val;
-                                                                                        else updated[key] = val;
-                                                                                        return updated;
-                                                                                    });
-                                                                                }}
-                                                                            >
-                                                                                <option value="">Select</option>
-                                                                                {(info.options || []).map((opt, oIdx) => (
-                                                                                    <option key={oIdx} value={opt}>{opt}</option>
-                                                                                ))}
-                                                                            </select>
+                                                        if (fieldType === 'date' && displayValue) {
+                                                            try { displayValue = new Date(displayValue).toLocaleDateString(); } catch (e) { }
+                                                        }
+                                                        displayValue = getSafeStringValue(displayValue);
+
+                                                        // Edit mode: resolve edit value — only when editStudentData is set
+                                                        // (editStudentData is null until the user clicks "Edit", so we must guard here)
+                                                        const editValue = (isEditMode && editStudentData)
+                                                            ? (item.type === 'core'
+                                                                ? getSafeStringValue(editStudentData[fieldKey])
+                                                                : getSafeStringValue(
+                                                                    lowerKey === 'freestudent' ? editStudentData.FreeStud :
+                                                                    lowerKey === 'caste' ? editStudentData.Caste :
+                                                                    lowerKey === 'castehindi' ? editStudentData.CasteHindi :
+                                                                    (editStudentData[lowerKey] ?? editStudentData[fieldKey])
+                                                                ))
+                                                            : '';
+
+                                                        const handleEditChange = (val) => {
+                                                            setEditStudentData(prev => {
+                                                                const updated = { ...prev };
+                                                                if (item.type === 'core') {
+                                                                    updated[fieldKey] = val;
+                                                                } else if (lowerKey === 'freestudent') {
+                                                                    updated.FreeStud = val;
+                                                                    updated.freeStudent = val;
+                                                                } else if (lowerKey === 'caste') {
+                                                                    updated.Caste = val;
+                                                                    updated.caste = val;
+                                                                } else if (lowerKey === 'castehindi') {
+                                                                    updated.CasteHindi = val;
+                                                                    updated.casteHindi = val;
+                                                                } else {
+                                                                    updated[lowerKey] = val;
+                                                                    updated[fieldKey] = val;
+                                                                }
+                                                                return updated;
+                                                            });
+                                                        };
+
+                                                        return (
+                                                            <div className="col-md-6 border-bottom pb-2" key={item._id || `core-${fieldKey}-${idx}`}>
+                                                                <div className="d-flex flex-column gap-1">
+                                                                    <span className="small text-muted fw-bold">{label}</span>
+                                                                    <div className="text-start">
+                                                                        {isEditMode && item.type !== 'core' ? (
+                                                                            fieldType === 'select' ? (
+                                                                                <select
+                                                                                    className="form-select form-select-sm"
+                                                                                    value={editValue}
+                                                                                    onChange={e => handleEditChange(e.target.value)}
+                                                                                >
+                                                                                    <option value="">Select</option>
+                                                                                    {(item.options || []).map((opt, oIdx) => (
+                                                                                        <option key={oIdx} value={opt}>{opt}</option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            ) : (
+                                                                                <input
+                                                                                    type={fieldType === 'number' ? 'number' : fieldType === 'date' ? 'date' : 'text'}
+                                                                                    className="form-control form-control-sm"
+                                                                                    value={editValue}
+                                                                                    onChange={e => handleEditChange(e.target.value)}
+                                                                                />
+                                                                            )
                                                                         ) : (
-                                                                            <input
-                                                                                type={info.fieldType === 'number' ? 'number' : info.fieldType === 'date' ? 'date' : 'text'}
-                                                                                className="form-control form-control-sm"
-                                                                                value={
-                                                                                    key === 'freeStudent' ? getSafeStringValue(editStudentData.FreeStud) :
-                                                                                        key === 'caste' ? getSafeStringValue(editStudentData.Caste) :
-                                                                                            key === 'casteHindi' ? getSafeStringValue(editStudentData.CasteHindi) :
-                                                                                                getSafeStringValue(editStudentData[key])
-                                                                                }
-                                                                                onChange={(e) => {
-                                                                                    const val = e.target.value;
-                                                                                    setEditStudentData(prev => {
-                                                                                        const updated = { ...prev };
-                                                                                        if (key === 'freeStudent') updated.FreeStud = val;
-                                                                                        else if (key === 'caste') updated.Caste = val;
-                                                                                        else if (key === 'casteHindi') updated.CasteHindi = val;
-                                                                                        else updated[key] = val;
-                                                                                        return updated;
-                                                                                    });
-                                                                                }}
-                                                                            />
-                                                                        )
-                                                                    ) : (
-                                                                        <span className="fw-semibold">{displayValue || '—'}</span>
-                                                                    )}
+                                                                            <span className="fw-semibold">{displayValue || '—'}</span>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
                                                             </div>
-                                                        </div>
-                                                    );
-                                                })}
+                                                        );
+                                                    })}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                      });
+                                        );
+                                    });
                                 })()}
+
 
                                 {/* Remaining Fields not explicitly defined in the template sections */}
                                 {(() => {
                                     const currentSchoolId = localStorage.getItem('schoolId') || '';
                                     const activeTemplate = STUDENT_TEMPLATES[currentSchoolId] || STUDENT_TEMPLATES['default'];
-                                    const claimedKeys = activeTemplate.flatMap(s => s.fields);
+                                    const claimedKeys = activeTemplate.flatMap(s => s.fields).map(k => k.toLowerCase());
                                     const remainingFields = personalInfoList.filter(info => {
-                                        const key = info.fieldKey;
-                                        return !claimedKeys.some(fKey => 
-                                            key === fKey ||
-                                            (fKey === 'AdmissionNo' && key === 'admissionNo') ||
-                                            (fKey === 'FreeStud' && key === 'freeStudent') ||
-                                            (fKey === 'Caste' && key === 'caste') ||
-                                            (fKey === 'CasteHindi' && key === 'casteHindi')
-                                        );
+                                        const key = (info.key || info.fieldKey || '').toLowerCase();
+                                        return !!key && !claimedKeys.includes(key);
                                     }).sort((a, b) => (a.sno || 99) - (b.sno || 99));
 
                                     if (remainingFields.length === 0) return null;
@@ -1096,26 +1157,19 @@ export default function Students() {
                                             </h6>
                                             <div className="row g-3">
                                                 {remainingFields.map((info, idx) => {
-                                                    const key = info.fieldKey;
-                                                    const label = info.fieldName;
+                                                    const key = info.key || info.fieldKey || '';
+                                                    const lowerKey = key.toLowerCase();
+                                                    const label = info.label || info.fieldName || key;
+                                                    const fieldType = info.type || info.fieldType || 'text';
 
-                                                    let displayValue = '';
-                                                    if (key === 'freeStudent') displayValue = selectedStudent.FreeStud;
-                                                    else if (key === 'caste') displayValue = selectedStudent.Caste;
-                                                    else if (key === 'casteHindi') displayValue = selectedStudent.CasteHindi;
-                                                    else displayValue = selectedStudent[key];
+                                                    let displayValue = selectedStudent[lowerKey] ?? selectedStudent[key] ?? '';
+                                                    if (!displayValue && lowerKey === 'freestudent') displayValue = selectedStudent.FreeStud || '';
+                                                    if (!displayValue && lowerKey === 'caste') displayValue = selectedStudent.Caste || '';
+                                                    if (!displayValue && lowerKey === 'castehindi') displayValue = selectedStudent.CasteHindi || '';
 
-                                                    if (!displayValue && selectedStudent.additionalInfo) {
-                                                        displayValue = selectedStudent.additionalInfo.find(i => i.key === label)?.value || '';
+                                                    if (fieldType === 'date' && displayValue) {
+                                                        try { displayValue = new Date(displayValue).toLocaleDateString(); } catch (e) { }
                                                     }
-
-                                                    if (info.fieldType === 'date' && displayValue) {
-                                                        try {
-                                                            displayValue = new Date(displayValue).toLocaleDateString();
-                                                        } catch (e) { }
-                                                    }
-
-                                                    // Safely convert objects to displayable text
                                                     displayValue = getSafeStringValue(displayValue);
 
                                                     return (
@@ -1123,24 +1177,24 @@ export default function Students() {
                                                             <div className="d-flex flex-column gap-1">
                                                                 <span className="small text-muted fw-bold">{label}</span>
                                                                 <div className="text-start">
-                                                                    {isEditMode ? (
-                                                                        info.fieldType === 'select' ? (
+                                                                    {isEditMode && editStudentData ? (
+                                                                        fieldType === 'select' ? (
                                                                             <select
                                                                                 className="form-select form-select-sm"
-                                                                                value={
-                                                                                    key === 'freeStudent' ? getSafeStringValue(editStudentData.FreeStud) :
-                                                                                        key === 'caste' ? getSafeStringValue(editStudentData.Caste) :
-                                                                                            key === 'casteHindi' ? getSafeStringValue(editStudentData.CasteHindi) :
-                                                                                                getSafeStringValue(editStudentData[key])
-                                                                                }
+                                                                                value={getSafeStringValue(
+                                                                                    lowerKey === 'freestudent' ? editStudentData.FreeStud :
+                                                                                    lowerKey === 'caste' ? editStudentData.Caste :
+                                                                                    lowerKey === 'castehindi' ? editStudentData.CasteHindi :
+                                                                                    (editStudentData[lowerKey] ?? editStudentData[key])
+                                                                                )}
                                                                                 onChange={(e) => {
                                                                                     const val = e.target.value;
                                                                                     setEditStudentData(prev => {
                                                                                         const updated = { ...prev };
-                                                                                        if (key === 'freeStudent') updated.FreeStud = val;
-                                                                                        else if (key === 'caste') updated.Caste = val;
-                                                                                        else if (key === 'casteHindi') updated.CasteHindi = val;
-                                                                                        else updated[key] = val;
+                                                                                        if (lowerKey === 'freestudent') { updated.FreeStud = val; updated.freeStudent = val; }
+                                                                                        else if (lowerKey === 'caste') { updated.Caste = val; updated.caste = val; }
+                                                                                        else if (lowerKey === 'castehindi') { updated.CasteHindi = val; updated.casteHindi = val; }
+                                                                                        else { updated[lowerKey] = val; updated[key] = val; }
                                                                                         return updated;
                                                                                     });
                                                                                 }}
@@ -1152,22 +1206,22 @@ export default function Students() {
                                                                             </select>
                                                                         ) : (
                                                                             <input
-                                                                                type={info.fieldType === 'number' ? 'number' : info.fieldType === 'date' ? 'date' : 'text'}
+                                                                                type={fieldType === 'number' ? 'number' : fieldType === 'date' ? 'date' : 'text'}
                                                                                 className="form-control form-control-sm"
-                                                                                value={
-                                                                                    key === 'freeStudent' ? getSafeStringValue(editStudentData.FreeStud) :
-                                                                                        key === 'caste' ? getSafeStringValue(editStudentData.Caste) :
-                                                                                            key === 'casteHindi' ? getSafeStringValue(editStudentData.CasteHindi) :
-                                                                                                getSafeStringValue(editStudentData[key])
-                                                                                }
+                                                                                value={getSafeStringValue(
+                                                                                    lowerKey === 'freestudent' ? editStudentData.FreeStud :
+                                                                                    lowerKey === 'caste' ? editStudentData.Caste :
+                                                                                    lowerKey === 'castehindi' ? editStudentData.CasteHindi :
+                                                                                    (editStudentData[lowerKey] ?? editStudentData[key])
+                                                                                )}
                                                                                 onChange={(e) => {
                                                                                     const val = e.target.value;
                                                                                     setEditStudentData(prev => {
                                                                                         const updated = { ...prev };
-                                                                                        if (key === 'freeStudent') updated.FreeStud = val;
-                                                                                        else if (key === 'caste') updated.Caste = val;
-                                                                                        else if (key === 'casteHindi') updated.CasteHindi = val;
-                                                                                        else updated[key] = val;
+                                                                                        if (lowerKey === 'freestudent') { updated.FreeStud = val; updated.freeStudent = val; }
+                                                                                        else if (lowerKey === 'caste') { updated.Caste = val; updated.caste = val; }
+                                                                                        else if (lowerKey === 'castehindi') { updated.CasteHindi = val; updated.casteHindi = val; }
+                                                                                        else { updated[lowerKey] = val; updated[key] = val; }
                                                                                         return updated;
                                                                                     });
                                                                                 }}
@@ -1186,30 +1240,6 @@ export default function Students() {
                                     );
                                 })()}
 
-                                <div className="student-history-container mt-3 p-3 rounded border">
-                                    <h6 className="fw-bold mb-3 border-bottom pb-2">
-                                        <i className="fas fa-history text-success me-2"></i>Academic History
-                                    </h6>
-                                    <div className="d-flex flex-column gap-2">
-                                        {selectedStudent.academicYears.map((entry, index) => {
-                                            let badgeColor = "bg-secondary";
-                                            if (entry.status === "Active") badgeColor = "bg-success";
-                                            else if (entry.status === "Passed") badgeColor = "bg-primary";
-                                            else if (entry.status === "Dropped" || entry.status === "Failed") badgeColor = "bg-danger";
-                                            else if (entry.status === "TC-Issued") badgeColor = "bg-warning text-dark";
-
-                                            return (
-                                                <div key={index} className="d-flex justify-content-between align-items-center p-2 rounded border academic-session-card">
-                                                    <span className="small text-muted fw-bold">{entry.academicYear}</span>
-                                                    <div className="d-flex align-items-center gap-2">
-                                                        <span className="fw-bold">{entry.class}</span>
-                                                        <span className={`badge ${badgeColor} px-2 py-1 small rounded-pill`}>{entry.status || "N/A"}</span>
-                                                    </div>
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
                             </div>
                         </div>
 

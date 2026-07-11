@@ -3,7 +3,7 @@
 .Students {
     width: 100%;
     min-height: 100vh;
-    padding: 24px;
+    padding: 12px;
     background-color: var(--background-color, #f8fafc);
     color: var(--text-color, #0f172a);
     display: flex;

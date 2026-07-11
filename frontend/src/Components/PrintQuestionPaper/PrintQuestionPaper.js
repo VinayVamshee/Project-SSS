@@ -3,6 +3,7 @@ import React, { forwardRef } from 'react';
 const PrintQuestionPaper = forwardRef(
   (
     {
+      questions = [],
       sections = [],
       questionMap = {},
       selectedQuestions = [],
@@ -21,6 +22,8 @@ const PrintQuestionPaper = forwardRef(
     },
     ref
   ) => {
+    const parentQuestionIds = questions.length > 0 ? new Set(questions.map(q => q.questionId)) : null;
+
     const getSubLabel = (index) => {
       const roman = ['(i)', '(ii)', '(iii)', '(iv)', '(v)', '(vi)', '(vii)', '(viii)', '(ix)', '(x)'];
       return roman[index] || `(${index + 1})`;
@@ -100,21 +103,24 @@ const PrintQuestionPaper = forwardRef(
 
           {q.questionType === 'MCQ' && (
             <div className="d-flex flex-wrap mt-2" style={{ gap: '12px', paddingLeft: '30px', }}>
-              {q.options.map((opt, i) => (
-                <div key={i} style={{ width: 'calc(25% - 12px)', display: 'flex' }}>
-                  <div style={{ fontWeight: 'bold', marginRight: '6px' }}>
-                    ({String.fromCharCode(65 + i)})
+              {q.options.map((opt, i) => {
+                const optWidth = imageSizesMap[q.questionId + '-options'] || '50px';
+                return (
+                  <div key={i} style={{ width: 'calc(25% - 12px)', display: 'flex' }}>
+                    <div style={{ fontWeight: 'bold', marginRight: '6px' }}>
+                      ({String.fromCharCode(65 + i)})
+                    </div>
+                    {opt.imageUrl && (
+                      <img
+                        src={opt.imageUrl}
+                        alt={`Option-${i}`}
+                        style={{ height: optWidth, width: optWidth, objectFit: 'contain', marginRight: '8px' }}
+                      />
+                    )}
+                    <div>{opt.text}</div>
                   </div>
-                  {opt.imageUrl && (
-                    <img
-                      src={opt.imageUrl}
-                      alt={`Option-${i}`}
-                      style={{ height: '50px', width: '50px', objectFit: 'contain', marginRight: '8px' }}
-                    />
-                  )}
-                  <div>{opt.text}</div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
 
@@ -128,33 +134,36 @@ const PrintQuestionPaper = forwardRef(
                 paddingLeft: isMain ? "70px" : "50px", // align with question text
               }}
             >
-              {q.pairs.map((pair, i) => (
-                <React.Fragment key={i}>
-                  {/* Left Side */}
-                  <div className="d-flex align-items-center" style={{ textAlign: "left" }}>
-                    {pair.leftImage && (
-                      <img
-                        src={pair.leftImage}
-                        alt="Left"
-                        style={{ height: '36px', width: '36px', objectFit: 'contain', marginRight: '8px' }}
-                      />
-                    )}
-                    <span>{pair.leftText}</span>
-                  </div>
+              {q.pairs.map((pair, i) => {
+                const pairWidth = imageSizesMap[q.questionId + '-pairs'] || '36px';
+                return (
+                  <React.Fragment key={i}>
+                    {/* Left Side */}
+                    <div className="d-flex align-items-center" style={{ textAlign: "left" }}>
+                      {pair.leftImage && (
+                        <img
+                          src={pair.leftImage}
+                          alt="Left"
+                          style={{ height: pairWidth, width: pairWidth, objectFit: 'contain', marginRight: '8px' }}
+                        />
+                      )}
+                      <span>{pair.leftText}</span>
+                    </div>
 
-                  {/* Right Side */}
-                  <div className="d-flex align-items-center" style={{ textAlign: "left" }}>
-                    <span>{pair.rightText}</span>
-                    {pair.rightImage && (
-                      <img
-                        src={pair.rightImage}
-                        alt="Right"
-                        style={{ height: '36px', width: '36px', objectFit: 'contain', marginLeft: '8px' }}
-                      />
-                    )}
-                  </div>
-                </React.Fragment>
-              ))}
+                    {/* Right Side */}
+                    <div className="d-flex align-items-center" style={{ textAlign: "left" }}>
+                      <span>{pair.rightText}</span>
+                      {pair.rightImage && (
+                        <img
+                          src={pair.rightImage}
+                          alt="Right"
+                          style={{ height: pairWidth, width: pairWidth, objectFit: 'contain', marginLeft: '8px' }}
+                        />
+                      )}
+                    </div>
+                  </React.Fragment>
+                );
+              })}
             </div>
           )}
 
@@ -242,7 +251,7 @@ const PrintQuestionPaper = forwardRef(
           return sections.map((section, secIdx) => {
             const questionsInSection = section.questionIds
               ?.map(id => questionMap[id])
-              ?.filter(q => q && selectedQuestions.includes(q.questionId));
+              ?.filter(q => q && (!parentQuestionIds || parentQuestionIds.has(q.questionId)) && selectedQuestions.includes(q.questionId));
 
             if (!questionsInSection || questionsInSection.length === 0) return null;
 
@@ -266,7 +275,7 @@ const PrintQuestionPaper = forwardRef(
           );
 
           const unassignedQuestions = selectedQuestions
-            .filter(qid => !sectionQuestionIds.has(qid))
+            .filter(qid => !sectionQuestionIds.has(qid) && (!parentQuestionIds || parentQuestionIds.has(qid)))
             .map(qid => questionMap[qid])
             .filter(Boolean); // remove undefined
 
@@ -275,7 +284,7 @@ const PrintQuestionPaper = forwardRef(
           const renderedInSectionsCount = sections.reduce((acc, section) => {
             const count = section.questionIds
               ?.map(id => questionMap[id])
-              ?.filter(q => q && selectedQuestions.includes(q.questionId))?.length || 0;
+              ?.filter(q => q && (!parentQuestionIds || parentQuestionIds.has(q.questionId)) && selectedQuestions.includes(q.questionId))?.length || 0;
             return acc + count;
           }, 0);
 

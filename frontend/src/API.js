@@ -235,6 +235,8 @@ export const updateAcademicYearStatus = (studentId, payload) =>
     api.put(`/updateAcademicYearStatus/${studentId}`, payload);
 export const passStudentsTo = (payload) => api.post('/pass-students-to', payload);
 export const dropAcademicYear = (payload) => api.post('/drop-academic-year', payload);
+export const bulkImportStudents = (payload) => api.post('/dev/bulk-import-students', payload);
+
 
 // ─── EAV Field Definitions (FieldRegistry) ─────────────────────────
 export const getFieldDefinitions = () => api.get('/api/metadata/fields');
@@ -281,6 +283,7 @@ export const saveFees = (payload) => api.post('/saveFees', payload);
 export const getClassFees = () => api.get('/class-fees');
 export const saveClassFees = (payload) => api.post('/class-fees', payload);
 export const copyClassFees = (payload) => api.post('/copy-class-fees', payload);
+export const bulkImportFees = (payload) => api.post('/dev/bulk-import-fees', payload);
 export const getReceiptBook = () => api.get('/receiptBook');
 export const incrementReceipt = () => api.patch('/incrementReceipt');
 export const updateReceiptBook = (payload) => api.post('/updateReceiptBook', payload);
