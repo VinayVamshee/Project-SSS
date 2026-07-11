@@ -52,7 +52,7 @@ exports.validateFieldInput = (req, res, next) => {
 };
 
 exports.validateTemplateInput = (req, res, next) => {
-  const { key, label, entity, fields } = req.body;
+  const { key, label, entity, fields, sections } = req.body;
   if (!key || typeof key !== 'string' || key.trim() === '') {
     return res.status(400).json({ success: false, message: 'Template key is required.' });
   }
@@ -62,8 +62,11 @@ exports.validateTemplateInput = (req, res, next) => {
   if (!entity || typeof entity !== 'string' || entity.trim() === '') {
     return res.status(400).json({ success: false, message: 'Template entity is required.' });
   }
-  if (!fields || !Array.isArray(fields) || fields.length === 0) {
-    return res.status(400).json({ success: false, message: 'Template fields must be a non-empty array.' });
+  
+  const hasFields = (fields && Array.isArray(fields) && fields.length > 0) || 
+                    (sections && Array.isArray(sections) && sections.length > 0);
+  if (!hasFields) {
+    return res.status(400).json({ success: false, message: 'Template fields or sections must be a non-empty array.' });
   }
   next();
 };

@@ -235,15 +235,15 @@ export default function QuestionPaperV2() {
 
                 const eligible = [];
                 for (const q of chapterQuestions) {
-                    const selfMatch = q.questionType === row.type && 
-                                      normalizeMarks(q.questionMarks) === normalizeMarks(row.marks);
+                    const selfMatch = q.questionType === row.type &&
+                        normalizeMarks(q.questionMarks) === normalizeMarks(row.marks);
                     if (selfMatch && !selectedIds.includes(q.questionId)) {
                         eligible.push({ parentId: q.questionId, targetId: q.questionId });
                     }
                     if (q.subQuestions && q.subQuestions.length > 0) {
                         for (const sub of q.subQuestions) {
-                            const subMatch = sub.questionType === row.type && 
-                                             normalizeMarks(sub.questionMarks) === normalizeMarks(row.marks);
+                            const subMatch = sub.questionType === row.type &&
+                                normalizeMarks(sub.questionMarks) === normalizeMarks(row.marks);
                             if (subMatch && !selectedIds.includes(sub.questionId)) {
                                 eligible.push({ parentId: q.questionId, targetId: sub.questionId });
                             }
@@ -401,7 +401,7 @@ export default function QuestionPaperV2() {
         try {
             const res = await api.get(`/questions?class=${qbSelectedClass}&subject=${qbSelectedSubject}`);
             const fetchedQuestions = res.data.questions || [];
-            
+
             // Filter questions locally by chosen chapters
             const filtered = fetchedQuestions.filter(q => qbSelectedChapters.includes(q.chapter));
             setQbQuestions(filtered);
@@ -925,6 +925,12 @@ export default function QuestionPaperV2() {
         return roman[num] || num + 1;
     };
 
+    const selectedParentCount = useMemo(() => {
+        return selectedQuestions.filter(id =>
+            questions.some(q => q.questionId === id)
+        ).length;
+    }, [selectedQuestions, questions]);
+
     const renderQuestionBlock = (q, i, level = 0) => (
         <div key={q._id || i} className={`qpv2-question-card ${level > 0 ? 'qpv2-question-card-sub' : ''}`}>
 
@@ -1269,8 +1275,8 @@ export default function QuestionPaperV2() {
                         <button className="btn" disabled={!hasWriteAccess} onClick={() => setIsAddModalOpen(true)}>
                             <i className="fas fa-plus me-2"></i>Add Question
                         </button>
-                        <button className="btn" disabled={selectedQuestions.length === 0} onClick={() => setIsTransferModalOpen(true)}>
-                            ✈️ Transfer ({selectedQuestions.length})
+                        <button className="btn" disabled={selectedParentCount === 0} onClick={() => setIsTransferModalOpen(true)}>
+                            ✈️ Transfer ({selectedParentCount})
                         </button>
                         <button className="btn" disabled={!hasWriteAccess} onClick={() => setIsTemplateModalOpen(true)}>
                             <i className="fas fa-book me-2"></i>Templates
@@ -1343,7 +1349,9 @@ export default function QuestionPaperV2() {
                                             <span className="qpv2-slider"></span>
                                         </div>
                                         <span className="qpv2-switch-label" style={{ fontWeight: 600 }}>
-                                            Select All ({selectedQuestions.length}/{getAllQuestionIds(questions).length})
+                                            Select All ({selectedQuestions.filter(id =>
+                                                questions.some(q => q.questionId === id)
+                                            ).length}/{questions.length})
                                         </span>
                                     </label>
                                 </div>
@@ -1371,7 +1379,7 @@ export default function QuestionPaperV2() {
                                 <i className="fas fa-arrow-left me-1"></i> Exit Builder
                             </button>
                             <button className="qpv2-btn-secondary" onClick={() => setIsViewSelectedDrawerOpen(true)}>
-                                👁️ View Selected ({selectedQuestions.length})
+                                👁️ View Selected ({selectedParentCount})
                             </button>
                         </div>
                     </div>
@@ -1670,7 +1678,7 @@ export default function QuestionPaperV2() {
             {/* View Selected Questions Drawer */}
             <div className={`qpv2-drawer ${isViewSelectedDrawerOpen ? 'open' : ''}`} style={{ width: '1000px' }}>
                 <div className="qpv2-drawer-header">
-                    <h4>👁️ Selected Questions ({selectedQuestions.length})</h4>
+                    <h4>👁️ Selected Questions ({selectedParentCount})</h4>
                     <button className="qpv2-drawer-close" onClick={() => setIsViewSelectedDrawerOpen(false)}>&times;</button>
                 </div>
                 <div className="qpv2-drawer-body">
@@ -1678,33 +1686,14 @@ export default function QuestionPaperV2() {
                         Questions listed below are ordered exactly in the chronological sequence you selected them.
                     </p>
                     <div className="qpv2-question-list">
-                        {selectedQuestions.filter(id => questions.some(q => q.questionId === id)).map((qId, idx) => {
-                            const questionObj = globalQuestionMap[qId];
-                            if (!questionObj) return null;
-                            return (
-                                <div key={qId} className="qpv2-question-card" style={{ marginBottom: '12px', padding: '14px', backgroundColor: '#ffffff', border: '1px solid rgba(0,0,0,0.08)' }}>
-                                    <div className="qpv2-question-header" style={{ borderBottom: '1px solid #f1f5f9', paddingBottom: '8px', marginBottom: '8px' }}>
-                                        <div className="qpv2-question-meta">
-                                            <span className="qpv2-badge qpv2-badge-marks">{questionObj.questionMarks}M</span>
-                                            <span className="qpv2-badge qpv2-badge-type">{questionObj.questionType}</span>
-                                            <span className="qpv2-badge qpv2-badge-id">ID: {questionObj.questionId}</span>
-                                        </div>
-                                        <button className="btn-close" style={{ fontSize: '10px' }} onClick={() => {
-                                            setSelectedQuestions(prev => prev.filter(id => id !== qId));
-                                        }}></button>
-                                    </div>
-                                    <div className="qpv2-question-title">
-                                        <strong style={{ marginRight: '6px' }}>Q{idx + 1}.</strong>
-                                        <div style={{ flex: 1 }} dangerouslySetInnerHTML={{ __html: questionObj.questionText }} />
-                                    </div>
-                                    {questionObj.questionImage && (
-                                        <div style={{ marginTop: '8px', paddingLeft: '28px' }}>
-                                            <img src={questionObj.questionImage} alt="Question" style={{ maxHeight: '100px', objectFit: 'contain', borderRadius: '4px' }} />
-                                        </div>
-                                    )}
-                                </div>
-                            );
-                        })}
+                       {selectedQuestions
+    .filter(id => questions.some(q => q.questionId === id))
+    .map((qId, idx) => {
+        const questionObj = globalQuestionMap[qId];
+        if (!questionObj) return null;
+
+        return renderQuestionBlock(questionObj, idx);
+    })}
                         {selectedQuestions.length === 0 && (
                             <div className="text-center py-5 text-muted">No questions selected yet. Check questions from the list!</div>
                         )}
@@ -2031,8 +2020,8 @@ export default function QuestionPaperV2() {
                             <div className="modal-body p-4 text-center">
                                 <p className="text-muted mb-4">Choose how you want to build this question paper:</p>
                                 <div className="d-grid gap-3">
-                                    <button 
-                                        className="btn btn-outline-primary py-3 d-flex align-items-center justify-content-center gap-2 fw-bold" 
+                                    <button
+                                        className="btn btn-outline-primary py-3 d-flex align-items-center justify-content-center gap-2 fw-bold"
                                         style={{ borderRadius: '8px', borderWidth: '2px' }}
                                         onClick={() => {
                                             setIsQPChoiceModalOpen(false);
@@ -2042,8 +2031,8 @@ export default function QuestionPaperV2() {
                                         <i className="fa-solid fa-hand-pointer fs-5"></i>
                                         Manual Selection
                                     </button>
-                                    <button 
-                                        className="btn text-white py-3 d-flex align-items-center justify-content-center gap-2 fw-bold" 
+                                    <button
+                                        className="btn text-white py-3 d-flex align-items-center justify-content-center gap-2 fw-bold"
                                         style={{ backgroundColor: 'var(--button-color)', borderRadius: '8px' }}
                                         onClick={() => {
                                             setIsQPChoiceModalOpen(false);
@@ -2089,9 +2078,9 @@ export default function QuestionPaperV2() {
                                 <div className="row g-3 mb-4">
                                     <div className="col-6">
                                         <label className="form-label fw-bold text-muted small">Class</label>
-                                        <select 
-                                            className="form-select shadow-sm" 
-                                            value={randomClass} 
+                                        <select
+                                            className="form-select shadow-sm"
+                                            value={randomClass}
                                             onChange={(e) => handleRandomClassChange(e.target.value)}
                                         >
                                             <option value="">-- Class --</option>
@@ -2100,9 +2089,9 @@ export default function QuestionPaperV2() {
                                     </div>
                                     <div className="col-6">
                                         <label className="form-label fw-bold text-muted small">Subject</label>
-                                        <select 
-                                            className="form-select shadow-sm" 
-                                            value={randomSubject} 
+                                        <select
+                                            className="form-select shadow-sm"
+                                            value={randomSubject}
                                             onChange={(e) => handleRandomSubjectChange(e.target.value)}
                                             disabled={!randomClass}
                                         >
@@ -2117,9 +2106,9 @@ export default function QuestionPaperV2() {
                                         <span className="fw-bold text-slate-800 small">Chapters</span>
                                         {randomChapterList.length > 0 && (
                                             <div className="form-check form-switch">
-                                                <input 
-                                                    className="form-check-input" 
-                                                    type="checkbox" 
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
                                                     id="toggleAllRandomChapters"
                                                     checked={randomSelectedChapters.length === randomChapterList.length && randomChapterList.length > 0}
                                                     onChange={handleToggleAllRandomChapters}
@@ -2138,9 +2127,9 @@ export default function QuestionPaperV2() {
                                             <div className="d-flex flex-wrap gap-2">
                                                 {randomChapterList.map((ch, idx) => (
                                                     <div className="form-check me-3" key={ch._id || idx} style={{ minWidth: '180px' }}>
-                                                        <input 
-                                                            className="form-check-input" 
-                                                            type="checkbox" 
+                                                        <input
+                                                            className="form-check-input"
+                                                            type="checkbox"
                                                             id={`rand-ch-${ch._id}`}
                                                             checked={randomSelectedChapters.includes(ch._id)}
                                                             onChange={() => handleRandomChapterToggle(ch._id)}
@@ -2162,13 +2151,13 @@ export default function QuestionPaperV2() {
                                             <i className="fa-solid fa-plus me-1"></i>Add Criteria
                                         </button>
                                     </div>
-                                    
+
                                     <div className="d-flex flex-column gap-3 mt-3">
                                         {randomCriteria.map((row, index) => (
                                             <div className="row g-2 align-items-center border-bottom pb-3" key={row.id}>
                                                 <div className="col-4">
                                                     <label className="form-label text-muted small mb-1">Question Type</label>
-                                                    <select 
+                                                    <select
                                                         className="form-select form-select-sm"
                                                         value={row.type}
                                                         onChange={(e) => handleCriteriaChange(row.id, 'type', e.target.value)}
@@ -2181,7 +2170,7 @@ export default function QuestionPaperV2() {
                                                 </div>
                                                 <div className="col-3">
                                                     <label className="form-label text-muted small mb-1">Marks Each</label>
-                                                    <input 
+                                                    <input
                                                         type="number"
                                                         className="form-control form-control-sm"
                                                         placeholder="Marks"
@@ -2191,7 +2180,7 @@ export default function QuestionPaperV2() {
                                                 </div>
                                                 <div className="col-3">
                                                     <label className="form-label text-muted small mb-1">No. of Questions</label>
-                                                    <input 
+                                                    <input
                                                         type="number"
                                                         className="form-control form-control-sm"
                                                         placeholder="Qty"
@@ -2201,8 +2190,8 @@ export default function QuestionPaperV2() {
                                                     />
                                                 </div>
                                                 <div className="col-2 text-end" style={{ paddingTop: '20px' }}>
-                                                    <button 
-                                                        className="btn btn-sm btn-outline-danger" 
+                                                    <button
+                                                        className="btn btn-sm btn-outline-danger"
                                                         disabled={randomCriteria.length === 1}
                                                         onClick={() => handleRemoveCriteriaRow(row.id)}
                                                     >
@@ -2221,8 +2210,8 @@ export default function QuestionPaperV2() {
                             </div>
                             <div className="modal-footer bg-light border-top p-3 d-flex justify-content-end gap-2">
                                 <button className="btn btn-sm btn-outline-secondary px-3" onClick={() => setIsRandomQPModalOpen(false)}>Cancel</button>
-                                <button 
-                                    className="btn btn-sm text-white fw-bold px-4" 
+                                <button
+                                    className="btn btn-sm text-white fw-bold px-4"
                                     style={{ backgroundColor: 'var(--button-color)' }}
                                     disabled={!randomClass || !randomSubject || randomSelectedChapters.length === 0}
                                     onClick={handleGenerateRandomQP}
@@ -2249,9 +2238,9 @@ export default function QuestionPaperV2() {
                                 <div className="row g-3 mb-4">
                                     <div className="col-6">
                                         <label className="form-label fw-bold text-muted small">Select Class</label>
-                                        <select 
-                                            className="form-select shadow-sm" 
-                                            value={qbSelectedClass} 
+                                        <select
+                                            className="form-select shadow-sm"
+                                            value={qbSelectedClass}
                                             onChange={(e) => handleQBClassChange(e.target.value)}
                                         >
                                             <option value="">-- Class --</option>
@@ -2260,9 +2249,9 @@ export default function QuestionPaperV2() {
                                     </div>
                                     <div className="col-6">
                                         <label className="form-label fw-bold text-muted small">Select Subject</label>
-                                        <select 
-                                            className="form-select shadow-sm" 
-                                            value={qbSelectedSubject} 
+                                        <select
+                                            className="form-select shadow-sm"
+                                            value={qbSelectedSubject}
                                             onChange={(e) => handleQBSubjectChange(e.target.value)}
                                             disabled={!qbSelectedClass}
                                         >
@@ -2277,9 +2266,9 @@ export default function QuestionPaperV2() {
                                         <span className="fw-bold text-slate-800 small">Select Chapters</span>
                                         {qbChapterList.length > 0 && (
                                             <div className="form-check form-switch">
-                                                <input 
-                                                    className="form-check-input" 
-                                                    type="checkbox" 
+                                                <input
+                                                    className="form-check-input"
+                                                    type="checkbox"
                                                     id="toggleAllChapters"
                                                     checked={qbSelectedChapters.length === qbChapterList.length && qbChapterList.length > 0}
                                                     onChange={handleToggleAllChapters}
@@ -2298,9 +2287,9 @@ export default function QuestionPaperV2() {
                                             <div className="d-flex flex-column gap-2">
                                                 {qbChapterList.map((ch, idx) => (
                                                     <div className="form-check" key={ch._id || idx}>
-                                                        <input 
-                                                            className="form-check-input" 
-                                                            type="checkbox" 
+                                                        <input
+                                                            className="form-check-input"
+                                                            type="checkbox"
                                                             id={`qb-ch-${ch._id}`}
                                                             checked={qbSelectedChapters.includes(ch._id)}
                                                             onChange={() => handleQBChapterToggle(ch._id)}
@@ -2317,8 +2306,8 @@ export default function QuestionPaperV2() {
                             </div>
                             <div className="modal-footer bg-light border-top p-3 d-flex justify-content-end gap-2">
                                 <button className="btn btn-sm btn-outline-secondary px-3" onClick={() => setIsDownloadQBModalOpen(false)}>Cancel</button>
-                                <button 
-                                    className="btn btn-sm text-white fw-bold px-4" 
+                                <button
+                                    className="btn btn-sm text-white fw-bold px-4"
                                     style={{ backgroundColor: 'var(--button-color)' }}
                                     disabled={!qbSelectedClass || !qbSelectedSubject || qbSelectedChapters.length === 0 || qbDownloading}
                                     onClick={handleQBDownloadSubmit}

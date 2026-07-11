@@ -6,35 +6,100 @@ import FileField from './FileField';
 import ImageField from './ImageField';
 
 /**
- * DynamicField — Renders a single form field based on its type.
- *
- * Completely generic. No module-specific logic.
- *
- * Props:
- *   field    – Field definition object from the template
- *   value    – Current value from form state
- *   onChange – Callback: (fieldKey, newValue) => void
- *   readOnly – Whether the field is read-only
- *   mode     – Form mode: "preview" | "create" | "edit" | "readonly"
+ * DynamicField — Generic field renderer for DynamicForm.
+ * Supports clean text display for "view" and "readonly" modes.
  */
 export default function DynamicField({ field, value, onChange, readOnly, mode }) {
   const { key, label, type, placeholder, required, options, lookup, helperText } = field;
+  const isViewMode = mode === 'view' || mode === 'readonly';
 
   const handleChange = (val) => onChange(key, val);
 
-  // ─── Label ────────────────────────────────────────────────────────────────────
+  // Helper to format values for display mode
+  const getDisplayValue = () => {
+    if (value === null || value === undefined || value === '') return '—';
+    
+    if (type === 'select' || type === 'radio') {
+      const selectedOpt = options?.find(o => o === value || o.value === value);
+      if (selectedOpt) {
+        return typeof selectedOpt === 'object' ? selectedOpt.label : selectedOpt;
+      }
+    }
+    
+    if (type === 'multiselect') {
+      if (Array.isArray(value)) {
+        return value.join(', ');
+      }
+      return String(value);
+    }
+    
+    if (type === 'checkbox' || type === 'switch') {
+      return value ? 'Yes' : 'No';
+    }
+    
+    if (type === 'date' && value) {
+      try {
+        return new Date(value).toLocaleDateString();
+      } catch (e) {
+        return String(value);
+      }
+    }
+
+    if (typeof value === 'object') {
+      return value.label || value.name || JSON.stringify(value);
+    }
+
+    return String(value);
+  };
+
   const renderLabel = () => (
-    <label className="df-label">
-      {label} {required && <span className="df-required">*</span>}
+    <label className="df-label text-muted fw-bold small text-uppercase mb-2">
+      {label} {required && !isViewMode && <span className="df-required text-danger ms-1">*</span>}
     </label>
   );
 
   const renderHelperText = () => {
-    if (!helperText) return null;
+    if (!helperText || isViewMode) return null;
     return <div className="form-text text-muted small mt-1" style={{ fontSize: '0.78rem' }}>{helperText}</div>;
   };
 
-  // ─── Text / Email / Phone / Password / Number / Currency / Date / DateTime / Time
+  // View / Read-only display wrapper (Clean label + plain value text)
+  if (isViewMode) {
+    if (type === 'image' && value) {
+      return (
+        <div className="df-view-field d-flex flex-column">
+          {renderLabel()}
+          <div className="df-image-preview mt-2">
+            <img src={value} alt={label} className="img-thumbnail" style={{ maxWidth: '160px', height: 'auto' }} />
+          </div>
+        </div>
+      );
+    }
+
+    if (type === 'file' && value) {
+      return (
+        <div className="df-view-field d-flex flex-column">
+          {renderLabel()}
+          <div className="mt-1">
+            <a href={value} target="_blank" rel="noopener noreferrer" className="btn btn-sm btn-outline-primary mt-1">
+              <i className="fa-solid fa-download me-1"></i> Download File
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    return (
+      <div className="df-view-field d-flex flex-column">
+        {renderLabel()}
+        <span className="df-view-value fw-semibold text-dark fs-6 mt-1">{getDisplayValue()}</span>
+      </div>
+    );
+  }
+
+  // ─── Editable Modes ──────────────────────────────────────────────────────────
+
+  // Text inputs
   if (['text', 'email', 'phone', 'password', 'number', 'currency', 'date', 'datetime', 'time'].includes(type)) {
     const inputType =
       type === 'currency' || type === 'number' ? 'number'
@@ -58,7 +123,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
     );
   }
 
-  // ─── Textarea ─────────────────────────────────────────────────────────────────
+  // Textarea
   if (type === 'textarea') {
     return (
       <>
@@ -77,7 +142,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
     );
   }
 
-  // ─── Select ───────────────────────────────────────────────────────────────────
+  // Select
   if (type === 'select') {
     return (
       <>
@@ -94,7 +159,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
     );
   }
 
-  // ─── Multi-Select ─────────────────────────────────────────────────────────────
+  // Multi-select
   if (type === 'multiselect') {
     return (
       <>
@@ -111,35 +176,39 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
     );
   }
 
-  // ─── Radio ────────────────────────────────────────────────────────────────────
+  // Radio
   if (type === 'radio') {
     return (
       <>
         {renderLabel()}
         <div className="d-flex gap-3 pt-1">
-          {options?.map(o => (
-            <div key={o.value} className="form-check">
-              <input
-                type="radio"
-                name={key}
-                id={`${key}-${o.value}`}
-                className="form-check-input"
-                value={o.value}
-                checked={value === o.value}
-                onChange={e => handleChange(e.target.value)}
-                required={required}
-                disabled={readOnly}
-              />
-              <label htmlFor={`${key}-${o.value}`} className="form-check-label small">{o.label}</label>
-            </div>
-          ))}
+          {options?.map(o => {
+            const optVal = typeof o === 'object' ? o.value : o;
+            const optLbl = typeof o === 'object' ? o.label : o;
+            return (
+              <div key={optVal} className="form-check">
+                <input
+                  type="radio"
+                  name={key}
+                  id={`${key}-${optVal}`}
+                  className="form-check-input"
+                  value={optVal}
+                  checked={value === optVal}
+                  onChange={e => handleChange(e.target.value)}
+                  required={required}
+                  disabled={readOnly}
+                />
+                <label htmlFor={`${key}-${optVal}`} className="form-check-label small">{optLbl}</label>
+              </div>
+            );
+          })}
         </div>
         {renderHelperText()}
       </>
     );
   }
 
-  // ─── Checkbox ─────────────────────────────────────────────────────────────────
+  // Checkbox
   if (type === 'checkbox') {
     return (
       <>
@@ -160,7 +229,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
     );
   }
 
-  // ─── Switch ───────────────────────────────────────────────────────────────────
+  // Switch
   if (type === 'switch') {
     return (
       <>
@@ -181,7 +250,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
     );
   }
 
-  // ─── Lookup ───────────────────────────────────────────────────────────────────
+  // Lookup
   if (type === 'lookup') {
     return (
       <>
@@ -199,7 +268,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
     );
   }
 
-  // ─── File ─────────────────────────────────────────────────────────────────────
+  // File
   if (type === 'file') {
     return (
       <>
@@ -216,7 +285,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
     );
   }
 
-  // ─── Image ────────────────────────────────────────────────────────────────────
+  // Image
   if (type === 'image') {
     return (
       <>
@@ -233,7 +302,7 @@ export default function DynamicField({ field, value, onChange, readOnly, mode })
     );
   }
 
-  // ─── Fallback ─────────────────────────────────────────────────────────────────
+  // Fallback
   return (
     <>
       {renderLabel()}

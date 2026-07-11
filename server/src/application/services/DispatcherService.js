@@ -1,5 +1,4 @@
 const Template = require('../../domain/metadata/models/Template');
-const EntityRegistry = require('../../domain/metadata/models/EntityRegistry');
 const StorageMapper = require('./StorageMapper');
 
 // Import handlers
@@ -31,12 +30,8 @@ class DispatcherService {
     const handlerName = entity.handler || 'Generic';
     const handler = handlers[handlerName] || GenericEntityHandler;
 
-    console.log(`[Dispatcher] Mapping payload for ${entity.key}...`);
-
     // 2. Generic Storage Mapper: Convert payload keys to mapped Mongoose models
     const mappedModels = await StorageMapper.map(payload, entity.storage || []);
-
-    console.log(`[Dispatcher] Invoking Business Handler: ${handlerName}`);
 
     // 3. Invoke Business Handler with mapped model objects
     return await handler.handle(

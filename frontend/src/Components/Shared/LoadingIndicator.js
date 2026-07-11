@@ -39,8 +39,8 @@ export default function LoadingIndicator({ message, active }) {
           backgroundColor: 'rgba(255, 255, 255, 0.25)',
           backdropFilter: 'blur(1px)',
           zIndex: 9997,
-          cursor: 'not-allowed',
-          pointerEvents: 'all'
+          cursor: 'wait',
+          pointerEvents: 'none'
         }}
       />
       <div

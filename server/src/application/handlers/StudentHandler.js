@@ -2,13 +2,35 @@ const mongoose = require('mongoose');
 
 class StudentHandler {
   async handle(schoolId, mappedModels, payload, template, entity) {
-    console.log(`[StudentHandler] Executing Student business workflows...`);
-
     const StudentModel = mongoose.model('Student');
     const EnrollmentModel = mongoose.model('StudentEnrollment');
 
     const studentData = { ...mappedModels.Student, schoolId };
     const enrollmentData = { ...mappedModels.StudentEnrollment, schoolId };
+
+    // Resolve academicYear (name/string to ObjectId)
+    if (enrollmentData.academicYearId && !mongoose.Types.ObjectId.isValid(enrollmentData.academicYearId)) {
+      const AcademicYear = mongoose.model('AcademicYear');
+      const yearDoc = await AcademicYear.findOne({
+        $or: [
+          { name: enrollmentData.academicYearId },
+          { year: enrollmentData.academicYearId }
+        ],
+        schoolId
+      });
+      if (yearDoc) {
+        enrollmentData.academicYearId = yearDoc._id;
+      }
+    }
+
+    // Resolve class (name/string to ObjectId)
+    if (enrollmentData.classId && !mongoose.Types.ObjectId.isValid(enrollmentData.classId)) {
+      const Class = mongoose.model('Class');
+      const classDoc = await Class.findOne({ class: enrollmentData.classId, schoolId });
+      if (classDoc) {
+        enrollmentData.classId = classDoc._id;
+      }
+    }
 
     if (!studentData.studentCode) {
       const count = await StudentModel.countDocuments({ schoolId });

@@ -1011,67 +1011,70 @@ export default function Master() {
                                         <h4 className="fw-bold"><i className="fa-solid fa-list me-2 text-success"></i>Current Fee Structures ({selectedFeeYear})</h4>
                                     </div>
                                     <div className="p-1">
-                                        {feeTemplateForm ? (
-                                            <div className="table-responsive">
-                                                <table className="setup-table align-middle">
-                                                    <thead>
-                                                        <tr>
-                                                            <th className="fw-bold">Class</th>
-                                                            {feeTemplateForm.fields
-                                                                .filter(f => f.key !== 'class_id' && f.key !== 'class' && f.key !== 'academicYear' && f.key !== 'total_fees' && f.key !== 'total_fee')
-                                                                .map(field => (
-                                                                    <th key={field.key} className="fw-bold">{field.label}</th>
-                                                                ))}
-                                                            <th className="fw-bold text-success">Total Fees</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {classFeesData.length > 0 && classFeesData[0].classes ? (
-                                                            classFeesData[0].classes
-                                                                .filter(fee => fee.class_id && fee.class_id._id)
-                                                                .sort((a, b) => {
-                                                                    const customOrder = [
-                                                                        "Pre-Nursery", "Nursery", "KG-1", "KG-2",
-                                                                        "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
-                                                                        "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
-                                                                        "Class-11", "Class-12"
-                                                                    ];
-                                                                    const nameA = a.class_id.class || "";
-                                                                    const nameB = b.class_id.class || "";
-                                                                    const indexA = customOrder.indexOf(nameA);
-                                                                    const indexB = customOrder.indexOf(nameB);
-                                                                    return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
-                                                                })
-                                                                .map((fee, idx) => {
-                                                                    const className = fee.class_id.class || "Deleted Class";
-                                                                    const feeColumns = feeTemplateForm.fields.filter(
-                                                                        f => f.key !== 'class_id' && f.key !== 'class' && f.key !== 'academicYear' && f.key !== 'total_fees' && f.key !== 'total_fee'
-                                                                    );
-                                                                    const total = feeColumns.reduce((sum, field) => {
-                                                                        return sum + (Number(fee[field.key]) || 0);
-                                                                    }, 0);
-
-                                                                    return (
-                                                                        <tr key={idx}>
-                                                                            <td className="fw-semibold">{className}</td>
-                                                                            {feeColumns.map(field => (
-                                                                                <td key={field.key}>₹{(Number(fee[field.key]) || 0).toLocaleString('en-IN')}</td>
-                                                                            ))}
-                                                                            <td className="fw-bold text-success">₹{total.toLocaleString('en-IN')}</td>
-                                                                        </tr>
-                                                                    );
-                                                                })
-                                                        ) : (
+                                        {feeTemplateForm ? (() => {
+                                            const flatFields = feeTemplateForm.sections ? feeTemplateForm.sections.flatMap(s => s.fields || []) : (feeTemplateForm.fields || []);
+                                            return (
+                                                <div className="table-responsive">
+                                                    <table className="setup-table align-middle">
+                                                        <thead>
                                                             <tr>
-                                                                <td colSpan={feeTemplateForm.fields.filter(f => f.key !== 'class_id' && f.key !== 'class' && f.key !== 'academicYear').length + 2} className="text-center py-4 text-muted">
-                                                                    No fee structures configured for this Academic Year.
-                                                                </td>
+                                                                <th className="fw-bold">Class</th>
+                                                                {flatFields
+                                                                    .filter(f => f.key !== 'class_id' && f.key !== 'class' && f.key !== 'academicYear' && f.key !== 'total_fees' && f.key !== 'total_fee')
+                                                                    .map(field => (
+                                                                        <th key={field.key} className="fw-bold">{field.label}</th>
+                                                                    ))}
+                                                                <th className="fw-bold text-success">Total Fees</th>
                                                             </tr>
-                                                        )}
-                                                    </tbody>
-                                                </table>
-                                            </div>
-                                        ) : (
+                                                        </thead>
+                                                        <tbody>
+                                                            {classFeesData.length > 0 && classFeesData[0].classes ? (
+                                                                classFeesData[0].classes
+                                                                    .filter(fee => fee.class_id && fee.class_id._id)
+                                                                    .sort((a, b) => {
+                                                                        const customOrder = [
+                                                                            "Pre-Nursery", "Nursery", "KG-1", "KG-2",
+                                                                            "Class-1", "Class-2", "Class-3", "Class-4", "Class-5",
+                                                                            "Class-6", "Class-7", "Class-8", "Class-9", "Class-10",
+                                                                            "Class-11", "Class-12"
+                                                                        ];
+                                                                        const nameA = a.class_id.class || "";
+                                                                        const nameB = b.class_id.class || "";
+                                                                        const indexA = customOrder.indexOf(nameA);
+                                                                        const indexB = customOrder.indexOf(nameB);
+                                                                        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+                                                                    })
+                                                                    .map((fee, idx) => {
+                                                                        const className = fee.class_id.class || "Deleted Class";
+                                                                        const feeColumns = flatFields.filter(
+                                                                            f => f.key !== 'class_id' && f.key !== 'class' && f.key !== 'academicYear' && f.key !== 'total_fees' && f.key !== 'total_fee'
+                                                                        );
+                                                                        const total = feeColumns.reduce((sum, field) => {
+                                                                            return sum + (Number(fee[field.key]) || 0);
+                                                                        }, 0);
+
+                                                                        return (
+                                                                            <tr key={idx}>
+                                                                                <td className="fw-semibold">{className}</td>
+                                                                                {feeColumns.map(field => (
+                                                                                    <td key={field.key}>₹{(Number(fee[field.key]) || 0).toLocaleString('en-IN')}</td>
+                                                                                ))}
+                                                                                <td className="fw-bold text-success">₹{total.toLocaleString('en-IN')}</td>
+                                                                            </tr>
+                                                                        );
+                                                                    })
+                                                            ) : (
+                                                                <tr>
+                                                                    <td colSpan={flatFields.filter(f => f.key !== 'class_id' && f.key !== 'class' && f.key !== 'academicYear').length + 2} className="text-center py-4 text-muted">
+                                                                        No fee structures configured for this Academic Year.
+                                                                    </td>
+                                                                </tr>
+                                                            )}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            );
+                                        })() : (
                                             <div className="text-center py-4 text-muted">
                                                 ⚠️ Fee structure template is not configured.
                                             </div>

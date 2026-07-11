@@ -27,6 +27,12 @@ export default function Developer() {
     }, 4000);
   };
 
+  // Reset loading state if the component unmounts mid-request (e.g. user navigates away)
+  useEffect(() => {
+    return () => {
+      setLoading(false);
+    };
+  }, []);
 
 
   // 1. Entity Registry States
@@ -87,10 +93,12 @@ export default function Developer() {
     purpose: '',
     scope: 'global',
     schools: [],
+    sections: [],
     fields: []
   });
   const [editingTemplateFieldId, setEditingTemplateFieldId] = useState(null);
   const [fieldFilterText, setFieldFilterText] = useState('');
+  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
 
   // 4. Form Preview States
   const [previewTemplateId, setPreviewTemplateId] = useState('');
@@ -484,12 +492,24 @@ export default function Developer() {
     setLoading(true);
     setLoadingMessage(editingTemplateId ? 'Updating template...' : 'Creating template...');
     try {
+      // Map flat fields list to one default section for saving, if sections is not defined
+      const templateToSave = { ...newTemplate };
+      if (!templateToSave.sections || templateToSave.sections.length === 0) {
+        templateToSave.sections = [{
+          label: '',
+          description: '',
+          icon: '',
+          order: 1,
+          fields: templateToSave.fields || []
+        }];
+      }
+
       if (editingTemplateId) {
-        await updateTemplate(editingTemplateId, newTemplate);
+        await updateTemplate(editingTemplateId, templateToSave);
         showNotification('Template updated successfully!');
         setEditingTemplateId(null);
       } else {
-        await createTemplate(newTemplate);
+        await createTemplate(templateToSave);
         showNotification('Template created!');
       }
 
@@ -501,6 +521,7 @@ export default function Developer() {
         purpose: '',
         scope: 'global',
         schools: [],
+        sections: [],
         fields: []
       });
       loadTemplates();
@@ -513,15 +534,24 @@ export default function Developer() {
 
   const handleStartEditingTemplate = (tpl) => {
     setEditingTemplateId(tpl._id);
-    setNewTemplate({
-      key: tpl.key || '',
-      label: tpl.label || '',
-      description: tpl.description || '',
-      entity: tpl.entity?._id || tpl.entity || '',
-      purpose: tpl.purpose || '',
-      scope: tpl.scope || 'global',
-      schools: tpl.schools || [],
-      fields: (tpl.fields || []).map(tf => ({
+    
+    // Normalize sections mapping: if template has no sections, map fields to a default section
+    let sections = tpl.sections || [];
+    const fields = tpl.fields || [];
+    
+    if (sections.length === 0 && fields.length > 0) {
+      sections = [{
+        label: '',
+        description: '',
+        icon: '',
+        order: 1,
+        fields: fields
+      }];
+    }
+
+    const normalizedSections = sections.map(sec => ({
+      ...sec,
+      fields: (sec.fields || []).map(tf => ({
         fieldId: tf.fieldId?._id || tf.fieldId || '',
         order: tf.order || 0,
         required: tf.required || false,
@@ -542,6 +572,18 @@ export default function Developer() {
           message: ''
         }
       }))
+    }));
+
+    setNewTemplate({
+      key: tpl.key || '',
+      label: tpl.label || '',
+      description: tpl.description || '',
+      entity: tpl.entity?._id || tpl.entity || '',
+      purpose: tpl.purpose || '',
+      scope: tpl.scope || 'global',
+      schools: tpl.schools || [],
+      sections: normalizedSections,
+      fields: normalizedSections.flatMap(s => s.fields || [])
     });
   };
 
@@ -1558,6 +1600,7 @@ export default function Developer() {
               >
                 <option value="">-- Choose Purpose --</option>
                 <option value="student_registration">Student Registration</option>
+                <option value="student_information">Student Information</option>
                 <option value="student_promotion">Student Promotion</option>
                 <option value="student_transfer">Student Transfer</option>
                 <option value="student_tc">Student TC</option>
@@ -1620,11 +1663,116 @@ export default function Developer() {
             )}
 
             <div className="col-12 border-top pt-4">
-              <label className="premium-label fs-5 mb-3"><i className="fa-solid fa-gears me-2 text-primary"></i>Layout Fields Canvas & Configuration Workspace</label>
+              <label className="premium-label fs-5 mb-3"><i className="fa-solid fa-gears me-2 text-primary"></i>Layout Sections & Fields Configuration Workspace</label>
 
               <div className="row g-4">
-                {/* Left Side: Available Fields Library */}
+                {/* Left Side: Available Fields Library & Section Manager */}
                 <div className="col-lg-4">
+                  {/* Section Management */}
+                  <div className="card shadow-sm border p-3 bg-white mb-3" style={{ borderRadius: '8px' }}>
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                      <h6 className="fw-bold mb-0 text-dark"><i className="fa-solid fa-folder me-2 text-primary"></i>Form Sections</h6>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const newSec = {
+                            label: `Section ${((newTemplate.sections || []).length + 1)}`,
+                            description: '',
+                            icon: 'fa-user',
+                            order: ((newTemplate.sections || []).length + 1),
+                            fields: []
+                          };
+                          const updatedSecs = [...(newTemplate.sections || []), newSec];
+                          setNewTemplate({
+                            ...newTemplate,
+                            sections: updatedSecs,
+                            fields: updatedSecs.flatMap(s => s.fields || [])
+                          });
+                          setActiveSectionIndex(updatedSecs.length - 1);
+                        }}
+                        className="btn btn-xs btn-primary fw-bold"
+                      >
+                        <i className="fa-solid fa-plus me-1"></i>Add Section
+                      </button>
+                    </div>
+
+                    {!(newTemplate.sections && newTemplate.sections.length > 0) ? (
+                      <div className="text-center py-3 text-muted small">No sections created yet. Add a section to organize your fields.</div>
+                    ) : (
+                      <div className="d-flex flex-column gap-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
+                        {newTemplate.sections.map((sec, idx) => (
+                          <div
+                            key={idx}
+                            onClick={() => setActiveSectionIndex(idx)}
+                            className={`d-flex align-items-center justify-content-between p-2 rounded border cursor-pointer ${activeSectionIndex === idx ? 'border-primary bg-light fw-bold' : 'border-light bg-white'}`}
+                          >
+                            <span className="text-truncate" style={{ fontSize: '0.85rem' }}>
+                              {sec.icon && <i className={`fas ${sec.icon} me-2 text-muted`}></i>}
+                              {sec.label || `Section ${idx + 1}`}
+                            </span>
+                            <div className="d-flex align-items-center gap-1">
+                              {/* Reorder Buttons */}
+                              <button
+                                type="button"
+                                disabled={idx === 0}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updated = [...newTemplate.sections];
+                                  const temp = updated[idx];
+                                  updated[idx] = updated[idx - 1];
+                                  updated[idx - 1] = temp;
+                                  // Re-assign order values
+                                  updated.forEach((s, sIdx) => { s.order = sIdx + 1; });
+                                  setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
+                                  setActiveSectionIndex(idx - 1);
+                                }}
+                                className="btn btn-xs btn-outline-secondary py-0 px-1"
+                                style={{ fontSize: '9px' }}
+                              >
+                                <i className="fa-solid fa-arrow-up"></i>
+                              </button>
+                              <button
+                                type="button"
+                                disabled={idx === newTemplate.sections.length - 1}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updated = [...newTemplate.sections];
+                                  const temp = updated[idx];
+                                  updated[idx] = updated[idx + 1];
+                                  updated[idx + 1] = temp;
+                                  // Re-assign order values
+                                  updated.forEach((s, sIdx) => { s.order = sIdx + 1; });
+                                  setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
+                                  setActiveSectionIndex(idx + 1);
+                                }}
+                                className="btn btn-xs btn-outline-secondary py-0 px-1"
+                                style={{ fontSize: '9px' }}
+                              >
+                                <i className="fa-solid fa-arrow-down"></i>
+                              </button>
+                              {/* Delete Section */}
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const updated = newTemplate.sections.filter((_, sIdx) => sIdx !== idx);
+                                  updated.forEach((s, sIdx) => { s.order = sIdx + 1; });
+                                  setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
+                                  setActiveSectionIndex(Math.max(0, idx - 1));
+                                }}
+                                className="btn btn-xs btn-outline-danger py-0 px-1"
+                                style={{ fontSize: '9px' }}
+                              >
+                                <i className="fa-solid fa-trash"></i>
+                              </button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Inputs Library Catalog */}
                   <div className="card shadow-sm border p-3 bg-light" style={{ borderRadius: '8px' }}>
                     <div className="d-flex justify-content-between align-items-center mb-2">
                       <h6 className="fw-bold mb-0 text-muted"><i className="fa-solid fa-folder-open me-2"></i>Inputs Library</h6>
@@ -1638,12 +1786,13 @@ export default function Developer() {
                       onChange={e => setFieldFilterText(e.target.value)}
                     />
 
-                    <div style={{ maxHeight: '350px', overflowY: 'auto', paddingRight: '4px' }}>
+                    <div style={{ maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
                       {fields.filter(f =>
                         f.label.toLowerCase().includes(fieldFilterText.toLowerCase()) ||
                         f.key.toLowerCase().includes(fieldFilterText.toLowerCase())
                       ).map(f => {
-                        const isSelected = newTemplate.fields.some(tf => tf.fieldId === f._id);
+                        const allSelectedFields = (newTemplate.sections || []).flatMap(s => s.fields || []);
+                        const isSelected = allSelectedFields.some(tf => tf.fieldId === f._id);
                         return (
                           <div key={f._id} className="d-flex align-items-center justify-content-between p-2 mb-2 bg-white rounded border border-light shadow-xs hover-bg-light transition-02">
                             <div className="overflow-hidden me-2">
@@ -1656,9 +1805,14 @@ export default function Developer() {
                                 <button
                                   type="button"
                                   onClick={() => {
+                                    const updatedSections = (newTemplate.sections || []).map(sec => ({
+                                      ...sec,
+                                      fields: (sec.fields || []).filter(tf => tf.fieldId !== f._id)
+                                    }));
                                     setNewTemplate({
                                       ...newTemplate,
-                                      fields: newTemplate.fields.filter(tf => tf.fieldId !== f._id)
+                                      sections: updatedSections,
+                                      fields: updatedSections.flatMap(s => s.fields || [])
                                     });
                                   }}
                                   className="btn btn-xs btn-outline-danger py-1 px-2"
@@ -1670,34 +1824,43 @@ export default function Developer() {
                               ) : (
                                 <button
                                   type="button"
+                                  disabled={!(newTemplate.sections && newTemplate.sections.length > 0)}
                                   onClick={() => {
-                                    const nextOrder = newTemplate.fields.length + 1;
+                                    const updatedSections = (newTemplate.sections || []).map((sec, sIdx) => {
+                                      if (sIdx !== activeSectionIndex) return sec;
+                                      const nextOrder = (sec.fields || []).length + 1;
+                                      return {
+                                        ...sec,
+                                        fields: [...(sec.fields || []), {
+                                          fieldId: f._id,
+                                          order: nextOrder,
+                                          required: false,
+                                          unique: false,
+                                          readOnly: false,
+                                          hidden: false,
+                                          width: 12,
+                                          placeholder: '',
+                                          helperText: '',
+                                          defaultValue: '',
+                                          validation: {
+                                            min: undefined,
+                                            max: undefined,
+                                            minLength: undefined,
+                                            maxLength: undefined,
+                                            pattern: '',
+                                            message: ''
+                                          }
+                                        }]
+                                      };
+                                    });
                                     setNewTemplate({
                                       ...newTemplate,
-                                      fields: [...newTemplate.fields, {
-                                        fieldId: f._id,
-                                        order: nextOrder,
-                                        required: false,
-                                        unique: false,
-                                        readOnly: false,
-                                        hidden: false,
-                                        width: 12,
-                                        placeholder: '',
-                                        helperText: '',
-                                        defaultValue: '',
-                                        validation: {
-                                          min: undefined,
-                                          max: undefined,
-                                          minLength: undefined,
-                                          maxLength: undefined,
-                                          pattern: '',
-                                          message: ''
-                                        }
-                                      }]
+                                      sections: updatedSections,
+                                      fields: updatedSections.flatMap(s => s.fields || [])
                                     });
                                   }}
                                   className="btn btn-xs btn-outline-primary py-1 px-2"
-                                  title="Add to layout"
+                                  title="Add to active section"
                                   style={{ fontSize: '10px' }}
                                 >
                                   <i className="fa-solid fa-plus"></i>
@@ -1711,390 +1874,354 @@ export default function Developer() {
                   </div>
                 </div>
 
-                {/* Right Side: Configured Layout Canvas */}
+                {/* Right Side: Configured Layout Sections Workspace */}
                 <div className="col-lg-8">
-                  <div className="card shadow-sm border p-3 bg-white" style={{ borderRadius: '8px', minHeight: '400px' }}>
-                    <h6 className="fw-bold text-muted mb-3"><i className="fa-solid fa-list-check me-2"></i>Active Form Layout Canvas ({newTemplate.fields.length} elements selected)</h6>
-
-                    {newTemplate.fields.length === 0 ? (
+                  {!(newTemplate.sections && newTemplate.sections.length > 0) ? (
+                    <div className="card shadow-sm border p-5 bg-white text-center" style={{ borderRadius: '8px', minHeight: '400px' }}>
                       <div className="d-flex flex-column align-items-center justify-content-center text-muted" style={{ height: '300px' }}>
-                        <i className="fa-solid fa-arrows-to-dot fa-3x mb-3 text-secondary"></i>
-                        <p className="fw-semibold">No elements selected yet</p>
-                        <p className="small text-center px-4" style={{ maxWidth: '300px' }}>Click the <span className="text-primary fw-bold">[+] Add</span> buttons in the library on the left to add fields to this form blueprint.</p>
+                        <i className="fa-solid fa-folder-plus fa-3x mb-3 text-secondary"></i>
+                        <p className="fw-semibold">No Sections Configured</p>
+                        <p className="small text-center px-4" style={{ maxWidth: '300px' }}>Click the <span className="text-primary fw-bold">Add Section</span> button on the left to initialize your template form canvas.</p>
                       </div>
-                    ) : (
-                      <div className="table-responsive">
-                        <table className="table align-middle table-sm" style={{ fontSize: '12px' }}>
-                          <thead>
-                            <tr className="table-light">
-                              <th style={{ width: '80px' }}>Order</th>
-                              <th>Field Label</th>
-                              <th>Input Type</th>
-                              <th className="text-center" style={{ width: '85px' }}>Width</th>
-                              <th className="text-center" style={{ width: '70px' }}>Req</th>
-                              <th className="text-center" style={{ width: '70px' }}>Hide</th>
-                              <th className="text-center" style={{ width: '70px' }}>Read</th>
-                              <th className="text-end" style={{ width: '120px' }}>Actions</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {newTemplate.fields
-                              .map(tf => {
-                                const fObj = fields.find(f => f._id === tf.fieldId);
-                                return { ...tf, fObj };
-                              })
-                              .filter(item => !!item.fObj)
-                              .sort((a, b) => a.order - b.order)
-                              .map((tf, index, arr) => {
-                                return (
-                                  <React.Fragment key={tf.fieldId}>
-                                    <tr>
-                                      <td>
-                                        <input
-                                          type="number"
-                                          className="form-control form-control-sm text-center py-0 px-1"
-                                          value={tf.order}
-                                          style={{ height: '24px', fontSize: '11px' }}
-                                          onChange={e => {
-                                            const val = parseInt(e.target.value) || 0;
-                                            const updated = newTemplate.fields.map(item =>
-                                              item.fieldId === tf.fieldId ? { ...item, order: val } : item
-                                            );
-                                            setNewTemplate({ ...newTemplate, fields: updated });
-                                          }}
-                                        />
-                                      </td>
-                                      <td>
-                                        <span className="fw-bold text-dark">{tf.fObj.label}</span>
-                                        <span className="text-muted d-block font-monospace" style={{ fontSize: '9px' }}>{tf.fObj.key}</span>
-                                      </td>
-                                      <td>
-                                        <span className="badge bg-light text-dark border">{tf.fObj.type}</span>
-                                      </td>
-                                      <td>
-                                        <select
-                                          className="form-select form-select-sm py-0 px-1 text-center"
-                                          value={tf.width || 12}
-                                          style={{ height: '24px', fontSize: '11px', minWidth: '75px' }}
-                                          onChange={e => {
-                                            const val = parseInt(e.target.value) || 12;
-                                            const updated = newTemplate.fields.map(item =>
-                                              item.fieldId === tf.fieldId ? { ...item, width: val } : item
-                                            );
-                                            setNewTemplate({ ...newTemplate, fields: updated });
-                                          }}
-                                        >
-                                          {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map(w => (
-                                            <option key={w} value={w}>Col-{w}</option>
-                                          ))}
-                                        </select>
-                                      </td>
-                                      <td className="text-center">
-                                        <input
-                                          type="checkbox"
-                                          className="form-check-input"
-                                          checked={tf.required || false}
-                                          onChange={e => {
-                                            const updated = newTemplate.fields.map(item =>
-                                              item.fieldId === tf.fieldId ? { ...item, required: e.target.checked } : item
-                                            );
-                                            setNewTemplate({ ...newTemplate, fields: updated });
-                                          }}
-                                        />
-                                      </td>
-                                      <td className="text-center">
-                                        <input
-                                          type="checkbox"
-                                          className="form-check-input"
-                                          checked={tf.hidden || false}
-                                          onChange={e => {
-                                            const updated = newTemplate.fields.map(item =>
-                                              item.fieldId === tf.fieldId ? { ...item, hidden: e.target.checked } : item
-                                            );
-                                            setNewTemplate({ ...newTemplate, fields: updated });
-                                          }}
-                                        />
-                                      </td>
-                                      <td className="text-center">
-                                        <input
-                                          type="checkbox"
-                                          className="form-check-input"
-                                          checked={tf.readOnly || tf.readonly || false}
-                                          onChange={e => {
-                                            const updated = newTemplate.fields.map(item =>
-                                              item.fieldId === tf.fieldId ? { ...item, readOnly: e.target.checked, readonly: e.target.checked } : item
-                                            );
-                                            setNewTemplate({ ...newTemplate, fields: updated });
-                                          }}
-                                        />
-                                      </td>
-                                      <td className="text-end">
-                                        <div className="btn-group btn-group-sm">
-                                          <button
-                                            type="button"
-                                            onClick={() => setEditingTemplateFieldId(editingTemplateFieldId === tf.fieldId ? null : tf.fieldId)}
-                                            className={`btn btn-xs ${editingTemplateFieldId === tf.fieldId ? 'btn-primary text-white' : 'btn-outline-primary'} py-0 px-2`}
-                                            title="Configure Properties"
-                                          >
-                                            <i className="fa-solid fa-cog"></i>
-                                          </button>
-                                          <button
-                                            type="button"
-                                            disabled={index === 0}
-                                            onClick={() => {
-                                              const prevItem = arr[index - 1];
-                                              const updated = newTemplate.fields.map(item => {
-                                                if (item.fieldId === tf.fieldId) return { ...item, order: prevItem.order };
-                                                if (item.fieldId === prevItem.fieldId) return { ...item, order: tf.order };
-                                                return item;
-                                              });
-                                              setNewTemplate({ ...newTemplate, fields: updated });
-                                            }}
-                                            className="btn btn-xs btn-outline-secondary py-0 px-2"
-                                            title="Move Up"
-                                          >
-                                            <i className="fa-solid fa-arrow-up"></i>
-                                          </button>
-                                          <button
-                                            type="button"
-                                            disabled={index === arr.length - 1}
-                                            onClick={() => {
-                                              const nextItem = arr[index + 1];
-                                              const updated = newTemplate.fields.map(item => {
-                                                if (item.fieldId === tf.fieldId) return { ...item, order: nextItem.order };
-                                                if (item.fieldId === nextItem.fieldId) return { ...item, order: tf.order };
-                                                return item;
-                                              });
-                                              setNewTemplate({ ...newTemplate, fields: updated });
-                                            }}
-                                            className="btn btn-xs btn-outline-secondary py-0 px-2"
-                                            title="Move Down"
-                                          >
-                                            <i className="fa-solid fa-arrow-down"></i>
-                                          </button>
-                                          <button
-                                            type="button"
-                                            onClick={() => {
-                                              setNewTemplate({
-                                                ...newTemplate,
-                                                fields: newTemplate.fields.filter(item => item.fieldId !== tf.fieldId)
-                                              });
-                                            }}
-                                            className="btn btn-xs btn-outline-danger py-0 px-2"
-                                            title="Remove Field"
-                                          >
-                                            <i className="fa-solid fa-trash"></i>
-                                          </button>
-                                        </div>
-                                      </td>
-                                    </tr>
+                    </div>
+                  ) : (() => {
+                    const activeSection = newTemplate.sections[activeSectionIndex];
+                    if (!activeSection) return null;
+                    return (
+                      <div className="card shadow-sm border p-4 bg-white" style={{ borderRadius: '8px', minHeight: '450px' }}>
+                        {/* Active Section Info Editor */}
+                        <div className="row g-3 mb-4 pb-3 border-bottom">
+                          <div className="col-md-6">
+                            <label className="premium-label fw-bold">Active Section Header Label</label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm premium-input"
+                              placeholder="e.g. Personal Information"
+                              value={activeSection.label || ''}
+                              onChange={e => {
+                                const updated = newTemplate.sections.map((s, sIdx) => 
+                                  sIdx === activeSectionIndex ? { ...s, label: e.target.value } : s
+                                );
+                                setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
+                              }}
+                            />
+                          </div>
+                          <div className="col-md-3">
+                            <label className="premium-label fw-bold">Section Icon</label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm premium-input"
+                              placeholder="e.g. fa-user"
+                              value={activeSection.icon || ''}
+                              onChange={e => {
+                                const updated = newTemplate.sections.map((s, sIdx) => 
+                                  sIdx === activeSectionIndex ? { ...s, icon: e.target.value } : s
+                                );
+                                setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
+                              }}
+                            />
+                          </div>
+                          <div className="col-md-3 d-flex align-items-end">
+                            <div className="form-check form-switch w-100">
+                              <input
+                                type="checkbox"
+                                role="switch"
+                                className="form-check-input"
+                                id="collapsibleSwitch"
+                                checked={activeSection.collapsible || false}
+                                onChange={e => {
+                                  const updated = newTemplate.sections.map((s, sIdx) => 
+                                    sIdx === activeSectionIndex ? { ...s, collapsible: e.target.checked } : s
+                                  );
+                                  setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
+                                }}
+                              />
+                              <label className="form-check-label small mb-0 ms-2" htmlFor="collapsibleSwitch">Collapsible</label>
+                            </div>
+                          </div>
+                          <div className="col-12 mt-2">
+                            <label className="premium-label fw-bold">Section Subtitle / Description</label>
+                            <input
+                              type="text"
+                              className="form-control form-control-sm premium-input"
+                              placeholder="Describe the category of information to collect..."
+                              value={activeSection.description || ''}
+                              onChange={e => {
+                                const updated = newTemplate.sections.map((s, sIdx) => 
+                                  sIdx === activeSectionIndex ? { ...s, description: e.target.value } : s
+                                );
+                                setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
+                              }}
+                            />
+                          </div>
+                        </div>
 
-                                    {editingTemplateFieldId === tf.fieldId && (
-                                      <tr>
-                                        <td colSpan="8" className="bg-light p-3 border-bottom">
-                                          <div className="card shadow-xs border p-3 bg-white">
-                                            <h6 className="fw-bold mb-3 text-primary"><i className="fa-solid fa-sliders me-2"></i>Configure Overrides for "{tf.fObj.label}"</h6>
-                                            <div className="row g-2">
-                                              <div className="col-md-4">
-                                                <label className="premium-label">Placeholder</label>
-                                                <input
-                                                  type="text"
-                                                  className="form-control form-control-sm premium-input"
-                                                  value={tf.placeholder || ''}
-                                                  onChange={e => {
-                                                    const updated = newTemplate.fields.map(item =>
-                                                      item.fieldId === tf.fieldId ? { ...item, placeholder: e.target.value } : item
-                                                    );
-                                                    setNewTemplate({ ...newTemplate, fields: updated });
-                                                  }}
-                                                />
-                                              </div>
-                                              <div className="col-md-4">
-                                                <label className="premium-label">Helper Text</label>
-                                                <input
-                                                  type="text"
-                                                  className="form-control form-control-sm premium-input"
-                                                  value={tf.helperText || ''}
-                                                  onChange={e => {
-                                                    const updated = newTemplate.fields.map(item =>
-                                                      item.fieldId === tf.fieldId ? { ...item, helperText: e.target.value } : item
-                                                    );
-                                                    setNewTemplate({ ...newTemplate, fields: updated });
-                                                  }}
-                                                />
-                                              </div>
-                                              <div className="col-md-4">
-                                                <label className="premium-label">Default Value</label>
-                                                <input
-                                                  type="text"
-                                                  className="form-control form-control-sm premium-input"
-                                                  value={tf.defaultValue !== undefined && tf.defaultValue !== null ? String(tf.defaultValue) : ''}
-                                                  onChange={e => {
-                                                    const updated = newTemplate.fields.map(item =>
-                                                      item.fieldId === tf.fieldId ? { ...item, defaultValue: e.target.value } : item
-                                                    );
-                                                    setNewTemplate({ ...newTemplate, fields: updated });
-                                                  }}
-                                                />
-                                              </div>
+                        {/* Fields Canvas inside Active Section */}
+                        <h6 className="fw-bold text-muted mb-3">
+                          <i className="fa-solid fa-list-check me-2"></i>Fields in "{activeSection.label || `Section ${activeSectionIndex + 1}`}" ({(activeSection.fields || []).length} selected)
+                        </h6>
 
-                                              <div className="col-md-4">
-                                                <div className="form-check pt-3">
-                                                  <input
-                                                    type="checkbox"
-                                                    className="form-check-input"
-                                                    checked={!!tf.unique}
-                                                    onChange={e => {
-                                                      const updated = newTemplate.fields.map(item =>
-                                                        item.fieldId === tf.fieldId ? { ...item, unique: e.target.checked } : item
-                                                      );
-                                                      setNewTemplate({ ...newTemplate, fields: updated });
-                                                    }}
-                                                  />
-                                                  <span className="small text-muted ms-1">Enforce Unique Check</span>
-                                                </div>
-                                              </div>
+                        {!(activeSection.fields && activeSection.fields.length > 0) ? (
+                          <div className="d-flex flex-column align-items-center justify-content-center text-muted py-5">
+                            <i className="fa-solid fa-arrows-to-dot fa-2x mb-2 text-secondary"></i>
+                            <p className="small mb-0">No inputs added to this section yet.</p>
+                            <p className="small text-muted">Click the <span className="text-primary fw-bold">[+]</span> icon next to any input on the left menu to add it.</p>
+                          </div>
+                        ) : (
+                          <div className="table-responsive">
+                            <table className="table align-middle table-sm" style={{ fontSize: '12px' }}>
+                              <thead>
+                                <tr className="table-light">
+                                  <th style={{ width: '80px' }}>Order</th>
+                                  <th>Field Label</th>
+                                  <th>Type</th>
+                                  <th className="text-center" style={{ width: '85px' }}>Width</th>
+                                  <th className="text-center" style={{ width: '70px' }}>Req</th>
+                                  <th className="text-center" style={{ width: '70px' }}>Hide</th>
+                                  <th className="text-center" style={{ width: '70px' }}>Read</th>
+                                  <th className="text-end" style={{ width: '120px' }}>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {(activeSection.fields || [])
+                                  .map(tf => {
+                                    const fObj = fields.find(f => f._id === tf.fieldId);
+                                    return { ...tf, fObj };
+                                  })
+                                  .filter(item => !!item.fObj)
+                                  .sort((a, b) => a.order - b.order)
+                                  .map((tf, index, arr) => {
+                                    return (
+                                      <React.Fragment key={tf.fieldId}>
+                                        <tr>
+                                          <td>
+                                            <input
+                                              type="number"
+                                              className="form-control form-control-sm text-center py-0 px-1"
+                                              value={tf.order}
+                                              style={{ height: '24px', fontSize: '11px' }}
+                                              onChange={e => {
+                                                const val = parseInt(e.target.value) || 0;
+                                                const updatedFields = activeSection.fields.map(item =>
+                                                  item.fieldId === tf.fieldId ? { ...item, order: val } : item
+                                                );
+                                                const updatedSections = newTemplate.sections.map((s, sIdx) => 
+                                                  sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
+                                                );
+                                                setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
+                                              }}
+                                            />
+                                          </td>
+                                          <td>
+                                            <div className="fw-semibold text-dark">{tf.fObj.label}</div>
+                                            <div className="text-muted" style={{ fontSize: '10px' }}>{tf.fObj.key}</div>
+                                          </td>
+                                          <td>
+                                            <span className="badge bg-light text-dark border">{tf.fObj.type}</span>
+                                          </td>
+                                          <td>
+                                            <select
+                                              className="form-select form-select-sm py-0 px-1"
+                                              value={tf.width || 12}
+                                              style={{ height: '24px', fontSize: '11px' }}
+                                              onChange={e => {
+                                                const val = parseInt(e.target.value) || 12;
+                                                const updatedFields = activeSection.fields.map(item =>
+                                                  item.fieldId === tf.fieldId ? { ...item, width: val } : item
+                                                );
+                                                const updatedSections = newTemplate.sections.map((s, sIdx) => 
+                                                  sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
+                                                );
+                                                setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
+                                              }}
+                                            >
+                                              <option value={12}>12 (Full)</option>
+                                              <option value={8}>8 (2/3)</option>
+                                              <option value={6}>6 (Half)</option>
+                                              <option value={4}>4 (1/3)</option>
+                                              <option value={3}>3 (1/4)</option>
+                                            </select>
+                                          </td>
+                                          <td className="text-center">
+                                            <input
+                                              type="checkbox"
+                                              className="form-check-input"
+                                              checked={tf.required}
+                                              onChange={e => {
+                                                const updatedFields = activeSection.fields.map(item =>
+                                                  item.fieldId === tf.fieldId ? { ...item, required: e.target.checked } : item
+                                                );
+                                                const updatedSections = newTemplate.sections.map((s, sIdx) => 
+                                                  sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
+                                                );
+                                                setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
+                                              }}
+                                            />
+                                          </td>
+                                          <td className="text-center">
+                                            <input
+                                              type="checkbox"
+                                              className="form-check-input"
+                                              checked={tf.hidden}
+                                              onChange={e => {
+                                                const updatedFields = activeSection.fields.map(item =>
+                                                  item.fieldId === tf.fieldId ? { ...item, hidden: e.target.checked } : item
+                                                );
+                                                const updatedSections = newTemplate.sections.map((s, sIdx) => 
+                                                  sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
+                                                );
+                                                setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
+                                              }}
+                                            />
+                                          </td>
+                                          <td className="text-center">
+                                            <input
+                                              type="checkbox"
+                                              className="form-check-input"
+                                              checked={tf.readOnly}
+                                              onChange={e => {
+                                                const updatedFields = activeSection.fields.map(item =>
+                                                  item.fieldId === tf.fieldId ? { ...item, readOnly: e.target.checked } : item
+                                                );
+                                                const updatedSections = newTemplate.sections.map((s, sIdx) => 
+                                                  sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
+                                                );
+                                                setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
+                                              }}
+                                            />
+                                          </td>
+                                          <td className="text-end">
+                                            <div className="d-flex align-items-center justify-content-end gap-1">
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  setEditingTemplateFieldId(editingTemplateFieldId === tf.fieldId ? null : tf.fieldId);
+                                                }}
+                                                className={`btn btn-xs ${editingTemplateFieldId === tf.fieldId ? 'btn-secondary' : 'btn-outline-secondary'} py-0 px-1`}
+                                                title="Settings overrides"
+                                              >
+                                                <i className="fa-solid fa-cog"></i>
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() => {
+                                                  const updatedFields = activeSection.fields.filter(item => item.fieldId !== tf.fieldId);
+                                                  const updatedSections = newTemplate.sections.map((s, sIdx) => 
+                                                    sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
+                                                  );
+                                                  setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
+                                                }}
+                                                className="btn btn-xs btn-outline-danger py-0 px-1"
+                                                title="Remove Field"
+                                              >
+                                                <i className="fa-solid fa-trash-can"></i>
+                                              </button>
+                                            </div>
+                                          </td>
+                                        </tr>
 
-                                              {/* Validations Sub-block */}
-                                              <div className="col-12 border-top mt-3 pt-2">
-                                                <h6 className="fw-semibold text-muted d-block mb-2">Validation Rules</h6>
-                                                <div className="row g-2">
-                                                  {['number', 'currency', 'percentage', 'date', 'datetime', 'time'].includes(tf.fObj.type) && (
-                                                    <>
-                                                      <div className="col-md-3">
-                                                        <label className="premium-label">Min Value</label>
-                                                        <input
-                                                          type="number"
-                                                          className="form-control form-control-sm premium-input"
-                                                          value={tf.validation?.min !== undefined ? tf.validation.min : ''}
-                                                          onChange={e => {
-                                                            const val = e.target.value !== '' ? Number(e.target.value) : undefined;
-                                                            const updated = newTemplate.fields.map(item =>
-                                                              item.fieldId === tf.fieldId ? {
-                                                                ...item,
-                                                                validation: { ...(item.validation || {}), min: val }
-                                                              } : item
-                                                            );
-                                                            setNewTemplate({ ...newTemplate, fields: updated });
-                                                          }}
-                                                        />
-                                                      </div>
-                                                      <div className="col-md-3">
-                                                        <label className="premium-label">Max Value</label>
-                                                        <input
-                                                          type="number"
-                                                          className="form-control form-control-sm premium-input"
-                                                          value={tf.validation?.max !== undefined ? tf.validation.max : ''}
-                                                          onChange={e => {
-                                                            const val = e.target.value !== '' ? Number(e.target.value) : undefined;
-                                                            const updated = newTemplate.fields.map(item =>
-                                                              item.fieldId === tf.fieldId ? {
-                                                                ...item,
-                                                                validation: { ...(item.validation || {}), max: val }
-                                                              } : item
-                                                            );
-                                                            setNewTemplate({ ...newTemplate, fields: updated });
-                                                          }}
-                                                        />
-                                                      </div>
-                                                    </>
-                                                  )}
-
-                                                  {['text', 'textarea', 'email', 'phone', 'password'].includes(tf.fObj.type) && (
-                                                    <>
-                                                      <div className="col-md-3">
-                                                        <label className="premium-label">Min Characters</label>
-                                                        <input
-                                                          type="number"
-                                                          className="form-control form-control-sm premium-input"
-                                                          value={tf.validation?.minLength !== undefined ? tf.validation.minLength : ''}
-                                                          onChange={e => {
-                                                            const val = e.target.value !== '' ? Number(e.target.value) : undefined;
-                                                            const updated = newTemplate.fields.map(item =>
-                                                              item.fieldId === tf.fieldId ? {
-                                                                ...item,
-                                                                validation: { ...(item.validation || {}), minLength: val }
-                                                              } : item
-                                                            );
-                                                            setNewTemplate({ ...newTemplate, fields: updated });
-                                                          }}
-                                                        />
-                                                      </div>
-                                                      <div className="col-md-3">
-                                                        <label className="premium-label">Max Characters</label>
-                                                        <input
-                                                          type="number"
-                                                          className="form-control form-control-sm premium-input"
-                                                          value={tf.validation?.maxLength !== undefined ? tf.validation.maxLength : ''}
-                                                          onChange={e => {
-                                                            const val = e.target.value !== '' ? Number(e.target.value) : undefined;
-                                                            const updated = newTemplate.fields.map(item =>
-                                                              item.fieldId === tf.fieldId ? {
-                                                                ...item,
-                                                                validation: { ...(item.validation || {}), maxLength: val }
-                                                              } : item
-                                                            );
-                                                            setNewTemplate({ ...newTemplate, fields: updated });
-                                                          }}
-                                                        />
-                                                      </div>
-                                                      <div className="col-md-6">
-                                                        <label className="premium-label">Regex Pattern</label>
-                                                        <input
-                                                          type="text"
-                                                          placeholder="e.g. ^[0-9]{10}$"
-                                                          className="form-control form-control-sm premium-input"
-                                                          value={tf.validation?.pattern || ''}
-                                                          onChange={e => {
-                                                            const updated = newTemplate.fields.map(item =>
-                                                              item.fieldId === tf.fieldId ? {
-                                                                ...item,
-                                                                validation: { ...(item.validation || {}), pattern: e.target.value }
-                                                              } : item
-                                                            );
-                                                            setNewTemplate({ ...newTemplate, fields: updated });
-                                                          }}
-                                                        />
-                                                      </div>
-                                                    </>
-                                                  )}
-
-                                                  <div className="col-md-12">
-                                                    <label className="premium-label">Custom Validation Message</label>
+                                        {editingTemplateFieldId === tf.fieldId && (
+                                          <tr className="table-light">
+                                            <td colSpan={8} className="p-3 border-bottom">
+                                              <div className="card shadow-none border p-3 bg-white" style={{ borderRadius: '6px' }}>
+                                                <h6 className="fw-bold mb-3 text-secondary" style={{ fontSize: '11px' }}>
+                                                  <i className="fa-solid fa-sliders me-1"></i>Overrides: {tf.fObj.label} ({tf.fObj.key})
+                                                </h6>
+                                                <div className="row g-3">
+                                                  <div className="col-md-6">
+                                                    <label className="premium-label">Custom Placeholder</label>
                                                     <input
                                                       type="text"
-                                                      placeholder="Message to display when validation fails"
                                                       className="form-control form-control-sm premium-input"
-                                                      value={tf.validation?.message || ''}
+                                                      value={tf.placeholder || ''}
                                                       onChange={e => {
-                                                        const updated = newTemplate.fields.map(item =>
-                                                          item.fieldId === tf.fieldId ? {
-                                                            ...item,
-                                                            validation: { ...(item.validation || {}), message: e.target.value }
-                                                          } : item
+                                                        const updatedFields = activeSection.fields.map(item =>
+                                                          item.fieldId === tf.fieldId ? { ...item, placeholder: e.target.value } : item
                                                         );
-                                                        setNewTemplate({ ...newTemplate, fields: updated });
+                                                        const updatedSections = newTemplate.sections.map((s, sIdx) => 
+                                                          sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
+                                                        );
+                                                        setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
                                                       }}
                                                     />
                                                   </div>
+                                                  <div className="col-md-6">
+                                                    <label className="premium-label">Custom Helper Text</label>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm premium-input"
+                                                      value={tf.helperText || ''}
+                                                      onChange={e => {
+                                                        const updatedFields = activeSection.fields.map(item =>
+                                                          item.fieldId === tf.fieldId ? { ...item, helperText: e.target.value } : item
+                                                        );
+                                                        const updatedSections = newTemplate.sections.map((s, sIdx) => 
+                                                          sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
+                                                        );
+                                                        setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
+                                                      }}
+                                                    />
+                                                  </div>
+
+                                                  <div className="col-md-6">
+                                                    <label className="premium-label">Default Value</label>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm premium-input"
+                                                      value={tf.defaultValue || ''}
+                                                      onChange={e => {
+                                                        const updatedFields = activeSection.fields.map(item =>
+                                                          item.fieldId === tf.fieldId ? { ...item, defaultValue: e.target.value } : item
+                                                        );
+                                                        const updatedSections = newTemplate.sections.map((s, sIdx) => 
+                                                          sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
+                                                        );
+                                                        setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
+                                                      }}
+                                                    />
+                                                  </div>
+
+                                                  <div className="col-md-6">
+                                                    <label className="premium-label">Unique Constraint</label>
+                                                    <div className="form-check pt-1">
+                                                      <input
+                                                        type="checkbox"
+                                                        className="form-check-input"
+                                                        id={`unique-check-${tf.fieldId}`}
+                                                        checked={tf.unique || false}
+                                                        onChange={e => {
+                                                          const updatedFields = activeSection.fields.map(item =>
+                                                            item.fieldId === tf.fieldId ? { ...item, unique: e.target.checked } : item
+                                                          );
+                                                          const updatedSections = newTemplate.sections.map((s, sIdx) => 
+                                                            sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
+                                                          );
+                                                          setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
+                                                        }}
+                                                      />
+                                                      <label className="form-check-label small" htmlFor={`unique-check-${tf.fieldId}`}>Is Field Unique</label>
+                                                    </div>
+                                                  </div>
+
                                                 </div>
                                               </div>
-                                            </div>
-                                          </div>
-                                        </td>
-                                      </tr>
-                                    )}
-                                  </React.Fragment>
-                                );
-                              })}
-                          </tbody>
-                        </table>
+                                            </td>
+                                          </tr>
+                                        )}
+                                      </React.Fragment>
+                                    );
+                                  })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    );
+                  })()}
                 </div>
               </div>
             </div>
+
             <div className="col-12 d-flex justify-content-end gap-2">
               {editingTemplateId && (
                 <button

@@ -104,7 +104,7 @@ export default function Results() {
             const sortedExams = response.data.exams.sort((a, b) => parseInt(a.class) - parseInt(b.class));
             setExamsData(sortedExams || []);
 
-            const responseData = await axios.get("http://localhost:3001/class-subjects");
+            const responseData = await axios.get("http://localhost:3001/classsubjectlinks");
             setClassSubjectsData(responseData.data.data || []);
         } catch (error) {
             console.error('Error fetching exams data:', error);

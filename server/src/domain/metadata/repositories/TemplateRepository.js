@@ -2,15 +2,15 @@ const Template = require('../models/Template');
 
 class TemplateRepository {
   async find(query = {}) {
-    return Template.find(query).populate('fields.fieldId').populate('entity');
+    return Template.find(query).populate('sections.fields.fieldId').populate('entity');
   }
 
   async findOne(query) {
-    return Template.findOne(query).populate('fields.fieldId').populate('entity');
+    return Template.findOne(query).populate('sections.fields.fieldId').populate('entity');
   }
 
   async findById(id) {
-    return Template.findById(id).populate('fields.fieldId').populate('entity');
+    return Template.findById(id).populate('sections.fields.fieldId').populate('entity');
   }
 
   async create(data) {
@@ -19,7 +19,7 @@ class TemplateRepository {
   }
 
   async updateById(id, data) {
-    return Template.findByIdAndUpdate(id, data, { new: true }).populate('fields.fieldId').populate('entity');
+    return Template.findByIdAndUpdate(id, data, { new: true }).populate('sections.fields.fieldId').populate('entity');
   }
 
   async deleteById(id) {

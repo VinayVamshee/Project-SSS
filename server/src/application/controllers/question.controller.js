@@ -260,7 +260,6 @@ exports.getAllTemplates = async (req, res) => {
 
 exports.saveTemplate = async (req, res) => {
     try {
-        console.log('Saving instruction template. Body:', req.body, 'schoolId:', req.schoolId);
         const { _id, __v, ...cleanBody } = req.body;
         const payload = { ...cleanBody, schoolId: req.schoolId };
         const newTemplate = new InstructionTemplate(payload);

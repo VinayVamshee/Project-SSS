@@ -1,5 +1,152 @@
 const mongoose = require("mongoose");
 
+// ===========================================================
+// TEMPLATE FIELD
+// ===========================================================
+
+const TemplateFieldSchema = new mongoose.Schema(
+{
+    fieldId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "FieldRegistry",
+        required: true
+    },
+
+    order: {
+        type: Number,
+        default: 1,
+        min: 1
+    },
+
+    // =======================================================
+    // FIELD SETTINGS
+    // =======================================================
+
+    required: {
+        type: Boolean,
+        default: false
+    },
+
+    unique: {
+        type: Boolean,
+        default: false
+    },
+
+    readOnly: {
+        type: Boolean,
+        default: false
+    },
+
+    hidden: {
+        type: Boolean,
+        default: false
+    },
+
+    // =======================================================
+    // UI
+    // =======================================================
+
+    width: {
+        type: Number,
+        default: 12,
+        min: 1,
+        max: 12
+    },
+
+    placeholder: {
+        type: String,
+        default: ""
+    },
+
+    helperText: {
+        type: String,
+        default: ""
+    },
+
+    // =======================================================
+    // DEFAULT VALUE
+    // =======================================================
+
+    defaultValue: {
+        type: mongoose.Schema.Types.Mixed,
+        default: null
+    },
+
+    // =======================================================
+    // VALIDATION OVERRIDES
+    // =======================================================
+
+    validation: {
+
+        min: Number,
+
+        max: Number,
+
+        minLength: Number,
+
+        maxLength: Number,
+
+        pattern: String,
+
+        message: String
+
+    }
+
+},
+{
+    _id: false
+});
+
+
+// ===========================================================
+// TEMPLATE SECTION
+// ===========================================================
+
+const TemplateSectionSchema = new mongoose.Schema(
+{
+    label: {
+        type: String,
+        default: ""
+    },
+
+    description: {
+        type: String,
+        default: ""
+    },
+
+    icon: {
+        type: String,
+        default: ""
+    },
+
+    order: {
+        type: Number,
+        default: 1,
+        min: 1
+    },
+
+    collapsible: {
+        type: Boolean,
+        default: false
+    },
+
+    collapsedByDefault: {
+        type: Boolean,
+        default: false
+    },
+
+    fields: [TemplateFieldSchema]
+
+},
+{
+    _id: true
+});
+
+
+// ===========================================================
+// TEMPLATE
+// ===========================================================
+
 const TemplateSchema = new mongoose.Schema(
 {
     isGlobalRegistry: {
@@ -7,9 +154,9 @@ const TemplateSchema = new mongoose.Schema(
         default: true
     },
 
-    // ===========================================================
+    // =======================================================
     // BASIC INFORMATION
-    // ===========================================================
+    // =======================================================
 
     key: {
         type: String,
@@ -34,20 +181,26 @@ const TemplateSchema = new mongoose.Schema(
         type: String,
         required: true,
         enum: [
+
             "student_registration",
+            "student_information",
             "student_promotion",
             "student_transfer",
             "student_tc",
             "student_import",
+
+            "employee_registration",
+            "employee_information",
+
             "fee_structure",
-            "student_fee_payment",
-            "employee_registration"
+            "student_fee_payment"
+
         ]
     },
 
-    // ===========================================================
+    // =======================================================
     // ENTITY
-    // ===========================================================
+    // =======================================================
 
     entity: {
         type: mongoose.Schema.Types.ObjectId,
@@ -55,9 +208,9 @@ const TemplateSchema = new mongoose.Schema(
         required: true
     },
 
-    // ===========================================================
+    // =======================================================
     // VISIBILITY
-    // ===========================================================
+    // =======================================================
 
     scope: {
         type: String,
@@ -68,100 +221,22 @@ const TemplateSchema = new mongoose.Schema(
         default: "global"
     },
 
-    schools: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "School"
-    }],
-
-    // ===========================================================
-    // FIELDS
-    // ===========================================================
-
-    fields: [
-
+    schools: [
         {
-
-            fieldId: {
-                type: mongoose.Schema.Types.ObjectId,
-                ref: "FieldRegistry",
-                required: true
-            },
-
-            order: {
-                type: Number,
-                default: 1
-            },
-
-            // Validation
-
-            required: {
-                type: Boolean,
-                default: false
-            },
-
-            unique: {
-                type: Boolean,
-                default: false
-            },
-
-            readOnly: {
-                type: Boolean,
-                default: false
-            },
-
-            hidden: {
-                type: Boolean,
-                default: false
-            },
-
-            // UI
-
-            width: {
-                type: Number,
-                default: 12
-            },
-
-            placeholder: {
-                type: String,
-                default: ""
-            },
-
-            helperText: {
-                type: String,
-                default: ""
-            },
-
-            // Default value
-
-            defaultValue: {
-                type: mongoose.Schema.Types.Mixed,
-                default: null
-            },
-
-            // Validation Overrides
-
-            validation: {
-
-                min: Number,
-
-                max: Number,
-
-                minLength: Number,
-
-                maxLength: Number,
-
-                pattern: String,
-
-                message: String
-
-            }
+            type: mongoose.Schema.Types.ObjectId,
+            ref: "School"
         }
-
     ],
 
-    // ===========================================================
+    // =======================================================
+    // FORM LAYOUT
+    // =======================================================
+
+    sections: [TemplateSectionSchema],
+
+    // =======================================================
     // TEMPLATE SETTINGS
-    // ===========================================================
+    // =======================================================
 
     settings: {
 
@@ -187,9 +262,9 @@ const TemplateSchema = new mongoose.Schema(
 
     },
 
-    // ===========================================================
+    // =======================================================
     // STATUS
-    // ===========================================================
+    // =======================================================
 
     status: {
         type: String,

@@ -134,45 +134,60 @@ class MetadataService {
   }
 
   // ─── Template Module ────────────────────────────────────────────────────────
-  validateTemplateFields(fields) {
-    if (!fields || !Array.isArray(fields)) return;
+  validateTemplateFields(sections, legacyFields = null) {
+    // Backward compatibility shim
+    if (sections && !Array.isArray(sections) && legacyFields === null) {
+      legacyFields = sections;
+      sections = null;
+    }
 
     const seenIds = new Set();
-    const seenOrders = new Set();
 
-    for (const f of fields) {
-      if (!f.fieldId) {
-        throw new AppError('Invalid field reference: fieldId is required.', 400);
-      }
+    const validateFieldArray = (fields) => {
+      for (const f of fields) {
+        if (!f.fieldId) {
+          throw new AppError('Invalid field reference: fieldId is required.', 400);
+        }
 
-      const fieldIdStr = f.fieldId.toString();
-      if (seenIds.has(fieldIdStr)) {
-        throw new AppError(`Duplicate field reference found for ID: ${fieldIdStr}`, 400);
-      }
-      seenIds.add(fieldIdStr);
+        const fieldIdStr = f.fieldId.toString();
+        if (seenIds.has(fieldIdStr)) {
+          throw new AppError(`Duplicate field reference found for ID: ${fieldIdStr}`, 400);
+        }
+        seenIds.add(fieldIdStr);
 
-      if (f.order === undefined || f.order === null) {
-        f.order = fields.indexOf(f) + 1;
-      }
+        if (f.order === undefined || f.order === null) {
+          f.order = fields.indexOf(f) + 1;
+        }
 
-      // Validate regex pattern if provided
-      if (f.validation && f.validation.pattern) {
-        try {
-          new RegExp(f.validation.pattern);
-        } catch (err) {
-          throw new AppError(`Invalid validation regex pattern in field ${fieldIdStr}: ${err.message}`, 400);
+        // Validate regex pattern if provided
+        if (f.validation && f.validation.pattern) {
+          try {
+            new RegExp(f.validation.pattern);
+          } catch (err) {
+            throw new AppError(`Invalid validation regex pattern in field ${fieldIdStr}: ${err.message}`, 400);
+          }
         }
       }
+    };
+
+    if (sections && Array.isArray(sections)) {
+      for (const sec of sections) {
+        if (sec.fields && Array.isArray(sec.fields)) {
+          validateFieldArray(sec.fields);
+        }
+      }
+    } else if (legacyFields && Array.isArray(legacyFields)) {
+      validateFieldArray(legacyFields);
     }
   }
 
   async createTemplate(data) {
-    const { key, entity, fields } = data;
+    const { key, entity, sections, fields } = data;
 
     const exists = await TemplateRepository.findOne({ key });
     if (exists) throw new AppError(`Template with key '${key}' already exists.`, 409);
 
-    this.validateTemplateFields(fields);
+    this.validateTemplateFields(sections || fields);
 
     return TemplateRepository.create({
       ...data,
@@ -185,8 +200,8 @@ class MetadataService {
     const template = await TemplateRepository.findById(id);
     if (!template) throw new AppError('Template not found', 404);
 
-    if (data.fields) {
-      this.validateTemplateFields(data.fields);
+    if (data.sections || data.fields) {
+      this.validateTemplateFields(data.sections || data.fields);
     }
 
     const updated = await TemplateRepository.updateById(id, data);
@@ -200,7 +215,9 @@ class MetadataService {
     if (template.status === 'archived') {
       throw new AppError('Cannot publish an archived template. Restore it first.', 400);
     }
-    if (template.fields.length === 0) {
+    const hasFields = (template.sections && template.sections.some(s => s.fields && s.fields.length > 0)) ||
+                      (template.fields && template.fields.length > 0);
+    if (!hasFields) {
       throw new AppError('Cannot publish a template with no fields defined.', 400);
     }
 
@@ -253,37 +270,64 @@ class MetadataService {
     const template = await TemplateRepository.findOne(query);
     if (!template) throw new AppError('Template not found', 404);
 
-    const formFields = template.fields
-      .map(tField => {
-        const fieldDef = tField.fieldId;
-        if (!fieldDef || fieldDef.status === 'archived') return null;
+    const mapField = (tField) => {
+      const fieldDef = tField.fieldId;
+      if (!fieldDef || fieldDef.status === 'archived') return null;
 
-        return {
-          fieldId: fieldDef._id,
-          key: fieldDef.key,
-          label: fieldDef.label,
-          type: fieldDef.type,
-          options: fieldDef.options || [],
-          lookup: fieldDef.lookup || null,
-          required: tField.required || false,
-          unique: tField.unique || false,
-          readOnly: tField.readOnly || false,
-          hidden: tField.hidden || false,
-          width: tField.width || 12,
-          placeholder: tField.placeholder || '',
-          helperText: tField.helperText || '',
-          defaultValue: tField.defaultValue !== undefined ? tField.defaultValue : null,
-          validation: tField.validation || {}
-        };
-      })
-      .filter(Boolean);
+      return {
+        fieldId: fieldDef._id,
+        key: fieldDef.key,
+        label: fieldDef.label,
+        type: fieldDef.type,
+        options: fieldDef.options || [],
+        lookup: fieldDef.lookup || null,
+        required: tField.required || false,
+        unique: tField.unique || false,
+        readOnly: tField.readOnly || false,
+        hidden: tField.hidden || false,
+        width: tField.width || 12,
+        placeholder: tField.placeholder || '',
+        helperText: tField.helperText || '',
+        defaultValue: tField.defaultValue !== undefined ? tField.defaultValue : null,
+        validation: tField.validation || {}
+      };
+    };
+
+    // If template has sections defined, map them
+    let formSections = [];
+    if (template.sections && template.sections.length > 0) {
+      formSections = template.sections.map(sec => ({
+        _id: sec._id,
+        label: sec.label || '',
+        description: sec.description || '',
+        icon: sec.icon || '',
+        order: sec.order || 1,
+        collapsible: sec.collapsible || false,
+        collapsedByDefault: sec.collapsedByDefault || false,
+        fields: (sec.fields || []).map(mapField).filter(Boolean)
+      })).sort((a, b) => a.order - b.order);
+    } else {
+      // Backward compatibility: create a single section wrapper around legacy flat fields
+      const formFields = (template.fields || []).map(mapField).filter(Boolean);
+      formSections = [{
+        label: '',
+        description: '',
+        icon: '',
+        order: 1,
+        collapsible: false,
+        collapsedByDefault: false,
+        fields: formFields
+      }];
+    }
 
     return {
       template: {
         id: template._id,
-        label: template.label
+        label: template.label,
+        purpose: template.purpose,
+        key: template.key
       },
-      fields: formFields
+      sections: formSections
     };
   }
 

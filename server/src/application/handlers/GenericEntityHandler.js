@@ -2,8 +2,6 @@ const mongoose = require('mongoose');
 
 class GenericEntityHandler {
   async handle(schoolId, mappedModels, payload, template, entity) {
-    console.log(`[GenericEntityHandler] Saving generic entity models for '${entity.key}'`);
-
     const results = {};
 
     for (const [modelName, modelData] of Object.entries(mappedModels)) {

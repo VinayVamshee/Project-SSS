@@ -1,56 +1,77 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import DynamicField from './DynamicField';
 import './DynamicForm.css';
 
 /**
- * DynamicForm — The single reusable form engine for the entire application.
+ * DynamicForm — Universal metadata-driven form engine.
  *
- * Props:
- *   template      – The template object from getTemplateForm API
- *                    { template: { key, label }, fields: [...] }
- *   mode          – "preview" | "create" | "edit" | "readonly"
- *   initialValues – Pre-populated field values (for edit mode)
- *   onSubmit      – Callback receiving the form payload on submit
- *   submitLabel   – Custom submit button text (optional)
- *   className     – Additional CSS class for the form wrapper (optional)
+ * Supports modes:
+ *   - "create":   Editable inputs, uses default values as initial state
+ *   - "edit":     Editable inputs, pre-populated with active values
+ *   - "view":     Display-only fields (clean text/labels, no active text boxes)
+ *   - "readonly": Display-only fields (same clean presentation style)
+ *   - "preview":  Editable inputs with layout metadata previews
  */
 export default function DynamicForm({
   template,
-  mode = 'preview',
+  mode = 'create',
+  values = {},
   initialValues = {},
   onSubmit,
   onChange,
   submitLabel,
   className = ''
 }) {
-  const [formData, setFormData] = useState(() => {
-    // Merge initialValues with any defaultValue from field definitions
+  const isReadOnly = mode === 'readonly' || mode === 'view';
+  const templateRef = useRef(null);
+  const valuesRef = useRef(JSON.stringify(values));
+  const initValuesRef = useRef(JSON.stringify(initialValues));
+
+  // Compute merged initial form state
+  const getInitialData = useCallback((tmpl, init, vals) => {
+    const mergedValues = { ...init, ...vals };
     const defaults = {};
-    if (template?.fields) {
-      template.fields.forEach(f => {
-        if (f.defaultValue !== undefined && f.defaultValue !== '') {
+
+    if (tmpl?.sections) {
+      tmpl.sections.forEach(sec => {
+        (sec.fields || []).forEach(f => {
+          if (f.defaultValue !== undefined && f.defaultValue !== null && f.defaultValue !== '') {
+            defaults[f.key] = f.defaultValue;
+          }
+        });
+      });
+    } else if (tmpl?.fields) {
+      // Legacy fallback
+      tmpl.fields.forEach(f => {
+        if (f.defaultValue !== undefined && f.defaultValue !== null && f.defaultValue !== '') {
           defaults[f.key] = f.defaultValue;
         }
       });
     }
-    return { ...defaults, ...initialValues };
-  });
 
-  // Reset form when template changes
+    return { ...defaults, ...mergedValues };
+  }, []);
+
+  const [formData, setFormData] = useState(() => getInitialData(template, initialValues, values));
+
+  // Sync form data only when template identity or values content actually changes.
+  // Using refs + JSON comparison prevents infinite loops from unstable object references
+  // (e.g. parent passing values={} inline creates a new reference every render).
   useEffect(() => {
-    const defaults = {};
-    if (template?.fields) {
-      template.fields.forEach(f => {
-        if (f.defaultValue !== undefined && f.defaultValue !== '') {
-          defaults[f.key] = f.defaultValue;
-        }
-      });
-    }
-    setFormData({ ...defaults, ...initialValues });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [template]);
+    const stringifiedValues = JSON.stringify(values);
+    const stringifiedInitValues = JSON.stringify(initialValues);
+    const templateChanged = template !== templateRef.current;
+    const valuesChanged = stringifiedValues !== valuesRef.current;
+    const initValuesChanged = stringifiedInitValues !== initValuesRef.current;
 
-  const isReadOnly = mode === 'readonly';
+    if (templateChanged || valuesChanged || initValuesChanged) {
+      templateRef.current = template;
+      valuesRef.current = stringifiedValues;
+      initValuesRef.current = stringifiedInitValues;
+      setFormData(getInitialData(template, initialValues, values));
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [template, values, initialValues]);
 
   const handleFieldChange = useCallback((key, value) => {
     setFormData(prev => {
@@ -67,13 +88,29 @@ export default function DynamicForm({
     }
   };
 
-  if (!template || !template.fields) {
+  if (!template) {
     return null;
   }
 
-  const fields = template.fields;
+  // Normalize structure: wrap fields in a single unnamed section if sections array is missing
+  let sections = [];
+  if (template.sections && template.sections.length > 0) {
+    sections = template.sections;
+  } else if (template.fields && template.fields.length > 0) {
+    sections = [{
+      label: '',
+      description: '',
+      icon: '',
+      order: 1,
+      fields: template.fields
+    }];
+  }
 
-  // Derive submit button label
+  if (sections.length === 0) {
+    return null;
+  }
+
+  // Submit button label
   const btnLabel = submitLabel
     || (mode === 'preview' ? 'Test Submit Form'
       : mode === 'create' ? 'Create'
@@ -82,37 +119,61 @@ export default function DynamicForm({
 
   return (
     <form
-      className={`dynamic-form ${className}`}
+      className={`dynamic-form df-${mode} ${className}`}
       onSubmit={handleSubmit}
       noValidate
     >
-      <div className="row g-3">
-        {fields.map(field => {
-          // Skip hidden fields in readonly mode display
-          if (field.hidden && mode !== 'preview') return null;
+      <div className="df-sections-container d-flex flex-column gap-4">
+        {sections.map((section, sIdx) => {
+          const visibleFields = (section.fields || []).filter(f => {
+            // Show hidden fields only in preview mode
+            return !f.hidden || mode === 'preview';
+          });
+
+          if (visibleFields.length === 0) return null;
 
           return (
-            <div
-              key={field.fieldId || field.key}
-              className={`col-${field.width || 12} dynamic-form__field-wrapper`}
-              style={field.hidden ? { display: 'none' } : undefined}
-            >
-              <DynamicField
-                field={field}
-                value={formData[field.key]}
-                onChange={handleFieldChange}
-                readOnly={isReadOnly || field.readonly}
-                mode={mode}
-              />
+            <div key={section._id || sIdx} className="df-section-card p-4 rounded border shadow-sm">
+              {section.label && (
+                <div className="df-section-header mb-4 pb-2 border-bottom d-flex align-items-center justify-content-between">
+                  <div>
+                    <h5 className="df-section-title fw-bold mb-1 d-flex align-items-center gap-2">
+                      {section.icon && <i className={`fas ${section.icon} text-primary`}></i>}
+                      {section.label}
+                    </h5>
+                    {section.description && (
+                      <p className="df-section-description text-muted small mb-0">{section.description}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              <div className="row g-4">
+                {visibleFields.map(field => (
+                  <div
+                    key={field.fieldId || field.key}
+                    className={`col-${field.width || 12} dynamic-form__field-wrapper`}
+                    style={field.hidden ? { display: 'none' } : undefined}
+                  >
+                    <DynamicField
+                      field={field}
+                      value={formData[field.key]}
+                      onChange={handleFieldChange}
+                      readOnly={isReadOnly || field.readOnly}
+                      mode={mode}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {/* Submit button — hidden in readonly mode */}
+      {/* Action buttons (hidden in read-only / view modes) */}
       {!isReadOnly && (
-        <div className="col-12 pt-3">
-          <button type="submit" className="df-submit-btn">
+        <div className="col-12 pt-4 text-end">
+          <button type="submit" className="df-submit-btn px-4 py-2 fw-bold text-white border-0 rounded">
             {btnLabel}
           </button>
         </div>

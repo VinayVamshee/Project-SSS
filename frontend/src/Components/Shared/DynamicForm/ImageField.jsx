@@ -59,9 +59,12 @@ export default function ImageField({ fieldKey, value, onChange, required, readOn
         )}
       </label>
       {value && !uploading && (
-        <div className="df-file-name mt-2 small text-muted text-truncate" style={{ maxWidth: '100%' }}>
-          <i className="fa-solid fa-link me-1"></i>
-          <a href={value} target="_blank" rel="noopener noreferrer" className="text-info">{value}</a>
+        <div className="df-image-edit-preview mt-2 mb-2">
+          <img src={value} alt="Preview" className="img-thumbnail" style={{ maxWidth: '120px', maxHeight: '120px', objectFit: 'cover', display: 'block' }} />
+          <div className="df-file-name mt-1 small text-muted text-truncate" style={{ maxWidth: '100%' }}>
+            <i className="fa-solid fa-link me-1"></i>
+            <a href={value} target="_blank" rel="noopener noreferrer" className="text-info">{value}</a>
+          </div>
         </div>
       )}
     </div>

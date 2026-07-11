@@ -1,6 +1,6 @@
 const TransactionTemplate = require('../../domain/models/TransactionTemplate');
-const AppError = require('../../core/error/AppError');
-const { sendSuccess } = require('../../core/error/apiResponse');
+const AppError = require('../../core/errors/AppError');
+const { sendSuccess } = require('../../core/errors/apiResponse');
 
 const getAll = async (req, res, next) => {
   try {
