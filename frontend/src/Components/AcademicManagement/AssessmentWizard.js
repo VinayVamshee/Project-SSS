@@ -178,14 +178,11 @@ export default function AssessmentWizard() {
   const handleDeleteAssessment = async (id) => {
     if (!window.confirm('Delete this assessment configuration? This cannot be undone.')) return;
     try {
-      setLoading(true);
       await api.delete(`/api/assessments/config/${id}`);
       setFeedback({ type: 'success', text: 'Assessment configuration deleted.' });
       loadClassAssessments();
     } catch (err) {
       setFeedback({ type: 'danger', text: err.response?.data?.message || 'Failed to delete configuration.' });
-    } finally {
-      setLoading(false);
     }
   };
 
