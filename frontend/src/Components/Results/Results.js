@@ -1,389 +1,468 @@
 import React, { useEffect, useState } from "react";
-import axios from "axios";
 import boy from "../Images/bussiness-man.png";
-import { generatePDF } from "../ReportCard/ReportCard";
-
 import { useNavigate } from "react-router-dom";
+import api from "../../API";
 import './Results.css';
 
-
 export default function Results() {
-
     const navigate = useNavigate();
+    
+    // Auth Check
     useEffect(() => {
         const token = localStorage.getItem('token');
         if (!token) {
             navigate('/login');
         }
-    }, [navigate]);    
+    }, [navigate]);
 
-    const [students, setStudents] = useState([]);
-    const [selectedYear, setSelectedYear] = useState("");
+    // Core State Variables
     const [academicYears, setAcademicYears] = useState([]);
     const [classes, setClasses] = useState([]);
+    const [selectedYear, setSelectedYear] = useState("");
     const [selectedClass, setSelectedClass] = useState("");
+    
+    // Loaded Assessments / Configurations
+    const [assessments, setAssessments] = useState([]);
+    const [selectedAssessmentId, setSelectedAssessmentId] = useState("");
+    
+    // Selected Assessment Mapped Subjects
+    const [subjects, setSubjects] = useState([]);
+    const [selectedSubjectId, setSelectedSubjectId] = useState("");
+    
+    // Marks Entry Table Data
+    const [students, setStudents] = useState([]);
+    const [marksData, setMarksData] = useState({}); // { [studentId]: { obtainedMarks: Number, attendanceStatus: 'present'/'absent', remarks: '' } }
     const [searchStudent, setSearchStudent] = useState("");
+    const [isSaving, setIsSaving] = useState(false);
+    const [configLoading, setConfigLoading] = useState(false);
+    const [configError, setConfigError] = useState("");
 
+    // Active Subject Metrics
+    const [subjectMetrics, setSubjectMetrics] = useState({ maxMarks: 100, passingMarks: 35, chapters: [] });
+
+    // Dynamic Template Fields
+    const [templateFields, setTemplateFields] = useState([]);
+
+    // 1. Initial Fetch of Academic Sessions, Classes & Marks Template
     useEffect(() => {
-        const fetchData = async () => {
+        const fetchInitialData = async () => {
             try {
-                const studentResponse = await axios.get("http://localhost:3001/getStudent");
-                setStudents(studentResponse.data.students || []);
-
-                const yearResponse = await axios.get("http://localhost:3001/GetAcademicYear");
+                const yearResponse = await api.get("/GetAcademicYear");
                 const sortedYears = (yearResponse.data.data || []).sort((a, b) =>
-                    parseInt(b.year.split("-")[0]) - parseInt(a.year.split("-")[0])
-                );
-
-                setAcademicYears(sortedYears);
-                if (sortedYears.length > 0) {
-                    setSelectedYear(sortedYears[0].year);
-                }
-
-                const classResponse = await axios.get("http://localhost:3001/getClasses");
-                const sortedClasses = classResponse.data.classes.sort((a, b) => Number(a.class) - Number(b.class));
-                setClasses(sortedClasses || []);
-
-
-            } catch (error) {
-                console.error("Error fetching data:", error);
-            }
-        };
-
-        fetchData();
-    }, []);
-
-    const filteredStudents = students
-        .filter((student) =>
-            (
-                (selectedYear === "" && selectedClass === "") ||
-                student.academicYears.some((year) =>
-                    (selectedYear === "" || year.academicYear === selectedYear) &&
-                    (selectedClass === "" || String(year.class) === String(selectedClass))
-                )
-            ) &&
-            (searchStudent === "" || student.name.toLowerCase().includes(searchStudent.toLowerCase()))
-        )
-        .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || ""));
-
-    const [StudentMarks, setStudentMarks] = useState(null);
-    const [marksView, setMarksView] = useState(null);
-
-    useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const studentResponse = await axios.get("http://localhost:3001/getStudent");
-                setStudents(studentResponse.data.students || []);
-
-                const yearResponse = await axios.get("http://localhost:3001/GetAcademicYear");
-                const sortedYears = (yearResponse.data.data || []).sort((a, b) =>
-                    parseInt(b.year.split("-")[0]) - parseInt(a.year.split("-")[0])
+                    parseInt(b.year?.split("-")[0] || b.name?.split("-")[0]) - 
+                    parseInt(a.year?.split("-")[0] || a.name?.split("-")[0])
                 );
                 setAcademicYears(sortedYears);
                 if (sortedYears.length > 0) {
-                    setSelectedYear(sortedYears[0].year);
+                    setSelectedYear(sortedYears[0]._id || sortedYears[0].name);
                 }
 
-                const classResponse = await axios.get("http://localhost:3001/getClasses");
-                const sortedClasses = classResponse.data.classes.sort((a, b) => Number(a.class) - Number(b.class));
-                setClasses(sortedClasses || []);
+                const classResponse = await api.get("/getClasses");
+                const sortedClasses = (classResponse.data.classes || []).sort((a, b) => Number(a.class) - Number(b.class));
+                setClasses(sortedClasses);
 
-            } catch (error) {
-                console.error("Error fetching data:", error);
+                // Fetch student marks template
+                const templateRes = await api.get('/api/metadata/templates/student_marks_entry_template/form');
+                if (templateRes.data.success && templateRes.data.data) {
+                    setTemplateFields(templateRes.data.data.sections?.[0]?.fields || []);
+                }
+            } catch (err) {
+                console.error("Error loading settings metadata:", err);
             }
         };
-
-        fetchData();
+        fetchInitialData();
     }, []);
 
-    const [examsData, setExamsData] = useState([]);
-
-    const fetchExamsData = async () => {
-        try {
-            const response = await axios.get('http://localhost:3001/getExams');
-            const sortedExams = response.data.exams.sort((a, b) => parseInt(a.class) - parseInt(b.class));
-            setExamsData(sortedExams || []);
-
-            const responseData = await axios.get("http://localhost:3001/classsubjectlinks");
-            setClassSubjectsData(responseData.data.data || []);
-        } catch (error) {
-            console.error('Error fetching exams data:', error);
-        }
-    };
+    // 2. Load Assessment Configurations when Class or Year changes
     useEffect(() => {
-        fetchExamsData();
-    }, []);
+        if (!selectedYear || !selectedClass) return;
 
-    const [classSubjectsData, setClassSubjectsData] = useState([]);
+        const loadConfigs = async () => {
+            try {
+                setConfigLoading(true);
+                setConfigError("");
+                
+                const res = await api.get('/api/assessments/config', {
+                    params: { academicYearId: selectedYear, classId: selectedClass }
+                });
+                
+                const list = res.data.data || [];
+                setAssessments(list);
+                setSubjects([]);
+                setSelectedAssessmentId("");
+                setSelectedSubjectId("");
+                
+                if (list.length === 0) {
+                    setConfigError("no_exams");
+                } else {
+                    setSelectedAssessmentId(list[0]._id);
+                }
+            } catch (err) {
+                console.error(err);
+                setConfigError("fetch_failed");
+            } finally {
+                setConfigLoading(false);
+            }
+        };
+        loadConfigs();
+    }, [selectedYear, selectedClass]);
 
-
-    const handleViewMarks = async (student) => {
-        setMarksView(student);
-        try {
-            const response = await axios.get(`http://localhost:3001/get-marks`, {
-                params: { studentId: student._id, academicYear: selectedYear }
-            });
-
-            if (response.data.studentMarks) {
-                setStudentMarks(response.data.studentMarks.marks);
+    // 3. Resolve Subjects linked on selected Assessment Config
+    useEffect(() => {
+        if (!selectedAssessmentId) return;
+        const currentAss = assessments.find(a => a._id === selectedAssessmentId);
+        if (currentAss && Array.isArray(currentAss.subjects)) {
+            const mappedSubs = currentAss.subjects.map(s => ({
+                _id: s.subjectId?._id || s.subjectId,
+                name: s.subjectId?.name || 'Subject name unknown',
+                maximumMarks: s.maximumMarks,
+                passingMarks: s.passingMarks,
+                chapters: s.chapters || []
+            }));
+            setSubjects(mappedSubs);
+            if (mappedSubs.length > 0) {
+                setSelectedSubjectId(mappedSubs[0]._id);
             } else {
-                setStudentMarks(null);
+                setSelectedSubjectId("");
+                setStudents([]);
             }
-        } catch (err) {
-            console.error("Error fetching marks:", err);
         }
-    };
+    }, [selectedAssessmentId, assessments]);
 
-    const [examsForMarksView, setExamsForMarksView] = useState(null);
-    const [subjectsForMarksView, setSubjectsForMarksView] = useState([]);
+    // 4. Load Students and Marks Registry when Subject changes
+    useEffect(() => {
+        if (!selectedAssessmentId || !selectedSubjectId || !selectedClass) return;
 
-
-    const handleAddMarksClick = (student) => {
-        setMarksView(student);
-
-        const studentAcademicYear = student.academicYears?.find(yr => yr.academicYear === selectedYear);
-        if (!studentAcademicYear) return;
-
-        const studentClass = studentAcademicYear.class;
-
-        const classExams = examsData.find(exam => exam.class === studentClass);
-        setExamsForMarksView(classExams || { examNames: [] });
-
-        const classSubjects = classSubjectsData.find(entry => entry.className === studentClass);
-        setSubjectsForMarksView(classSubjects?.subjectNames || []);
-    };
-
-    const handleMarksSubmit = (event) => {
-        event.preventDefault();
-
-        const formElements = event.target.elements;
-        let marksData = {};
-
-        // Loop through subjects
-        subjectsForMarksView.forEach((subject) => {
-            marksData[subject] = {};
-
-            // Loop through exams
-            examsForMarksView.examNames.forEach((examName) => {
-                const inputName = `marks-${subject}-${examName}`;
-                const marks = formElements[inputName]?.value;
-
-                if (marks) {
-                    marksData[subject][examName] = parseInt(marks, 10);
-                }
+        const subObj = subjects.find(s => s._id === selectedSubjectId);
+        if (subObj) {
+            setSubjectMetrics({
+                maxMarks: subObj.maximumMarks || 100,
+                passingMarks: subObj.passingMarks || 35,
+                chapters: subObj.chapters || []
             });
-        });
-
-        const studentClass = marksView.academicYears.find(year => year.academicYear === selectedYear)?.class;
-        if (!studentClass) {
-            console.error("Student class not found!");
-            return;
         }
 
-        const marksInfo = {
-            studentId: marksView._id,
-            name: marksView.name,
-            class: studentClass,
-            academicYear: selectedYear,
-            marks: marksData,
+        const fetchStudentsAndMarks = async () => {
+            try {
+                // Fetch Students registered
+                const studentsRes = await api.get("/getStudent");
+                const allStudents = studentsRes.data.students || [];
+                
+                const filteredStudents = allStudents.filter(s => {
+                    const matchesEnrollment = s.enrollments?.some(e => {
+                        const enrollmentYearId = e.academicYear?._id || e.academicYear;
+                        const enrollmentYearName = e.academicYear?.name || e.academicYear?.year || "";
+                        const yearMatch = (String(enrollmentYearId) === String(selectedYear)) || (enrollmentYearName === selectedYear);
+                        const classMatch = (String(e.classId) === String(selectedClass)) || (String(e.class) === String(selectedClass));
+                        return yearMatch && classMatch;
+                    });
+                    const matchesTopLevel = (String(s.academicYearId) === String(selectedYear)) && (String(s.enrollmentClass) === String(selectedClass));
+                    return matchesEnrollment || matchesTopLevel;
+                });
+                setStudents(filteredStudents);
+
+                // Fetch existing marks register
+                const marksRes = await api.get('/api/assessments/marks/register', {
+                    params: { assessmentConfigurationId: selectedAssessmentId, subjectId: selectedSubjectId }
+                });
+
+                const savedList = marksRes.data.data?.savedMarks || [];
+                const registryMap = {};
+
+                filteredStudents.forEach(st => {
+                    const savedRecord = savedList.find(m => m.studentId === st._id);
+                    registryMap[st._id] = {
+                        obtainedMarks: savedRecord ? savedRecord.obtainedMarks : "",
+                        attendanceStatus: savedRecord ? savedRecord.attendanceStatus || "present" : "present",
+                        remarks: savedRecord ? savedRecord.remarks || "" : ""
+                    };
+                });
+
+                setMarksData(registryMap);
+            } catch (err) {
+                console.error(err);
+            }
         };
 
-        submitMarksToDatabase(marksInfo);
+        fetchStudentsAndMarks();
+    }, [selectedAssessmentId, selectedSubjectId, selectedClass, selectedYear, subjects, academicYears]);
+
+    const handleInputChange = (studentId, field, value) => {
+        setMarksData(prev => ({
+            ...prev,
+            [studentId]: {
+                ...prev[studentId],
+                [field]: value
+            }
+        }));
     };
 
-    const submitMarksToDatabase = (marksInfo) => {
-        axios.post('http://localhost:3001/submit-marks', marksInfo)
-            .then(response => {
-                alert('Marks Added Successfully')
-                setMarksView(null);
-            })
-            .catch(error => {
-                console.error('Error submitting marks:', error.response?.data || error.message);
+    const handleSave = async (e) => {
+        e.preventDefault();
+        try {
+            setIsSaving(true);
+            const marksList = filteredStudents.map(st => {
+                const row = marksData[st._id] || { obtainedMarks: 0, attendanceStatus: 'present', remarks: '' };
+                return {
+                    studentId: st._id,
+                    obtainedMarks: row.attendanceStatus === 'absent' ? 0 : Number(row.obtainedMarks || 0),
+                    attendanceStatus: row.attendanceStatus,
+                    remarks: row.remarks
+                };
             });
+
+            await api.post('/api/assessments/marks/bulk-save', {
+                assessmentConfigurationId: selectedAssessmentId,
+                subjectId: selectedSubjectId,
+                marks: marksList
+            });
+
+            alert("✅ Marks saved successfully!");
+        } catch (err) {
+            alert("❌ Failed to save marks: " + err.message);
+        } finally {
+            setIsSaving(false);
+        }
     };
+
+    const filteredStudents = students.filter(st =>
+        searchStudent === "" || st.name.toLowerCase().includes(searchStudent.toLowerCase())
+    );
 
     return (
-        <div className='ResultsPage'>
-            <div className="SearchFilter">
-                <div className="yearFilter">
-                    <select className="form-select form-select-sm" value={selectedYear} onChange={(event) => setSelectedYear(event.target.value)}>
-                        <option value="">Select Academic Year</option>
-                        <option value="">All</option>
-                        {academicYears.length > 0 ? (
-                            academicYears.map((year, index) => (
-                                <option key={index} value={year.year}>
-                                    {year.year}
-                                </option>
-                            ))
-                        ) : (
-                            <option disabled>No Academic Years Available</option>
-                        )}
-                    </select>
-                </div>
+        <div className="ResultsPage p-4" style={{ backgroundColor: 'var(--background-color)', color: 'var(--text-color)', minHeight: '100vh' }}>
+            
+            {/* Guided Selection Panel */}
+            <div className="card p-3 mb-4" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--border-color)' }}>
+                <h5 className="fw-bold mb-3" style={{ color: 'var(--button-color)' }}>Guided Assessment Results Entry</h5>
+                
+                <div className="row g-3">
+                    <div className="col-md-3">
+                        <label className="text-muted small fw-bold">Academic Session</label>
+                        <select className="form-select bg-transparent text-white border-secondary" style={{ color: 'var(--text-color)', borderColor: 'var(--border-color)' }} value={selectedYear} onChange={(e) => setSelectedYear(e.target.value)}>
+                            <option value="" style={{color: '#000'}}>-- Select Session --</option>
+                            {academicYears.map((yr, idx) => (
+                                <option key={idx} value={yr._id} style={{color: '#000'}}>{yr.name || yr.year}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                <div className="classFilter">
-                    <select className="form-select form-select-sm" value={selectedClass} onChange={(event) => setSelectedClass(event.target.value)}>
-                        <option value="">Select Class</option>
-                        <option value="">All</option>
-                        {classes.length > 0 ? (
-                            classes.map((cls) => (
-                                <option key={cls._id} value={cls.class}>
-                                    {cls.class}
-                                </option>
-                            ))
-                        ) : (
-                            <option disabled>No Classes Available</option>
-                        )}
-                    </select>
-                </div>
+                    <div className="col-md-3">
+                        <label className="text-muted small fw-bold">Class / Grade</label>
+                        <select className="form-select bg-transparent text-white border-secondary" style={{ color: 'var(--text-color)', borderColor: 'var(--border-color)' }} value={selectedClass} onChange={(e) => setSelectedClass(e.target.value)}>
+                            <option value="" style={{color: '#000'}}>-- Select Class --</option>
+                            {classes.map(cls => (
+                                <option key={cls._id} value={cls._id} style={{color: '#000'}}>{cls.class}</option>
+                            ))}
+                        </select>
+                    </div>
 
-                <input type="text" placeholder="Search Student..." value={searchStudent} onChange={(e) => setSearchStudent(e.target.value)} className="SearchStudent" />
-                <button className="btn" type="button" data-bs-toggle="collapse" data-bs-target="#Subject-Class-Marks-Collapse" aria-expanded="false" aria-controls="Subject-Class-Marks-Collapse">
-                    Subject / Class / Marks
-                </button>
-            </div>
+                    <div className="col-md-3">
+                        <label className="text-muted small fw-bold">Active Assessment</label>
+                        <select className="form-select bg-transparent text-white border-secondary" style={{ color: 'var(--text-color)', borderColor: 'var(--border-color)' }} value={selectedAssessmentId} onChange={(e) => setSelectedAssessmentId(e.target.value)}>
+                            <option value="" style={{color: '#000'}}>-- Select Assessment --</option>
+                            {assessments.map(ass => (
+                                <option key={ass._id} value={ass._id} style={{color: '#000'}}>{ass.assessmentName}</option>
+                            ))}
+                        </select>
+                    </div>
 
-            <div className="collapse" id="Subject-Class-Marks-Collapse">
-                <div className="card card-body">
-                    Some placeholder content for the collapse component. This panel is hidden by default but revealed when the user activates the relevant trigger.
-                </div>
-            </div>
-
-            <div className="Results">
-                {
-                    filteredStudents.map((element, idx) => {
-                        const studentClass = element.academicYears.find(
-                            (year) => year.academicYear === selectedYear)?.class || "N/A";
-
-                        return (
-                            <div>
-                                <div className="Result" key={idx} style={{ animationDelay: `${idx * 0.15}s` }}>
-                                    <div className="Name">
-                                        <img src={element.image || boy} alt="..." />
-                                        <strong>{element.name}</strong>
-                                    </div>
-                                    <div className="class">
-                                        <strong>Class:</strong> {studentClass}
-                                    </div>
-                                    <button type="button" className="btn btn-paymentHistory dropdown-toggle" data-bs-toggle="collapse" data-bs-target={`#ViewMarksCollapse-${element._id}`} aria-expanded="false" aria-controls={`ViewMarksCollapse-${element._id}`} onClick={() => handleViewMarks(element)}>
-                                        <i className="fa-solid fa-sheet-plastic fa-lg me-2"></i>View Marks
-                                    </button>
-                                    <button type="button" className="btn btn-paymentHistory" data-bs-toggle="modal" data-bs-target="#AddMarksModal" onClick={() => handleAddMarksClick(element)}><i className="fa-solid fa-pen-to-square fa-lg me-2"></i>Add/Edit Marks</button>
-                                    <button type="button" className="btn btn-outline-success" onClick={() => {
-                                            const studentClass = element.academicYears.find(year => year.academicYear === selectedYear)?.class || "N/A";
-                                            const marksInfo = {
-                                                studentId: element._id,
-                                                name: element.name,
-                                                class: studentClass,
-                                                academicYear: selectedYear,
-                                                marks: StudentMarks || {},
-                                            };
-                                            generatePDF(marksInfo);
-                                        }}>
-                                        <i className="fa-solid fa-file-pdf fa-lg me-2"></i>Download Report Card
-                                    </button>
-
-                                </div>
-
-                                <div className="collapse my-2" id={`ViewMarksCollapse-${element._id}`}>
-                                    <div className="card card-body">
-                                        {marksView?._id === element._id && StudentMarks ? (
-                                            <table className="table table-bordered text-center">
-                                                <thead className="table-dark">
-                                                    <tr>
-                                                        <th>Subject</th>
-                                                        {/* Extract unique exam names dynamically */}
-                                                        {Object.keys(StudentMarks).length > 0 &&
-                                                            [...new Set(Object.values(StudentMarks).flatMap(m => Object.keys(m)))].map((exam, examIndex) => (
-                                                                <th key={examIndex}>{exam}</th>
-                                                            ))}
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {Object.keys(StudentMarks).map((subject, subIndex) => (
-                                                        <tr key={subIndex}>
-                                                            <td><strong>{subject}</strong></td>
-                                                            {/* Display marks for each exam */}
-                                                            {[...new Set(Object.values(StudentMarks).flatMap(m => Object.keys(m)))].map((exam, examIndex) => (
-                                                                <td key={examIndex}>
-                                                                    {StudentMarks[subject]?.[exam] !== undefined ? StudentMarks[subject][exam] : '-'}
-                                                                </td>
-                                                            ))}
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        ) : (
-                                            <p className="text-center">No marks available for this academic year.</p>
-                                        )}
-                                    </div>
-                                </div>
-
-                            </div>
-
-                        )
-
-                    })
-                }
-            </div>
-
-            <div className="modal fade" id="AddMarksModal" tabIndex="-1" aria-labelledby="AddMarksModalLabel" aria-hidden="true">
-                <div className="modal-dialog modal-lg">
-                    <div className="modal-content">
-                        <div className="modal-header">
-                            <h5 className="modal-title" id="AddMarksModalLabel">
-                                Add/Edit Marks for {marksView?.name || "Student"}
-                            </h5>
-                            <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                        </div>
-                        <div className="modal-body">
-                            {marksView ? (
-                                subjectsForMarksView.length > 0 ? (
-                                    <form onSubmit={handleMarksSubmit}>
-                                        <table className="table table-bordered">
-                                            <thead>
-                                                <tr>
-                                                    <th>Subject</th>
-                                                    {examsForMarksView?.examNames?.map((examName, examIndex) => (
-                                                        <th key={examIndex}>{examName}</th>
-                                                    ))}
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {subjectsForMarksView.map((subject, subIndex) => (
-                                                    <tr key={subIndex}>
-                                                        <td><strong>{subject}</strong></td>
-                                                        {examsForMarksView?.examNames?.map((examName, examIndex) => (
-                                                            <td key={examIndex}>
-                                                                <input
-                                                                    type="number"
-                                                                    id={`marks-${subject}-${examName}`}
-                                                                    className="form-control"
-                                                                    placeholder={`Marks for ${examName}`}
-                                                                    min="0"
-                                                                />
-                                                            </td>
-                                                        ))}
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                        <button type="submit" className="btn btn-success">Save Marks</button>
-                                    </form>
-                                ) : (
-                                    <p>No subjects available for this class. <br /><strong>Select Academic Year.</strong></p>
-                                )
-                            ) : (
-                                <p>Select a student to add/edit marks.</p>
-                            )}
-                        </div>
-                        <div className="modal-footer">
-                            <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                        </div>
+                    <div className="col-md-3">
+                        <label className="text-muted small fw-bold">Subject Selection</label>
+                        <select className="form-select bg-transparent text-white border-secondary" style={{ color: 'var(--text-color)', borderColor: 'var(--border-color)' }} value={selectedSubjectId} onChange={(e) => setSelectedSubjectId(e.target.value)}>
+                            <option value="" style={{color: '#000'}}>-- Select Subject --</option>
+                            {subjects.map(sub => (
+                                <option key={sub._id} value={sub._id} style={{color: '#000'}}>{sub.name}</option>
+                            ))}
+                        </select>
                     </div>
                 </div>
             </div>
 
-        </div >
-    )
+            {/* Error / Validation Warnings */}
+            {configError === "no_exams" && (
+                <div className="alert alert-warning">
+                    No assessments configured for this class. <br />
+                    Please configure assessments in <strong>Settings → Academics Setup → Assessment Configuration</strong>.
+                </div>
+            )}
+
+            {/* Guided Content Layout */}
+            {!configError && selectedYear && selectedClass && selectedAssessmentId && selectedSubjectId && !configLoading && (
+                <div className="card p-4" style={{ backgroundColor: 'var(--card-bg-color)', borderColor: 'var(--border-color)' }}>
+                    
+                    {/* Subject Metadata Card */}
+                    <div className="d-flex flex-wrap justify-content-between align-items-center mb-4 p-3 border rounded" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--background-color)' }}>
+                        <div>
+                            <h6 className="fw-bold m-0" style={{ color: 'var(--button-color)' }}>Syllabus Coverage Chapters</h6>
+                            <p className="text-muted small m-0 mt-1">
+                                {subjectMetrics.chapters.length > 0 ? subjectMetrics.chapters.join(', ') : 'No chapters configured'}
+                            </p>
+                        </div>
+                        <div className="d-flex gap-3">
+                            <span className="badge bg-secondary p-2">Max Marks: {subjectMetrics.maxMarks}</span>
+                            <span className="badge bg-primary p-2">Passing Marks: {subjectMetrics.passingMarks}</span>
+                        </div>
+                    </div>
+
+                    <div className="d-flex justify-content-between align-items-center mb-3">
+                        <h5 className="fw-bold m-0" style={{ color: 'var(--button-color)' }}>Student Assessment Marks Grid</h5>
+                        <input 
+                            type="text" 
+                            className="form-control w-25 bg-transparent border-secondary" 
+                            style={{ color: 'var(--text-color)', borderColor: 'var(--border-color)' }}
+                            placeholder="Search Student..." 
+                            value={searchStudent} 
+                            onChange={(e) => setSearchStudent(e.target.value)} 
+                        />
+                    </div>
+
+                    {/* Interactive Marks Table */}
+                    <form onSubmit={handleSave}>
+                        <div className="table-responsive">
+                          <table className="table table-bordered table-striped text-center align-middle" style={{ color: 'var(--text-color)', borderColor: 'var(--border-color)' }}>
+                            <thead style={{ backgroundColor: 'var(--table-header-bg)' }}>
+                              <tr>
+                                <th>Student Details</th>
+                                {templateFields.length > 0 ? (
+                                  templateFields.map(f => (
+                                    <th key={f.fieldId?._id || f.key || f.fieldId}>
+                                      {f.label || f.fieldId?.label} {f.key === 'obtained_marks' || f.fieldId?.key === 'obtained_marks' ? `(Out of ${subjectMetrics.maxMarks})` : ''}
+                                    </th>
+                                  ))
+                                ) : (
+                                  <>
+                                    <th>Obtained Score (Out of {subjectMetrics.maxMarks})</th>
+                                    <th>Attendance Status</th>
+                                    <th>Remarks</th>
+                                  </>
+                                )}
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {filteredStudents.map(st => {
+                                const row = marksData[st._id] || { obtainedMarks: "", attendanceStatus: "present", remarks: "" };
+                                return (
+                                  <tr key={st._id}>
+                                    <td className="text-start">
+                                      <div className="d-flex align-items-center gap-2">
+                                        <img src={st.image || boy} alt="avatar" style={{ width: '32px', height: '32px', borderRadius: '50%' }} />
+                                        <div>
+                                          <div className="fw-bold">{st.name}</div>
+                                          <small className="text-muted">Roll: {st.studentCode || st.AdmissionNo || 'N/A'}</small>
+                                        </div>
+                                      </div>
+                                    </td>
+                                    
+                                    {templateFields.length > 0 ? (
+                                      templateFields.map(f => {
+                                        const key = f.key || f.fieldId?.key;
+                                        const options = f.options || f.fieldId?.options || [];
+
+                                        if (key === 'obtained_marks') {
+                                          return (
+                                            <td key={f.fieldId?._id || key || f.fieldId}>
+                                              <input 
+                                                type="number"
+                                                className="form-control form-control-sm text-center mx-auto"
+                                                style={{ width: '120px', backgroundColor: 'var(--background-color)', color: 'var(--text-color)', borderColor: 'var(--border-color)' }}
+                                                value={row.obtainedMarks}
+                                                disabled={row.attendanceStatus === 'absent'}
+                                                max={subjectMetrics.maxMarks}
+                                                placeholder={`Max ${subjectMetrics.maxMarks}`}
+                                                onChange={(e) => handleInputChange(st._id, 'obtainedMarks', e.target.value)}
+                                                required={row.attendanceStatus !== 'absent'}
+                                              />
+                                            </td>
+                                          );
+                                        }
+                                        if (key === 'attendance_status') {
+                                          return (
+                                            <td key={f.fieldId?._id || key || f.fieldId}>
+                                              <select 
+                                                className="form-select form-select-sm mx-auto" 
+                                                style={{ width: '120px', backgroundColor: 'var(--background-color)', color: 'var(--text-color)', borderColor: 'var(--border-color)' }}
+                                                value={row.attendanceStatus} 
+                                                onChange={(e) => handleInputChange(st._id, 'attendanceStatus', e.target.value)}
+                                              >
+                                                {options.map(opt => (
+                                                  <option key={opt.value} value={opt.value} style={{color: '#000'}}>{opt.label}</option>
+                                                ))}
+                                              </select>
+                                            </td>
+                                          );
+                                        }
+                                        if (key === 'remarks') {
+                                          return (
+                                            <td key={f.fieldId?._id || key || f.fieldId}>
+                                              <input 
+                                                type="text" 
+                                                className="form-control form-control-sm" 
+                                                style={{ backgroundColor: 'var(--background-color)', color: 'var(--text-color)', borderColor: 'var(--border-color)' }}
+                                                value={row.remarks} 
+                                                placeholder="e.g. Good progress"
+                                                onChange={(e) => handleInputChange(st._id, 'remarks', e.target.value)}
+                                              />
+                                            </td>
+                                          );
+                                        }
+                                        return null;
+                                      })
+                                    ) : (
+                                      <>
+                                        <td>
+                                          <input 
+                                            type="number"
+                                            className="form-control form-control-sm text-center mx-auto"
+                                            style={{ width: '100px', backgroundColor: 'var(--background-color)', color: 'var(--text-color)', borderColor: 'var(--border-color)' }}
+                                            value={row.obtainedMarks}
+                                            disabled={row.attendanceStatus === 'absent'}
+                                            max={subjectMetrics.maxMarks}
+                                            placeholder={`Max ${subjectMetrics.maxMarks}`}
+                                            onChange={(e) => handleInputChange(st._id, 'obtainedMarks', e.target.value)}
+                                            required={row.attendanceStatus !== 'absent'}
+                                          />
+                                        </td>
+
+                                        <td>
+                                            <select 
+                                                className="form-select form-select-sm mx-auto" 
+                                                style={{ width: '120px', backgroundColor: 'var(--background-color)', color: 'var(--text-color)', borderColor: 'var(--border-color)' }}
+                                                value={row.attendanceStatus} 
+                                                onChange={(e) => handleInputChange(st._id, 'attendanceStatus', e.target.value)}
+                                            >
+                                                <option value="present" style={{color: '#000'}}>Present</option>
+                                                <option value="absent" style={{color: '#000'}}>Absent</option>
+                                            </select>
+                                        </td>
+
+                                        <td>
+                                            <input 
+                                                type="text" 
+                                                className="form-control form-control-sm" 
+                                                style={{ backgroundColor: 'var(--background-color)', color: 'var(--text-color)', borderColor: 'var(--border-color)' }}
+                                                value={row.remarks} 
+                                                placeholder="e.g. Good progress"
+                                                onChange={(e) => handleInputChange(st._id, 'remarks', e.target.value)}
+                                            />
+                                        </td>
+                                      </>
+                                    )}
+                                  </tr>
+                                );
+                              })}
+                            </tbody>
+                          </table>
+                        </div>
+                        
+                        <div className="d-flex justify-content-end mt-3">
+                            <button type="submit" className="btn fw-bold px-4" style={{ backgroundColor: 'var(--button-color)', color: '#fff' }} disabled={isSaving}>
+                                {isSaving ? "Saving Results..." : "Save All Results"}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
+        </div>
+    );
 }

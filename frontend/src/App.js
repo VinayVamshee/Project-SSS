@@ -8,6 +8,8 @@ import AddNewStudent from './Components/AddNewStudent/AddNewStudent';
 import Classes from './Components/Classes/Classes';
 import Payments from './Components/Payments/Payments';
 import Results from './Components/Results/Results';
+import AssessmentAnalytics from './Components/AssessmentAnalytics/AssessmentAnalytics';
+
 import Master from './Components/Master/Master';
 import Developer from './Components/Developer/Developer';
 import QuestionPaper from './Components/QuestionPaper/QuestionPaper';
@@ -75,6 +77,7 @@ function AppContent() {
             <Route path="/AddNewStudent" element={<AddNewStudent />} />
             <Route path="/Classes" element={<Classes />} />
             <Route path="/Results" element={<Results />} />
+            <Route path="/AssessmentAnalytics" element={<AssessmentAnalytics />} />
             <Route path="/Payments" element={<Payments />} />
             <Route path="/QuestionPaper" element={<QuestionPaper />} />
             <Route path="/Settings" element={<Master />} />

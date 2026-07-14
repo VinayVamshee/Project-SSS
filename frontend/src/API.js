@@ -301,5 +301,25 @@ export const getAllTemplates = () => api.get('/get-all-templates');
 export const saveQuestionTemplate = (payload) => api.post('/save-template', payload);
 export const deleteQuestionTemplate = (id) => api.delete(`/delete-template/${id}`);
 
+// ─── Assessment Engine API ───────────────────────────────────────────────────
+export const getAssessmentConfigs = (academicYearId, classId) => api.get('/api/assessments/config', { params: { academicYearId, classId } });
+export const saveAssessmentConfig = (payload) => api.post('/api/assessments/config', payload);
+export const deleteAssessmentConfig = (id) => api.delete(`/api/assessments/config/${id}`);
+
+export const copyPreviousYearPlan = (payload) => api.post('/api/assessments/config/copy-previous', payload);
+
+export const getMarksRegister = (assessmentConfigurationId, subjectId) => api.get('/api/assessments/marks/register', { params: { assessmentConfigurationId, subjectId } });
+export const bulkSaveMarks = (payload) => api.post('/api/assessments/marks/bulk-save', payload);
+
+export const getSubjectAnalyticsReport = (params) => api.get('/api/assessments/analytics/subject', { params });
+
+// ─── Assessment Analytics Module API ──────────────────────────────────────────
+export const getAnalyticsDashboard = (params) => api.get('/api/assessment-analytics/dashboard', { params });
+export const getStudentAnalytics = (studentId, params) => api.get(`/api/assessment-analytics/student/${studentId}`, { params });
+export const getSubjectAnalytics = (params) => api.get('/api/assessment-analytics/subject', { params });
+export const getClassAnalytics = (params) => api.get('/api/assessment-analytics/class', { params });
+export const getAssessmentAnalytics = (params) => api.get('/api/assessment-analytics/assessment', { params });
+
 // ─── Default export (raw axios instance for one-off calls) ───────────────────
 export default api;
+

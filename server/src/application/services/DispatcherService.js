@@ -6,12 +6,14 @@ const GenericEntityHandler = require('../handlers/GenericEntityHandler');
 const StudentHandler = require('../handlers/StudentHandler');
 const PaymentHandler = require('../handlers/PaymentHandler');
 const FeeStructureHandler = require('../handlers/FeeStructureHandler');
+const AssessmentHandler = require('../handlers/AssessmentHandler');
 
 const handlers = {
   'Generic': GenericEntityHandler,
   'Student': StudentHandler,
   'Payment': PaymentHandler,
-  'FeeStructure': FeeStructureHandler
+  'FeeStructure': FeeStructureHandler,
+  'AssessmentHandler': AssessmentHandler
 };
 
 class DispatcherService {

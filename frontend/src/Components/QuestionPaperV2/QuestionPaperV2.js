@@ -114,6 +114,8 @@ export default function QuestionPaperV2() {
     const [qbChapterList, setQbChapterList] = useState([]);
     const [qbSelectedChapters, setQbSelectedChapters] = useState([]);
     const [qbQuestions, setQbQuestions] = useState([]);
+    const [qbSortOrder, setQbSortOrder] = useState('none'); // 'none', 'chapter', 'type'
+    const [qbTypeOrder, setQbTypeOrder] = useState(['MCQ', 'Match', 'Descriptive', 'sub-question']);
     const [qbDownloading, setQbDownloading] = useState(false);
     const [questionsLoading, setQuestionsLoading] = useState(false);
 
@@ -404,6 +406,25 @@ export default function QuestionPaperV2() {
 
             // Filter questions locally by chosen chapters
             const filtered = fetchedQuestions.filter(q => qbSelectedChapters.includes(q.chapter));
+
+            // Apply chosen sorting order
+            if (qbSortOrder === 'chapter') {
+                filtered.sort((a, b) => {
+                    const idxA = qbSelectedChapters.indexOf(a.chapter);
+                    const idxB = qbSelectedChapters.indexOf(b.chapter);
+                    return idxA - idxB;
+                });
+            } else if (qbSortOrder === 'type') {
+                // Group by custom type order priority
+                filtered.sort((a, b) => {
+                    const idxA = qbTypeOrder.indexOf(a.questionType || '');
+                    const idxB = qbTypeOrder.indexOf(b.questionType || '');
+                    const valA = idxA === -1 ? 99 : idxA;
+                    const valB = idxB === -1 ? 99 : idxB;
+                    return valA - valB;
+                });
+            }
+
             setQbQuestions(filtered);
 
             setTimeout(() => {
@@ -1686,14 +1707,14 @@ export default function QuestionPaperV2() {
                         Questions listed below are ordered exactly in the chronological sequence you selected them.
                     </p>
                     <div className="qpv2-question-list">
-                       {selectedQuestions
-    .filter(id => questions.some(q => q.questionId === id))
-    .map((qId, idx) => {
-        const questionObj = globalQuestionMap[qId];
-        if (!questionObj) return null;
+                        {selectedQuestions
+                            .filter(id => questions.some(q => q.questionId === id))
+                            .map((qId, idx) => {
+                                const questionObj = globalQuestionMap[qId];
+                                if (!questionObj) return null;
 
-        return renderQuestionBlock(questionObj, idx);
-    })}
+                                return renderQuestionBlock(questionObj, idx);
+                            })}
                         {selectedQuestions.length === 0 && (
                             <div className="text-center py-5 text-muted">No questions selected yet. Check questions from the list!</div>
                         )}
@@ -2260,6 +2281,64 @@ export default function QuestionPaperV2() {
                                         </select>
                                     </div>
                                 </div>
+
+                                <div className="mb-3">
+                                    <label className="form-label fw-bold text-muted small">Question Order / Sort Type</label>
+                                    <select
+                                        className="form-select shadow-sm"
+                                        value={qbSortOrder}
+                                        onChange={(e) => setQbSortOrder(e.target.value)}
+                                    >
+                                        <option value="none">Default Order (As added)</option>
+                                        <option value="chapter">Chapter-wise</option>
+                                        <option value="type">Type-wise (First MCQ, then Subjective)</option>
+                                    </select>
+                                </div>
+
+                                {qbSortOrder === 'type' && (
+                                    <div className="mb-3 p-3 bg-light rounded border">
+                                        <label className="form-label fw-bold text-muted small d-block mb-2">
+                                            <i className="fa-solid fa-arrow-down-up-lock me-1"></i>Set Question Type Priority (Top to Bottom)
+                                        </label>
+                                        <div className="d-flex flex-column gap-2">
+                                            {qbTypeOrder.map((type, idx) => (
+                                                <div key={type} className="d-flex align-items-center justify-content-between bg-white px-3 py-2 rounded border shadow-sm">
+                                                    <span className="small fw-bold text-dark">{type === 'sub-question' ? 'Sub-Questions' : type === 'Match' ? 'Match the Following' : type}</span>
+                                                    <div className="d-flex gap-1">
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-xs btn-outline-secondary py-0 px-2 border"
+                                                            disabled={idx === 0}
+                                                            onClick={() => {
+                                                                const newOrder = [...qbTypeOrder];
+                                                                const temp = newOrder[idx - 1];
+                                                                newOrder[idx - 1] = newOrder[idx];
+                                                                newOrder[idx] = temp;
+                                                                setQbTypeOrder(newOrder);
+                                                            }}
+                                                        >
+                                                            <i className="fa-solid fa-arrow-up fa-xs"></i>
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            className="btn btn-xs btn-outline-secondary py-0 px-2 border"
+                                                            disabled={idx === qbTypeOrder.length - 1}
+                                                            onClick={() => {
+                                                                const newOrder = [...qbTypeOrder];
+                                                                const temp = newOrder[idx + 1];
+                                                                newOrder[idx + 1] = newOrder[idx];
+                                                                newOrder[idx] = temp;
+                                                                setQbTypeOrder(newOrder);
+                                                            }}
+                                                        >
+                                                            <i className="fa-solid fa-arrow-down fa-xs"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
 
                                 <div className="mb-3">
                                     <div className="d-flex justify-content-between align-items-center mb-2 border-bottom pb-2">

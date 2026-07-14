@@ -105,6 +105,8 @@ exports.bulkImportStudents = async (req, res) => {
           studentData.admissionNumber = val;
         } else if (header === 'rollnumber') {
           studentData.rollNumber = val;
+        } else if (header === 'studentcode' || header === 'student_code' || header === 'student code') {
+          studentData.studentCode = val;
         } else if (header === 'lifecycle_status') {
           studentData.lifecycleStatus = val;
         } else if (header === 'academic_status') {

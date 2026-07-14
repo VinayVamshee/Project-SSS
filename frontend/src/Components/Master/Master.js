@@ -1,3 +1,4 @@
+/* eslint-disable no-unused-vars */
 import React, { useEffect, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, {
@@ -6,10 +7,10 @@ import api, {
     getSubjects, addSubject, deleteSubject, updateSubject,
     getClassSubjects, linkClassSubject,
     getChaptersByClassAndSubject,
-    getExams, addExam,
     getClassFees, getTemplates, getTemplateForm, submitTemplateForm
 } from '../../API';
 import './Master.css';
+import AcademicManagementHub from '../AcademicManagement/AcademicManagementHub';
 import Notification from '../Shared/Notification';
 import LoadingIndicator from '../Shared/LoadingIndicator';
 import ConfirmModal from '../Shared/ConfirmModal';
@@ -184,9 +185,119 @@ export default function Master() {
 
     // Exams Setup States
     const [selectedClassExam, setSelectedClassExam] = useState('');
-    const [numExams, setNumExams] = useState(0);
-    const [examNames, setExamNames] = useState([]);
-    const [examsList, setExamsList] = useState([]);
+
+    // Assessment Configuration Redesign States
+    const [selectedYearExam, setSelectedYearExam] = useState('');
+    const [assessments, setAssessments] = useState([]);
+    const [selectedAssessment, setSelectedAssessment] = useState(null);
+    const [assessmentForm, setAssessmentForm] = useState({
+        assessmentName: '',
+        weightage: 100,
+        status: 'Draft'
+    });
+    const [availableSubjects, setAvailableSubjects] = useState([]);
+    const [selectedSubjects, setSelectedSubjects] = useState([]);
+    const [selectedChapters, setSelectedChapters] = useState({});
+    const [subjectChaptersData, setSubjectChaptersData] = useState({});
+    const [subjectConfigs, setSubjectConfigs] = useState({}); // { [subjectId]: { maximumMarks, passingMarks, duration, examDate, instructions } }
+
+
+
+    const loadAssessmentSetupData = async (classId, yearId) => {
+        if (!classId || !yearId) return;
+        try {
+            const assRes = await api.get('/api/assessments/config', { params: { academicYearId: yearId, classId } });
+            setAssessments(assRes.data.data || []);
+
+            const classLink = classSubjectsData.find(link => 
+                (link.classId?._id || link.classId || "").toString() === classId.toString()
+            );
+            if (classLink) {
+                const resolved = subjects.filter(s => 
+                    classLink.subjectIds.some(id => (id?._id || id || "").toString() === s._id.toString())
+                );
+                setAvailableSubjects(resolved);
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const fetchChaptersForSubject = async (subjectId) => {
+        if (subjectChaptersData[subjectId]) return;
+        try {
+            const res = await api.get(`/chapters/${selectedClassExam}/${subjectId}`);
+            setSubjectChaptersData(prev => ({
+                ...prev,
+                [subjectId]: res.data.chapters || []
+            }));
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleSaveAssessmentConfig = async () => {
+        try {
+            if (!assessmentForm.assessmentName || !assessmentForm.assessmentName.trim()) {
+                throw new Error("Assessment Name is required.");
+            }
+            if (!selectedSubjects || selectedSubjects.length === 0) {
+                throw new Error("At least one Subject must be linked to the assessment.");
+            }
+
+            // Validate subject configurations
+            for (const subId of selectedSubjects) {
+                const sub = availableSubjects.find(s => s._id === subId);
+                const conf = subjectConfigs[subId] || {};
+                
+                if (conf.maximumMarks === undefined || conf.maximumMarks === null || conf.maximumMarks === "") {
+                    throw new Error(`Maximum Marks is required for subject: ${sub?.name || 'Subject'}`);
+                }
+                if (conf.passingMarks === undefined || conf.passingMarks === null || conf.passingMarks === "") {
+                    throw new Error(`Passing Marks is required for subject: ${sub?.name || 'Subject'}`);
+                }
+                if (Number(conf.passingMarks) > Number(conf.maximumMarks)) {
+                    throw new Error(`Passing Marks cannot exceed Maximum Marks for subject: ${sub?.name || 'Subject'}`);
+                }
+                if (!conf.duration) {
+                    throw new Error(`Exam Duration is required for subject: ${sub?.name || 'Subject'}`);
+                }
+            }
+
+            setUploading(true);
+            const payloadSubjects = selectedSubjects.map(subId => {
+                const conf = subjectConfigs[subId] || { maximumMarks: 100, passingMarks: 35, duration: 180 };
+                return {
+                    subjectId: subId,
+                    selectedChapterIds: selectedChapters[subId] || [],
+                    maximumMarks: conf.maximumMarks || 100,
+                    passingMarks: conf.passingMarks || 35,
+                    examDate: conf.examDate || null,
+                    duration: conf.duration || 180
+                };
+            });
+
+            await api.post('/api/assessments/config', {
+                academicYearId: selectedYearExam,
+                classId: selectedClassExam,
+                assessmentName: assessmentForm.assessmentName,
+                weightage: assessmentForm.weightage,
+                status: assessmentForm.status,
+                subjects: payloadSubjects,
+                assessmentConfigurationId: selectedAssessment?._id // pass ID for edit/updates
+            });
+
+            showMessage('✅ Assessment configuration saved successfully!');
+            setSelectedAssessment(null);
+            loadAssessmentSetupData(selectedClassExam, selectedYearExam);
+        } catch (err) {
+            showMessage('❌ Failed to save assessment config: ' + err.message);
+        } finally {
+            setUploading(false);
+        }
+    };
+
+
 
     // Forms States
     const [newClassName, setNewClassName] = useState('');
@@ -245,8 +356,7 @@ export default function Master() {
             const linkRes = await getClassSubjects();
             setClassSubjectsData(linkRes.data.data || []);
 
-            const examRes = await getExams();
-            setExamsList(examRes.data.exams || []);
+
         } catch (err) {
             console.error("Failed to load academics setup data:", err);
         }
@@ -486,53 +596,7 @@ export default function Master() {
         });
     };
 
-    const handleClassExamSelect = (classId) => {
-        setSelectedClassExam(classId);
-        const existingExam = examsList.find(e => e.class === classId);
-        if (existingExam) {
-            setNumExams(existingExam.numExams);
-            setExamNames(existingExam.examNames);
-        } else {
-            setNumExams(0);
-            setExamNames([]);
-        }
-    };
 
-    const handleNumExamsChange = (e) => {
-        const num = parseInt(e.target.value) || 0;
-        setNumExams(num);
-        setExamNames(prev => [
-            ...prev.slice(0, num),
-            ...Array(Math.max(0, num - prev.length)).fill('')
-        ]);
-    };
-
-    const handleExamNameChange = (index, value) => {
-        setExamNames(prev => {
-            const updated = [...prev];
-            updated[index] = value;
-            return updated;
-        });
-    };
-
-    const handleSaveExamsSubmit = async (e) => {
-        e.preventDefault();
-        if (!selectedClassExam) return showMessage("Select a class");
-        setUploading(true);
-        try {
-            await addExam({
-                classId: selectedClassExam,
-                numExams,
-                examNames
-            });
-            showMessage('✅ Exams saved successfully!');
-            await fetchAcademicsData();
-        } catch (err) {
-            showMessage('❌ Failed to save exams');
-        } finally {
-            setUploading(false);
-        }
-    };
 
     const themes = [
         "light",
@@ -610,332 +674,7 @@ export default function Master() {
 
             {/* Forms section */}
             {activeTab === 'academics' ? (
-                <div className="academics-setup-flat">
-                    {/* Sub navigation tabs */}
-                    <div className="academics-sub-pills">
-                        <button className={`academics-sub-pill ${academicsSubTab === 'classes' ? 'active' : ''}`} onClick={() => setAcademicsSubTab('classes')}>
-                            <i className="fas fa-layer-group"></i>Classes
-                        </button>
-                        <button className={`academics-sub-pill ${academicsSubTab === 'subjects' ? 'active' : ''}`} onClick={() => setAcademicsSubTab('subjects')}>
-                            <i className="fas fa-book"></i>Subjects Database
-                        </button>
-                        <button className={`academics-sub-pill ${academicsSubTab === 'linkage' ? 'active' : ''}`} onClick={() => setAcademicsSubTab('linkage')}>
-                            <i className="fas fa-link"></i>Linkage
-                        </button>
-                        <button className={`academics-sub-pill ${academicsSubTab === 'chapters' ? 'active' : ''}`} onClick={() => setAcademicsSubTab('chapters')}>
-                            <i className="fas fa-list-ol"></i>Chapters Syllabus
-                        </button>
-                        <button className={`academics-sub-pill ${academicsSubTab === 'exams' ? 'active' : ''}`} onClick={() => setAcademicsSubTab('exams')}>
-                            <i className="fas fa-pen-alt"></i>Exams Setup
-                        </button>
-                    </div>
-
-                    {/* SUBTAB: CLASSES */}
-                    {academicsSubTab === 'classes' && (
-                        <div className="setup-content-card">
-                            <div className="setup-title-group">
-                                <h4>Manage School Classes</h4>
-                                <p>Create new classes or remove existing ones from the system list</p>
-                            </div>
-                            <form onSubmit={handleAddClassSubmit} className="d-flex gap-2 mb-4 w-50">
-                                <input
-                                    type="text"
-                                    className="form-control premium-input"
-                                    placeholder="Class name (e.g. Class-1, Class-2)"
-                                    value={newClassName}
-                                    onChange={(e) => setNewClassName(e.target.value)}
-                                    required
-                                />
-                                <button type="submit" className="btn btn-premium btn-premium-primary" disabled={uploading}>
-                                    <i className="fas fa-plus me-1"></i>Add Class
-                                </button>
-                            </form>
-                            <div className="row g-3">
-                                {classes.map(c => (
-                                    <div className="col-md-3" key={c._id}>
-                                        <div className="setup-class-card">
-                                            <span>{c.class}</span>
-                                            <button className="btn btn-sm btn-outline-danger border-0" onClick={() => handleDeleteClassSubmit(c._id, c.class)} disabled={uploading}>
-                                                <i className="fas fa-trash-alt"></i>
-                                            </button>
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    )}
-
-                    {/* SUBTAB: SUBJECTS DATABASE */}
-                    {academicsSubTab === 'subjects' && (
-                        <div className="setup-content-card">
-                            <div className="setup-title-group">
-                                <h4>Syllabus Subjects Database</h4>
-                                <p>Manage the master repository of all subjects taught across classes</p>
-                            </div>
-                            <form onSubmit={handleAddSubjectSubmit} className="d-flex gap-2 mb-4 w-50">
-                                <input
-                                    type="text"
-                                    className="form-control premium-input"
-                                    placeholder="Subject name (e.g. Mathematics, Science)"
-                                    value={newSubjectName}
-                                    onChange={(e) => setNewSubjectName(e.target.value)}
-                                    required
-                                />
-                                <button type="submit" className="btn btn-premium btn-premium-primary" disabled={uploading}>
-                                    <i className="fas fa-plus me-1"></i>Add Subject
-                                </button>
-                            </form>
-
-                            <div className="table-responsive border rounded bg-white">
-                                <table className="setup-table">
-                                    <thead>
-                                        <tr>
-                                            <th style={{ width: '80px' }}>#</th>
-                                            <th>Subject Name</th>
-                                            <th style={{ width: '180px' }} className="text-end">Actions</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {subjects.map((sub, index) => (
-                                            <tr key={sub._id}>
-                                                <td>{index + 1}</td>
-                                                <td>
-                                                    {editSubjectId === sub._id ? (
-                                                        <input
-                                                            type="text"
-                                                            className="form-control form-control-sm w-50"
-                                                            value={editSubjectName}
-                                                            onChange={(e) => setEditSubjectName(e.target.value)}
-                                                            autoFocus
-                                                        />
-                                                    ) : (
-                                                        sub.name
-                                                    )}
-                                                </td>
-                                                <td className="text-end">
-                                                    {editSubjectId === sub._id ? (
-                                                        <div className="d-flex gap-1 justify-content-end">
-                                                            <button className="btn btn-sm btn-success" onClick={() => handleEditSubjectSubmit(sub._id)} disabled={uploading}>Save</button>
-                                                            <button className="btn btn-sm btn-secondary" onClick={() => setEditSubjectId(null)}>Cancel</button>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="d-flex gap-1 justify-content-end">
-                                                            <button className="btn btn-sm btn-outline-primary" onClick={() => { setEditSubjectId(sub._id); setEditSubjectName(sub.name); }}>
-                                                                <i className="fas fa-edit"></i>
-                                                            </button>
-                                                            <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteSubjectSubmit(sub._id, sub.name)} disabled={uploading}>
-                                                                <i className="fas fa-trash-alt"></i>
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-
-                    {/* SUBTAB: SUBJECT LINKAGE */}
-                    {academicsSubTab === 'linkage' && (
-                        <div className="setup-content-card">
-                            <div className="setup-title-group">
-                                <h4>Link Subjects to Class</h4>
-                                <p>Map syllabus subjects to specific classes taught at school</p>
-                            </div>
-                            <div className="mb-4 w-50">
-                                <label className="premium-label">Select Target Class</label>
-                                <select className="form-select premium-input" value={selectedClassLink} onChange={(e) => handleClassLinkSelect(e.target.value)}>
-                                    <option value="">-- Select Class --</option>
-                                    {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
-                                </select>
-                            </div>
-
-                            {selectedClassLink && (
-                                <form onSubmit={handleSaveLinkageSubmit}>
-                                    <div className="checklist-card-grid mb-4">
-                                        <p className="text-muted small mb-3">Select the active subjects taught in class <strong>{classes.find(c => c._id === selectedClassLink)?.class}</strong>:</p>
-                                        <div className="row g-3">
-                                            {subjects.map(subj => {
-                                                const checked = newSelectedSubjects.includes(subj._id.toString());
-                                                return (
-                                                    <div className="col-md-4 col-sm-6" key={subj._id}>
-                                                        <div className={`checklist-checkbox-item ${checked ? 'checked' : ''}`} onClick={() => handleLinkCheckboxChange(subj._id)}>
-                                                            <input
-                                                                className="form-check-input me-2"
-                                                                type="checkbox"
-                                                                checked={checked}
-                                                                readOnly
-                                                            />
-                                                            <span className="fw-medium text-dark">{subj.name}</span>
-                                                        </div>
-                                                    </div>
-                                                );
-                                            })}
-                                        </div>
-                                    </div>
-                                    <button type="submit" className="btn btn-premium btn-premium-primary" disabled={uploading}>
-                                        {uploading ? 'Saving Linkage...' : 'Save Subject Linkage'}
-                                    </button>
-                                </form>
-                            )}
-                        </div>
-                    )}
-
-                    {/* SUBTAB: CHAPTERS SYLLABUS */}
-                    {academicsSubTab === 'chapters' && (
-                        <div className="setup-content-card">
-                            <div className="setup-title-group">
-                                <h4>Manage Course Chapters Syllabus</h4>
-                                <p>Define chapter names for class subjects to construct question banks</p>
-                            </div>
-                            <div className="row g-3 mb-4">
-                                <div className="col-md-6">
-                                    <label className="premium-label">Class</label>
-                                    <select className="form-select premium-input" value={selectedClassChapter} onChange={(e) => handleClassChapterSelect(e.target.value)}>
-                                        <option value="">-- Choose Class --</option>
-                                        {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
-                                    </select>
-                                </div>
-                                <div className="col-md-6">
-                                    <label className="premium-label">Subject</label>
-                                    <select className="form-select premium-input" value={selectedSubjectChapter} onChange={(e) => handleSubjectChapterSelect(e.target.value)} disabled={!selectedClassChapter}>
-                                        <option value="">-- Choose Subject --</option>
-                                        {linkedSubjectsForChapter.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
-                                    </select>
-                                </div>
-                            </div>
-
-                            {selectedClassChapter && selectedSubjectChapter && (
-                                <div>
-                                    <form onSubmit={handleAddChapterSubmit} className="d-flex gap-2 mb-4 w-50">
-                                        <input
-                                            type="text"
-                                            className="form-control premium-input"
-                                            placeholder="Enter chapter name..."
-                                            value={newChapterName}
-                                            onChange={(e) => setNewChapterName(e.target.value)}
-                                            required
-                                        />
-                                        <button type="submit" className="btn btn-premium btn-premium-primary" disabled={uploading}>
-                                            <i className="fas fa-plus me-1"></i>Add Chapter
-                                        </button>
-                                    </form>
-
-                                    <div className="table-responsive border rounded bg-white">
-                                        <table className="setup-table">
-                                            <thead>
-                                                <tr>
-                                                    <th style={{ width: '80px' }}>#</th>
-                                                    <th>Chapter Name</th>
-                                                    <th style={{ width: '180px' }} className="text-end">Actions</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {chapterList.length > 0 ? (
-                                                    chapterList.map((ch, index) => (
-                                                        <tr key={ch._id || index}>
-                                                            <td>{index + 1}</td>
-                                                            <td>
-                                                                {editChapterId === ch._id ? (
-                                                                    <input
-                                                                        type="text"
-                                                                        className="form-control form-control-sm w-50"
-                                                                        value={editChapterName}
-                                                                        onChange={(e) => setEditChapterName(e.target.value)}
-                                                                        autoFocus
-                                                                    />
-                                                                ) : (
-                                                                    ch.name
-                                                                )}
-                                                            </td>
-                                                            <td className="text-end">
-                                                                {editChapterId === ch._id ? (
-                                                                    <div className="d-flex gap-1 justify-content-end">
-                                                                        <button className="btn btn-sm btn-success" onClick={() => handleEditChapterSubmit(ch._id)} disabled={uploading}>Save</button>
-                                                                        <button className="btn btn-sm btn-secondary" onClick={() => setEditChapterId(null)}>Cancel</button>
-                                                                    </div>
-                                                                ) : (
-                                                                    <div className="d-flex gap-1 justify-content-end">
-                                                                        <button className="btn btn-sm btn-outline-primary" onClick={() => { setEditChapterId(ch._id); setEditChapterName(ch.name); }}>
-                                                                            <i className="fas fa-edit"></i>
-                                                                        </button>
-                                                                        <button className="btn btn-sm btn-outline-danger" onClick={() => handleDeleteChapterSubmit(ch._id, ch.name)} disabled={uploading}>
-                                                                            <i className="fas fa-trash-alt"></i>
-                                                                        </button>
-                                                                    </div>
-                                                                )}
-                                                            </td>
-                                                        </tr>
-                                                    ))
-                                                ) : (
-                                                    <tr>
-                                                        <td colSpan="3" className="text-center text-muted py-4">No chapters syllabus registered yet.</td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    )}
-
-                    {academicsSubTab === 'exams' && (
-                        <div className="setup-content-card">
-                            <div className="setup-title-group">
-                                <h4>Configure Exams Setup</h4>
-                                <p>Set up exam periods and names for specific classes</p>
-                            </div>
-                            <div className="mb-4 w-50">
-                                <label className="premium-label">Select Class</label>
-                                <select className="form-select premium-input" value={selectedClassExam} onChange={(e) => handleClassExamSelect(e.target.value)}>
-                                    <option value="">-- Choose Class --</option>
-                                    {classes.map(c => <option key={c._id} value={c._id}>{c.class}</option>)}
-                                </select>
-                            </div>
-
-                            {selectedClassExam && (
-                                <form onSubmit={handleSaveExamsSubmit}>
-                                    <div className="mb-4 w-25">
-                                        <label className="premium-label">Number of Exams</label>
-                                        <input
-                                            type="number"
-                                            className="form-control premium-input"
-                                            value={numExams}
-                                            onChange={handleNumExamsChange}
-                                            min="0"
-                                            required
-                                        />
-                                    </div>
-
-                                    {numExams > 0 && (
-                                        <div className="row g-3 mb-4">
-                                            {examNames.map((name, index) => (
-                                                <div className="col-md-4" key={index}>
-                                                    <label className="premium-label">Exam {index + 1} Name</label>
-                                                    <input
-                                                        type="text"
-                                                        className="form-control premium-input"
-                                                        placeholder={`e.g. Quarterly`}
-                                                        value={name}
-                                                        onChange={(e) => handleExamNameChange(index, e.target.value)}
-                                                        required
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    <button type="submit" className="btn btn-premium btn-premium-primary px-4" disabled={uploading}>
-                                        {uploading ? 'Saving exams...' : 'Save Exam Config'}
-                                    </button>
-                                </form>
-                            )}
-                        </div>
-                    )}
-                </div>
+                <AcademicManagementHub />
             ) : activeTab === 'fee_structure' ? (
                 <div className="fee-structure-setup-flat">
                     <div className="setup-title-group mb-4">

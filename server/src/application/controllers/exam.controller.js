@@ -201,3 +201,61 @@ exports.getMarks = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error" });
     }
 };
+
+exports.getResultsConfig = async (req, res) => {
+    try {
+        const Class = require('../../domain/academics/models/Classes');
+        const ClassSubjectLink = require('../../domain/academics/models/ClassSubjectLink');
+        const AcademicYear = require('../../domain/academics/models/AcademicYear');
+        const Template = require('../../domain/metadata/models/Template');
+
+        const { academicYear, classId } = req.query;
+
+        let yearDoc = null;
+        if (academicYear) {
+            yearDoc = await AcademicYear.findOne({ name: academicYear });
+        }
+
+        let classDoc = null;
+        if (classId) {
+            if (mongoose.Types.ObjectId.isValid(classId)) {
+                classDoc = await Class.findById(classId);
+            } else {
+                classDoc = await Class.findOne({ class: classId });
+            }
+        }
+
+        let exams = [];
+        if (classDoc) {
+            const examSetup = await Exam.findOne({ class: classDoc.class });
+            if (examSetup && Array.isArray(examSetup.examNames)) {
+                exams = examSetup.examNames.map(name => ({ _id: name, name }));
+            }
+        }
+
+        let subjects = [];
+        if (classDoc) {
+            const link = await ClassSubjectLink.findOne({ classId: classDoc._id }).populate('subjectIds');
+            if (link && Array.isArray(link.subjectIds)) {
+                subjects = link.subjectIds.map(sub => ({ _id: sub._id, name: sub.name }));
+            }
+        }
+
+        const template = await Template.findOne({
+            status: 'active',
+            key: { $regex: 'result', $options: 'i' }
+        }) || await Template.findOne({ status: 'active' }) || null;
+
+        res.json({
+            academicYear: yearDoc ? yearDoc.name : academicYear,
+            class: classDoc ? { _id: classDoc._id, class: classDoc.class } : null,
+            exams,
+            subjects,
+            template
+        });
+    } catch (err) {
+        console.error("Error fetching results config:", err);
+        res.status(500).json({ error: "Internal Server Error", message: err.message });
+    }
+};
+

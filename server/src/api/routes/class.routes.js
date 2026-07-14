@@ -40,5 +40,7 @@ router.get('/getExams', examController.getExams);
 // Marks
 router.post('/submit-marks', examController.submitMarks);
 router.get('/get-marks', examController.getMarks);
+router.get('/api/results/config', examController.getResultsConfig);
 
 module.exports = router;
+

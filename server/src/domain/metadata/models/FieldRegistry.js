@@ -82,24 +82,28 @@ const FieldRegistrySchema = new mongoose.Schema(
     // ===========================================================
 
     lookup: {
-
-        // Entity to search
         entity: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "EntityRegistry",
             default: null
         },
-
-        // Which field should be displayed
-
+        sourceType: {
+            type: String,
+            enum: [
+                "document",
+                "nestedArray"
+            ],
+            default: "document"
+        },
+        arrayPath: {
+            type: String,
+            default: ""
+        },
         displayField: {
-
-            // field key OR core property
             field: {
                 type: String,
                 default: null
             },
-
             source: {
                 type: String,
                 enum: [
@@ -109,36 +113,40 @@ const FieldRegistrySchema = new mongoose.Schema(
                 ],
                 default: "core"
             },
-
             path: {
                 type: String,
                 default: ""
             }
         },
-
-        // Value stored in DB
-
         valueField: {
-            type: String,
-            default: "_id"
+            field: {
+                type: String,
+                default: "_id"
+            },
+            source: {
+                type: String,
+                enum: [
+                    "core",
+                    "nested"
+                ],
+                default: "core"
+            },
+            path: {
+                type: String,
+                default: ""
+            }
         },
-
         searchable: {
             type: Boolean,
             default: true
         },
-
         multiple: {
             type: Boolean,
             default: false
         },
-
-        // Static lookup filters
-
         filters: [
             {
                 field: String,
-
                 source: {
                     type: String,
                     enum: [
@@ -148,25 +156,10 @@ const FieldRegistrySchema = new mongoose.Schema(
                     ],
                     default: "core"
                 },
-
                 operator: {
                     type: String,
-                    enum: [
-                        "equals",
-                        "notEquals",
-                        "contains",
-                        "startsWith",
-                        "endsWith",
-                        "in",
-                        "notIn",
-                        "greaterThan",
-                        "lessThan",
-                        "greaterThanOrEqual",
-                        "lessThanOrEqual"
-                    ],
                     default: "equals"
                 },
-
                 value: mongoose.Schema.Types.Mixed
             }
         ]

@@ -155,6 +155,10 @@ export default function Navigation() {
                         <i className="fa-solid fa-file fa-lg"></i>
                         {!isCollapsed && " Results"}
                     </NavLink>
+                    <NavLink to="/AssessmentAnalytics" className={({ isActive }) => isActive ? "Link active" : "Link"}>
+                        <i className="fa-solid fa-chart-line fa-lg"></i>
+                        {!isCollapsed && " Assessment Analytics"}
+                    </NavLink>
                     <NavLink to="/Payments" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                         <i className="fa-solid fa-money-check-dollar fa-lg"></i>
                         {!isCollapsed && " Payments"}

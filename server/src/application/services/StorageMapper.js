@@ -43,9 +43,28 @@ class StorageMapper {
         for (const df of dynamicFields) {
           const fieldRegistryDoc = await FieldRegistry.findOne({ key: df.fieldId });
           
-          // Skip if the field doesn't exist in registry or has invalid ObjectId
           if (fieldRegistryDoc) {
-            formattedDynamics.push({ fieldId: fieldRegistryDoc._id, value: df.value });
+            let processedValue = df.value;
+            
+            // If the field type is a lookup, resolve its values to primitive keys/IDs
+            if (fieldRegistryDoc.type === 'lookup' && df.value) {
+              const resolveSingle = (val) => {
+                if (val && typeof val === 'object') {
+                  const valueKeyObj = fieldRegistryDoc.lookup?.valueField;
+                  const keyToExtract = (typeof valueKeyObj === 'object' ? valueKeyObj?.field : valueKeyObj) || '_id';
+                  return val[keyToExtract] !== undefined ? val[keyToExtract] : (val._id || val);
+                }
+                return val;
+              };
+              
+              if (Array.isArray(df.value)) {
+                processedValue = df.value.map(resolveSingle);
+              } else {
+                processedValue = resolveSingle(df.value);
+              }
+            }
+            
+            formattedDynamics.push({ fieldId: fieldRegistryDoc._id, value: processedValue });
           }
         }
         modelData[dynamicFieldContainer] = formattedDynamics;

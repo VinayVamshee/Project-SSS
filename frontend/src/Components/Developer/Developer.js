@@ -81,6 +81,10 @@ export default function Developer() {
   });
   const [optionLabel, setOptionLabel] = useState('');
   const [optionValue, setOptionValue] = useState('');
+  const [filterField, setFilterField] = useState('');
+  const [filterSource, setFilterSource] = useState('core');
+  const [filterOperator, setFilterOperator] = useState('equals');
+  const [filterValue, setFilterValue] = useState('');
 
   // 3. Templates States
   const [templates, setTemplates] = useState([]);
@@ -365,14 +369,21 @@ export default function Developer() {
         options: [],
         lookup: {
           entity: '',
+          sourceType: 'document',
+          arrayPath: '',
           displayField: {
             field: 'name',
             source: 'core',
             path: ''
           },
-          valueField: '_id',
+          valueField: {
+            field: '_id',
+            source: 'core',
+            path: ''
+          },
           multiple: false,
-          searchable: true
+          searchable: true,
+          filters: []
         }
       });
       setOptionLabel('');
@@ -401,6 +412,19 @@ export default function Developer() {
       }
     }
 
+    let valueFieldObj = { field: '_id', source: 'core', path: '' };
+    if (field.lookup?.valueField) {
+      if (typeof field.lookup.valueField === 'string') {
+        valueFieldObj.field = field.lookup.valueField;
+      } else {
+        valueFieldObj = {
+          field: field.lookup.valueField.field || '_id',
+          source: field.lookup.valueField.source || 'core',
+          path: field.lookup.valueField.path || ''
+        };
+      }
+    }
+
     setNewField({
       key: field.key || field.fieldKey || '',
       label: field.label || field.fieldName || '',
@@ -410,10 +434,13 @@ export default function Developer() {
       options: field.options || [],
       lookup: {
         entity: field.lookup?.entity?._id || field.lookup?.entity || '',
+        sourceType: field.lookup?.sourceType || 'document',
+        arrayPath: field.lookup?.arrayPath || '',
         displayField: displayFieldObj,
-        valueField: field.lookup?.valueField || '_id',
+        valueField: valueFieldObj,
         multiple: field.lookup?.multiple || false,
-        searchable: field.lookup?.searchable !== undefined ? field.lookup.searchable : true
+        searchable: field.lookup?.searchable !== undefined ? field.lookup.searchable : true,
+        filters: field.lookup?.filters || []
       }
     });
   };
@@ -432,6 +459,38 @@ export default function Developer() {
     setNewField({
       ...newField,
       options: newField.options.filter((_, i) => i !== idx)
+    });
+  };
+
+  const handleAddLookupFilter = () => {
+    if (!filterField) return;
+    const currentFilters = newField.lookup?.filters || [];
+    setNewField({
+      ...newField,
+      lookup: {
+        ...newField.lookup,
+        filters: [...currentFilters, {
+          field: filterField,
+          source: filterSource,
+          operator: filterOperator,
+          value: filterValue
+        }]
+      }
+    });
+    setFilterField('');
+    setFilterSource('core');
+    setFilterOperator('equals');
+    setFilterValue('');
+  };
+
+  const handleRemoveLookupFilter = (index) => {
+    const currentFilters = newField.lookup?.filters || [];
+    setNewField({
+      ...newField,
+      lookup: {
+        ...newField.lookup,
+        filters: currentFilters.filter((_, idx) => idx !== index)
+      }
     });
   };
 
@@ -1238,7 +1297,7 @@ export default function Developer() {
                   <div className="col-12 border-top pt-2">
                     <h6 className="small fw-bold text-muted mb-2">Lookup Configuration</h6>
                     <div className="row g-2">
-                      <div className="col-12">
+                      <div className="col-md-6">
                         <label className="premium-label">Target Entity *</label>
                         <select
                           className="form-select premium-input"
@@ -1252,7 +1311,35 @@ export default function Developer() {
                           ))}
                         </select>
                       </div>
-                      <div className="col-12">
+
+                      <div className="col-md-6">
+                        <label className="premium-label">Source Type *</label>
+                        <select
+                          className="form-select premium-input"
+                          value={newField.lookup?.sourceType || 'document'}
+                          onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, sourceType: e.target.value } })}
+                          required
+                        >
+                          <option value="document">Single Document Reference</option>
+                          <option value="nestedArray">Nested Array Property</option>
+                        </select>
+                      </div>
+
+                      {newField.lookup?.sourceType === 'nestedArray' && (
+                        <div className="col-12">
+                          <label className="premium-label">Array Property Path *</label>
+                          <input
+                            type="text"
+                            className="form-control premium-input"
+                            placeholder="e.g. subjects"
+                            value={newField.lookup?.arrayPath || ''}
+                            onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, arrayPath: e.target.value } })}
+                            required
+                          />
+                        </div>
+                      )}
+
+                      <div className="col-md-4">
                         <label className="premium-label">Display Field Key *</label>
                         <input
                           type="text"
@@ -1271,7 +1358,7 @@ export default function Developer() {
                           required
                         />
                       </div>
-                      <div className="col-6">
+                      <div className="col-md-4">
                         <label className="premium-label">Display Source *</label>
                         <select
                           className="form-select premium-input"
@@ -1293,8 +1380,8 @@ export default function Developer() {
                           <option value="nested">Nested Path</option>
                         </select>
                       </div>
-                      <div className="col-6">
-                        <label className="premium-label">Path (if Nested)</label>
+                      <div className="col-md-4">
+                        <label className="premium-label">Display Path (if Nested)</label>
                         <input
                           type="text"
                           className="form-control premium-input"
@@ -1312,16 +1399,67 @@ export default function Developer() {
                           })}
                         />
                       </div>
-                      <div className="col-12">
-                        <label className="premium-label">Value Field *</label>
+
+                      <div className="col-md-4">
+                        <label className="premium-label">Value Field Key *</label>
                         <input
                           type="text"
                           className="form-control premium-input"
-                          value={newField.lookup?.valueField || '_id'}
-                          onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, valueField: e.target.value } })}
+                          value={newField.lookup?.valueField?.field || '_id'}
+                          onChange={e => setNewField({
+                            ...newField,
+                            lookup: {
+                              ...newField.lookup,
+                              valueField: {
+                                ...(newField.lookup?.valueField || {}),
+                                field: e.target.value
+                              }
+                            }
+                          })}
                           required
                         />
                       </div>
+                      <div className="col-md-4">
+                        <label className="premium-label">Value Source *</label>
+                        <select
+                          className="form-select premium-input"
+                          value={newField.lookup?.valueField?.source || 'core'}
+                          onChange={e => setNewField({
+                            ...newField,
+                            lookup: {
+                              ...newField.lookup,
+                              valueField: {
+                                ...(newField.lookup?.valueField || {}),
+                                source: e.target.value
+                              }
+                            }
+                          })}
+                          required
+                        >
+                          <option value="core">Core Property</option>
+                          <option value="nested">Nested Path</option>
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="premium-label">Value Path (if Nested)</label>
+                        <input
+                          type="text"
+                          className="form-control premium-input"
+                          placeholder="e.g. nested.id"
+                          value={newField.lookup?.valueField?.path || ''}
+                          onChange={e => setNewField({
+                            ...newField,
+                            lookup: {
+                              ...newField.lookup,
+                              valueField: {
+                                ...(newField.lookup?.valueField || {}),
+                                path: e.target.value
+                              }
+                            }
+                          })}
+                        />
+                      </div>
+
                       <div className="col-6">
                         <div className="form-check pt-1">
                           <input
@@ -1342,6 +1480,85 @@ export default function Developer() {
                             onChange={e => setNewField({ ...newField, lookup: { ...newField.lookup, searchable: e.target.checked } })}
                           />
                           <span className="small text-muted ms-1">Searchable</span>
+                        </div>
+                      </div>
+
+                      {/* Lookup Filters Configurator */}
+                      <div className="col-12 mt-3 border-top pt-2">
+                        <h6 className="small fw-bold text-muted mb-2">Static Query Filters</h6>
+                        
+                        <div className="d-flex flex-wrap gap-1 mb-2">
+                          {(newField.lookup?.filters || []).map((f, idx) => (
+                            <span key={idx} className="badge bg-light text-dark border p-1 d-flex align-items-center gap-1 small">
+                              <code>{f.field}</code> ({f.source}) <strong>{f.operator}</strong> <code>{String(f.value)}</code>
+                              <i onClick={() => handleRemoveLookupFilter(idx)} className="fa-solid fa-xmark text-danger cursor-pointer ms-1"></i>
+                            </span>
+                          ))}
+                          {(newField.lookup?.filters || []).length === 0 && (
+                            <span className="small text-muted italic">No filters added yet.</span>
+                          )}
+                        </div>
+
+                        <div className="row g-1 align-items-end">
+                          <div className="col-4">
+                            <label className="premium-label" style={{ fontSize: '10px' }}>Field Key</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. status"
+                              className="form-control form-control-sm premium-input"
+                              value={filterField}
+                              onChange={e => setFilterField(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-3">
+                            <label className="premium-label" style={{ fontSize: '10px' }}>Source</label>
+                            <select
+                              className="form-select form-select-sm premium-input"
+                              value={filterSource}
+                              onChange={e => setFilterSource(e.target.value)}
+                            >
+                              <option value="core">Core</option>
+                              <option value="dynamic">Dynamic</option>
+                              <option value="nested">Nested</option>
+                            </select>
+                          </div>
+                          <div className="col-2">
+                            <label className="premium-label" style={{ fontSize: '10px' }}>Operator</label>
+                            <select
+                              className="form-select form-select-sm premium-input"
+                              value={filterOperator}
+                              onChange={e => setFilterOperator(e.target.value)}
+                            >
+                              <option value="equals">=</option>
+                              <option value="notEquals">!=</option>
+                              <option value="contains">contains</option>
+                              <option value="startsWith">starts</option>
+                              <option value="endsWith">ends</option>
+                              <option value="in">in</option>
+                              <option value="notIn">not in</option>
+                              <option value="greaterThan">&gt;</option>
+                              <option value="lessThan">&lt;</option>
+                            </select>
+                          </div>
+                          <div className="col-3">
+                            <label className="premium-label" style={{ fontSize: '10px' }}>Compare Value</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. Active"
+                              className="form-control form-control-sm premium-input"
+                              value={filterValue}
+                              onChange={e => setFilterValue(e.target.value)}
+                            />
+                          </div>
+                          <div className="col-12 mt-2">
+                            <button
+                              type="button"
+                              onClick={handleAddLookupFilter}
+                              className="btn btn-sm btn-outline-secondary w-100 py-1"
+                            >
+                              <i className="fa-solid fa-plus me-1"></i>Add Query Filter
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1511,9 +1728,9 @@ export default function Developer() {
                                             Entity ID: <code>{f.lookup.entity?._id || f.lookup.entity}</code>
                                             {f.lookup.entity?.label && <span> ({f.lookup.entity.label})</span>}
                                             <br />
-                                            Display Field: <code>{typeof f.lookup.displayField === 'object' ? f.lookup.displayField?.field : f.lookup.displayField}</code> (Source: <code>{f.lookup.displayField?.source || 'core'}</code> {f.lookup.displayField?.path && <span>, Path: <code>{f.lookup.displayField.path}</code></span>})
+                                            Display Field: <code>{typeof f.lookup.displayField === 'object' ? (f.lookup.displayField?.field || 'name') : (f.lookup.displayField || '')}</code> (Source: <code>{typeof f.lookup.displayField === 'object' ? (f.lookup.displayField?.source || 'core') : 'core'}</code> {f.lookup.displayField?.path && <span>, Path: <code>{String(f.lookup.displayField.path)}</code></span>})
                                             <br />
-                                            Value Field: <code>{f.lookup.valueField}</code>
+                                            Value Field: <code>{typeof f.lookup.valueField === 'object' ? (f.lookup.valueField?.field || '_id') : (f.lookup.valueField || '')}</code> (Source: <code>{typeof f.lookup.valueField === 'object' ? (f.lookup.valueField?.source || 'core') : 'core'}</code> {f.lookup.valueField?.path && <span>, Path: <code>{String(f.lookup.valueField.path)}</code></span>})
                                             <br />
                                             Flags: Multiple ({f.lookup.multiple ? 'Yes' : 'No'}) | Searchable ({f.lookup.searchable ? 'Yes' : 'No'})
                                           </div>
@@ -1608,6 +1825,8 @@ export default function Developer() {
                 <option value="fee_structure">Fee Structure</option>
                 <option value="student_fee_payment">Student Fee Payment</option>
                 <option value="employee_registration">Employee Registration</option>
+                <option value="assessment_setup">Assessment Setup</option>
+                <option value="student_marks">Student Marks Entry</option>
               </select>
             </div>
             <div className="col-md-3">

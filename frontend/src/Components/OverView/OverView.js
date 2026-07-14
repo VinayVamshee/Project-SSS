@@ -121,20 +121,20 @@ export default function OverView() {
             try {
                 const templatesRes = await getTemplates();
                 const allTemplates = templatesRes.data?.data || [];
-                const feeTemplate = allTemplates.find(t => 
-                    t.status === 'active' && 
+                const feeTemplate = allTemplates.find(t =>
+                    t.status === 'active' &&
                     t.purpose === 'fee_structure'
                 );
                 if (feeTemplate) {
                     const formRes = await getTemplateForm(feeTemplate._id);
                     const templateData = formRes.data?.data;
 
-const fields =
-    templateData?.sections?.flatMap(section => section.fields) ||
-    templateData?.fields ||
-    [];
+                    const fields =
+                        templateData?.sections?.flatMap(section => section.fields) ||
+                        templateData?.fields ||
+                        [];
 
-setFeeTemplateFields(fields);
+                    setFeeTemplateFields(fields);
                     setFeeTemplateFields(fields);
                 }
             } catch (err) {
@@ -439,8 +439,8 @@ setFeeTemplateFields(fields);
                                 <BarChart data={barChartData} margin={{ top: 15, right: 10, left: -20, bottom: 5 }}>
                                     <defs>
                                         <linearGradient id="barColor" x1="0" y1="0" x2="0" y2="1">
-                                            <stop offset="0%" stopColor={themeColors.primary} stopOpacity={0.9}/>
-                                            <stop offset="100%" stopColor={themeColors.secondary} stopOpacity={0.6}/>
+                                            <stop offset="0%" stopColor={themeColors.primary} stopOpacity={0.9} />
+                                            <stop offset="100%" stopColor={themeColors.secondary} stopOpacity={0.6} />
                                         </linearGradient>
                                     </defs>
                                     <CartesianGrid strokeDasharray="3 3" vertical={false} />
