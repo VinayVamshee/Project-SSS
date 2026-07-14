@@ -2,17 +2,57 @@ import React, { forwardRef } from "react";
 import principalSignature from "../Images/Prinicipal Signature.png"
 import './IdentityCard.css';
 
-
-
-
 const IdentityCardPage = forwardRef(
     ({ selectedStudents, students, selectedYear, latestMaster }, ref) => {
         const filteredStudents = students
             .filter((s) => selectedStudents.includes(s._id))
             .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || "", undefined, { numeric: true }));
 
-        const getValue = (student, key) =>
-            student.additionalInfo?.find((info) => info.key === key)?.value || "";
+        // Resolve active school master details if latestMaster is returned as a database array
+        const activeSchool = Array.isArray(latestMaster)
+            ? (latestMaster.find(sch => sch._id === (students[0]?.schoolId?._id || students[0]?.schoolId)) || latestMaster[0])
+            : latestMaster;
+
+        const getValue = (student, key) => {
+            const lowerKey = key.toLowerCase().replace(/['\s_-]/g, "");
+
+            // Heuristic check for contact numbers (mobile, phone, contact)
+            if (lowerKey === "fathersphoneno" || lowerKey === "mobile" || lowerKey === "phone" || lowerKey === "mobileno") {
+                const contactKey = Object.keys(student).find(k => {
+                    const ck = k.toLowerCase();
+                    return ck.includes("mobile") || ck.includes("phone") || ck.includes("contact");
+                });
+                if (contactKey) return student[contactKey];
+            }
+
+            // Heuristic check for Father's name
+            if (lowerKey === "fathersname") {
+                const fKey = Object.keys(student).find(k => {
+                    const ck = k.toLowerCase().replace(/['\s_-]/g, "");
+                    return ck.includes("father") && ck.includes("name");
+                });
+                if (fKey) return student[fKey];
+                return student.fathername || student.father || "";
+            }
+
+            // Heuristic check for Mother's name
+            if (lowerKey === "mothersname") {
+                const mKey = Object.keys(student).find(k => {
+                    const ck = k.toLowerCase().replace(/['\s_-]/g, "");
+                    return ck.includes("mother") && ck.includes("name");
+                });
+                if (mKey) return student[mKey];
+                return student.mothername || student.mother || "";
+            }
+
+            // Direct property match
+            for (const [k, v] of Object.entries(student)) {
+                const cleanK = k.toLowerCase().replace(/['\s_-]/g, "");
+                if (cleanK === lowerKey) return v;
+            }
+
+            return "";
+        };
 
         return (
             <div ref={ref} className="identity-pdf-print">
@@ -49,30 +89,46 @@ const IdentityCardPage = forwardRef(
                         const motherName = getValue(student, "Mother's Name");
                         const phone = getValue(student, "Father's Phone No.");
                         const address = getValue(student, "Address");
-                        const academicClass = student.academicYears?.find(
-                            (a) => a.academicYear === selectedYear
-                        )?.class;
 
-                        const className = academicClass || getValue(student, "AClass");
+                        // Find student enrollment for selected academic year name or ID
+                        const academicClassObj = student.academicYears?.find(
+                            (a) => a.academicYear === selectedYear || a.academicYearId === selectedYear
+                        );
+                        
+                        let className = "";
+                        if (academicClassObj) {
+                            className = typeof academicClassObj.class === 'object' ? academicClassObj.class.class : academicClassObj.class;
+                            if (academicClassObj.section) {
+                                className += ` - ${academicClassObj.section}`;
+                            }
+                        }
+                        if (!className) {
+                            className = student.class || student.classId?.class || getValue(student, "AClass") || "";
+                        }
 
                         const formatDate = (dateInput) => {
                             if (!dateInput) return "";
 
                             const date = new Date(dateInput);
+                            if (isNaN(date.getTime())) {
+                                return dateInput;
+                            }
                             const day = String(date.getDate()).padStart(2, "0");
-                            const month = String(date.getMonth() + 1).padStart(2, "0"); // Months are 0-indexed
+                            const month = String(date.getMonth() + 1).padStart(2, "0");
                             const year = date.getFullYear();
 
                             return `${day}-${month}-${year}`;
                         };
 
+                        const admissionNumber = student.AdmissionNo || student.admissionNumber || student.admissionno || getValue(student, "Admission No.");
+
                         return (
                             <div key={index} className="IdentityCard" style={{ fontSize: "8px" }}>
                                 <div className="school-info w-100">
                                     <h5 style={{ marginBottom: "0px", fontWeight: 'bolder', color: 'blue' }}>
-                                        {latestMaster?.name || "SCHOOL NAME"}
+                                        {activeSchool?.name || "SCHOOL NAME"}
                                     </h5>
-                                    <div style={{ marginTop: '-2px' }}>{latestMaster?.address || "School Address"}</div>
+                                    <div style={{ marginTop: '-2px' }}>{activeSchool?.address || "School Address"}</div>
                                     <div style={{ marginTop: '-5px' }}>(www.vamsheetechnoschool.com)</div>
                                     <div style={{ marginTop: '-4px' }} className="w-100 fw-bold">
                                         IDENTITY CARD: {selectedYear || "YYYY-YY"}
@@ -80,12 +136,12 @@ const IdentityCardPage = forwardRef(
                                 </div>
 
                                 <div className="" style={{ textAlign: 'start', width: '100%', marginTop: '-2px' }}>
-
                                     <img className="logo ms-1" src="https://i.ibb.co/cKvYrpsm/Screenshot-2023-10-21-085200.jpg" alt="..." />
                                     <img
-                                        src={student.image}
+                                        src={student.image || "https://i.ibb.co/5Rz2Zk9/default-avatar.png"}
                                         alt={student.name}
                                         className="student-id-image ms-2"
+                                        onError={(e) => { e.target.src = "https://i.ibb.co/5Rz2Zk9/default-avatar.png" }}
                                     />
                                 </div>
 
@@ -100,7 +156,7 @@ const IdentityCardPage = forwardRef(
                                         <strong style={{ color: "blue", marginRight: "17px" }}>
                                             Adm No:
                                         </strong>
-                                        {student.AdmissionNo}
+                                        {admissionNumber}
                                     </div>
                                     <div>
                                         <strong style={{ color: "blue", marginRight: "30px" }}>
@@ -112,7 +168,7 @@ const IdentityCardPage = forwardRef(
                                         <strong style={{ color: "blue", marginRight: "31px" }}>
                                             DOB:
                                         </strong>
-                                        {formatDate(student.dob)}
+                                        {formatDate(student.dob || student.dateofbirth)}
                                     </div>
                                     <div>
                                         <strong style={{ color: "blue", marginRight: "24px" }}>
@@ -141,7 +197,7 @@ const IdentityCardPage = forwardRef(
                                 <div className="principal-signature">
                                     <img src={principalSignature} alt="..." /> <div>(Principal)</div></div>
 
-                                <div className="contact bg-dark w-100 text-light"> (Mb): {latestMaster?.phoneNo} | (Email): {latestMaster?.email}</div>
+                                <div className="contact bg-dark w-100 text-light"> (Mb): {activeSchool?.phoneNo} | (Email): {activeSchool?.email}</div>
                             </div>
                         );
                     })}
