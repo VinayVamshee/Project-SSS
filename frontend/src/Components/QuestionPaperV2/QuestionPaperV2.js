@@ -650,7 +650,8 @@ export default function QuestionPaperV2() {
     const [questionUploading, setQuestionUploading] = useState(false);
     const initialQuestionState = {
         questionText: '', questionImage: '', questionMarks: '', questionType: '',
-        hasSubQuestions: false, options: [], pairs: [], subQuestions: []
+        hasSubQuestions: false, options: [], pairs: [], subQuestions: [],
+        targetChapter: ''
     };
     const [newQuestion, setNewQuestion] = useState(initialQuestionState);
 
@@ -664,7 +665,10 @@ export default function QuestionPaperV2() {
             }
         };
         stripIds(clone);
-        setNewQuestion(clone);
+        setNewQuestion({
+            ...clone,
+            targetChapter: q.chapter || selectedChapter || ''
+        });
         setIsAddModalOpen(true);
     };
 
@@ -676,12 +680,16 @@ export default function QuestionPaperV2() {
         const cleanSubQuestions = (subQs) =>
             subQs.filter(sq => sq.questionText?.trim() && sq.questionType?.trim() && sq.questionMarks?.toString().trim())
                 .map(sq => ({ ...sq, subQuestions: cleanSubQuestions(sq.subQuestions || []) }));
+        
+        const targetChapter = newQuestion.targetChapter || selectedChapter;
         const cleanedQuestion = {
             ...newQuestion,
             questionMarks: newQuestion.questionMarks?.toString().trim() ? newQuestion.questionMarks : undefined,
             questionType: newQuestion.questionType?.trim() ? newQuestion.questionType : undefined,
             subQuestions: cleanSubQuestions(newQuestion.subQuestions || []),
         };
+        delete cleanedQuestion.targetChapter;
+
         if (!cleanedQuestion.questionText?.trim() || !cleanedQuestion.questionType || !cleanedQuestion.questionMarks) {
             showMessage("Question is missing required fields (text, type, or marks).");
             return;
@@ -690,7 +698,7 @@ export default function QuestionPaperV2() {
         setQuestionUploading(true);
         try {
             await api.post('/questions', {
-                class: selectedClass, subject: selectedSubject, chapter: selectedChapter || null, question: cleanedQuestion,
+                class: selectedClass, subject: selectedSubject, chapter: targetChapter || null, question: cleanedQuestion,
             });
             fetchQuestions();
             showMessage("Question Added Successfully");
@@ -1776,9 +1784,25 @@ export default function QuestionPaperV2() {
                 <div className="qpv2-drawer-body">
                     {renderQuestionForm(newQuestion, setNewQuestion, false)}
                 </div>
-                <div className="qpv2-drawer-footer">
-                    <button className="qpv2-btn-outline" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
-                    <button className="qpv2-btn-primary" onClick={handleAddQuestion} disabled={questionUploading}>Save Question</button>
+                <div className="qpv2-drawer-footer d-flex align-items-center justify-content-between gap-3 w-100" style={{ padding: '16px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                    <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: '340px' }}>
+                        <span className="small fw-bold text-muted text-nowrap" style={{ fontSize: '0.8rem' }}><i className="fa-solid fa-bookmark text-primary me-1"></i>Target Chapter:</span>
+                        <select
+                            className="form-select form-select-sm shadow-sm"
+                            style={{ borderRadius: '6px', fontSize: '0.8rem', padding: '4px 8px' }}
+                            value={newQuestion.targetChapter || selectedChapter || ''}
+                            onChange={e => setNewQuestion(q => ({ ...q, targetChapter: e.target.value }))}
+                        >
+                            <option value="">-- Choose Chapter --</option>
+                            {chapterList.map(ch => (
+                                <option key={ch._id} value={ch._id}>{ch.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="d-flex gap-2">
+                        <button className="qpv2-btn-outline" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
+                        <button className="qpv2-btn-primary" onClick={handleAddQuestion} disabled={questionUploading}>Save Question</button>
+                    </div>
                 </div>
             </div>
 
@@ -1924,9 +1948,25 @@ export default function QuestionPaperV2() {
                 <div className="qpv2-drawer-body">
                     {renderQuestionForm(newQuestion, setNewQuestion, false)}
                 </div>
-                <div className="qpv2-drawer-footer">
-                    <button className="qpv2-btn-outline" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
-                    <button className="qpv2-btn-primary" onClick={handleAddQuestion} disabled={questionUploading}>Save Question</button>
+                <div className="qpv2-drawer-footer d-flex align-items-center justify-content-between gap-3 w-100" style={{ padding: '16px 20px', background: '#f8fafc', borderTop: '1px solid #e2e8f0' }}>
+                    <div className="d-flex align-items-center gap-2 flex-grow-1" style={{ maxWidth: '340px' }}>
+                        <span className="small fw-bold text-muted text-nowrap" style={{ fontSize: '0.8rem' }}><i className="fa-solid fa-bookmark text-primary me-1"></i>Target Chapter:</span>
+                        <select
+                            className="form-select form-select-sm shadow-sm"
+                            style={{ borderRadius: '6px', fontSize: '0.8rem', padding: '4px 8px' }}
+                            value={newQuestion.targetChapter || selectedChapter || ''}
+                            onChange={e => setNewQuestion(q => ({ ...q, targetChapter: e.target.value }))}
+                        >
+                            <option value="">-- Choose Chapter --</option>
+                            {chapterList.map(ch => (
+                                <option key={ch._id} value={ch._id}>{ch.name}</option>
+                            ))}
+                        </select>
+                    </div>
+                    <div className="d-flex gap-2">
+                        <button className="qpv2-btn-outline" onClick={() => setIsAddModalOpen(false)}>Cancel</button>
+                        <button className="qpv2-btn-primary" onClick={handleAddQuestion} disabled={questionUploading}>Save Question</button>
+                    </div>
                 </div>
             </div>
 

@@ -37,6 +37,12 @@ export default function TextEditor({
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    useEffect(() => {
+        if (quillRef.current && value !== undefined && value !== quillRef.current.root.innerHTML) {
+            quillRef.current.root.innerHTML = value || '';
+        }
+    }, [value]);
+
     return (
         <div
             style={{
