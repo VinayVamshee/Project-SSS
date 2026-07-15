@@ -43,7 +43,7 @@ export default function AcademicManagementHub() {
 
   return (
     <div className="erp-dashboard-container ov-animate-fade">
-      <div className="erp-welcome-banner mb-4 p-4 rounded text-white" style={{ background: 'linear-gradient(135deg, #FE4F2D 0%, #d83d1c 100%)' }}>
+      <div className="erp-welcome-banner mb-4 p-4 rounded text-white" style={{ background: 'linear-gradient(135deg, var(--button-color) 0%, var(--button-hover) 100%)' }}>
         <h4 className="fw-bold m-0"><i className="fa-solid fa-graduation-cap me-2"></i>Academic ERP Workspace</h4>
         <p className="small m-0 opacity-90 mt-1">Configure academic structures, syllabus hierarchies, examination controls, and daily operations registries.</p>
       </div>

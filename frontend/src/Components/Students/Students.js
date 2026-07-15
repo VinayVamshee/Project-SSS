@@ -129,8 +129,8 @@ export default function Students() {
                         // Populated FieldRegistry uses .key (not .fieldKey)
                         const fieldKey = df.fieldId?.key;
                         const fallbackField = fields.find(
-                            p => p._id === (df.fieldId?._id || df.fieldId)
-                        );
+                             p => p._id.toString() === (df.fieldId?._id || df.fieldId || '').toString()
+                         );
                         const key = fieldKey || fallbackField?.key;
                         if (key) {
                             const lowerKey = key.toLowerCase();
@@ -920,7 +920,7 @@ export default function Students() {
                                                         };
                                                         if (updated.dynamicFields) {
                                                             updated.dynamicFields.forEach(df => {
-                                                                const fieldKey = df.fieldId?.key || fields.find(p => p._id === (df.fieldId?._id || df.fieldId))?.key;
+                                                                const fieldKey = df.fieldId?.key || fields.find(p => p._id.toString() === (df.fieldId?._id || df.fieldId || '').toString())?.key;
                                                                 if (fieldKey) {
                                                                     legacyStudent[fieldKey.toLowerCase()] = df.value;
                                                                 }

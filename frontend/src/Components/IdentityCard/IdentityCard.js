@@ -14,21 +14,44 @@ const IdentityCardPage = forwardRef(
             : latestMaster;
 
         const getValue = (student, key) => {
-            const lowerKey = key.toLowerCase().replace(/['\s_-]/g, "");
+            const lowerKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
 
             // Heuristic check for contact numbers (mobile, phone, contact)
             if (lowerKey === "fathersphoneno" || lowerKey === "mobile" || lowerKey === "phone" || lowerKey === "mobileno") {
-                const contactKey = Object.keys(student).find(k => {
+                // Direct exact key check first
+                if (student.fathermobilenumber) return student.fathermobilenumber;
+                if (student.mothermobilenumber) return student.mothermobilenumber;
+
+                // 1. Look for father's mobile number specifically
+                const fatherContactKey = Object.keys(student).find(k => {
+                    const ck = k.toLowerCase().replace(/[^a-z0-9]/g, "");
+                    return ck.includes("father") && (ck.includes("mobile") || ck.includes("phone") || ck.includes("contact"));
+                });
+                if (fatherContactKey && student[fatherContactKey]) {
+                    return student[fatherContactKey];
+                }
+
+                // 2. Look for mother's mobile number specifically as fallback
+                const motherContactKey = Object.keys(student).find(k => {
+                    const ck = k.toLowerCase().replace(/[^a-z0-9]/g, "");
+                    return ck.includes("mother") && (ck.includes("mobile") || ck.includes("phone") || ck.includes("contact"));
+                });
+                if (motherContactKey && student[motherContactKey]) {
+                    return student[motherContactKey];
+                }
+
+                // 3. Fall back to any key containing mobile, phone, or contact
+                const generalContactKey = Object.keys(student).find(k => {
                     const ck = k.toLowerCase();
                     return ck.includes("mobile") || ck.includes("phone") || ck.includes("contact");
                 });
-                if (contactKey) return student[contactKey];
+                if (generalContactKey) return student[generalContactKey];
             }
 
             // Heuristic check for Father's name
             if (lowerKey === "fathersname") {
                 const fKey = Object.keys(student).find(k => {
-                    const ck = k.toLowerCase().replace(/['\s_-]/g, "");
+                    const ck = k.toLowerCase().replace(/[^a-z0-9]/g, "");
                     return ck.includes("father") && ck.includes("name");
                 });
                 if (fKey) return student[fKey];
@@ -38,7 +61,7 @@ const IdentityCardPage = forwardRef(
             // Heuristic check for Mother's name
             if (lowerKey === "mothersname") {
                 const mKey = Object.keys(student).find(k => {
-                    const ck = k.toLowerCase().replace(/['\s_-]/g, "");
+                    const ck = k.toLowerCase().replace(/[^a-z0-9]/g, "");
                     return ck.includes("mother") && ck.includes("name");
                 });
                 if (mKey) return student[mKey];
@@ -47,7 +70,7 @@ const IdentityCardPage = forwardRef(
 
             // Direct property match
             for (const [k, v] of Object.entries(student)) {
-                const cleanK = k.toLowerCase().replace(/['\s_-]/g, "");
+                const cleanK = k.toLowerCase().replace(/[^a-z0-9]/g, "");
                 if (cleanK === lowerKey) return v;
             }
 
