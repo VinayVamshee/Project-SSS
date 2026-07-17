@@ -195,7 +195,10 @@ const TemplateSchema = new mongoose.Schema(
             "fee_structure",
             "student_fee_payment",
             "assessment_setup",
-            "student_marks"
+            "student_marks",
+
+            "salary_structure",
+            "expense_entry"
 
         ]
     },

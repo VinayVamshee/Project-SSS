@@ -1,0 +1,210 @@
+/* HRFinance.css - Premium Enterprise metadata modules styling */
+
+.hr-finance-container {
+  padding: 24px;
+  animation: fadeIn 0.3s ease-out;
+  color: var(--text-color, #1e293b);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.hr-finance-header {
+  border-bottom: 1.5px solid var(--border-color, #e2e8f0);
+  padding-bottom: 16px;
+  margin-bottom: 8px;
+}
+
+/* Glassmorphism sidebar navigation wrapper */
+.hr-finance-layout {
+  display: grid;
+  grid-template-columns: 240px 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+.hr-finance-sidebar {
+  background: var(--card-bg-color, rgba(255, 255, 255, 0.9));
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 16px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.03);
+}
+
+.hr-finance-nav-btn {
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 16px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-color);
+  opacity: 0.7;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: all 0.2s ease;
+}
+
+.hr-finance-nav-btn:hover {
+  opacity: 1;
+  background: var(--background-color, #f8fafc);
+}
+
+.hr-finance-nav-btn.active {
+  opacity: 1;
+  background: var(--button-color, #fe4f2d);
+  color: #fff;
+}
+
+/* Summary Metrics Layout */
+.hr-finance-metrics {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+}
+
+.hr-metric-card {
+  background: var(--card-bg-color, #ffffff);
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.01);
+  transition: transform 0.2s ease;
+}
+
+.hr-metric-card:hover {
+  transform: translateY(-2px);
+}
+
+/* Master list layouts */
+.hr-split-panel {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.hr-list-panel {
+  background: var(--card-bg-color, #ffffff);
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 16px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 800px;
+  overflow-y: auto;
+}
+
+.hr-form-panel {
+  background: var(--card-bg-color, #ffffff);
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.02);
+}
+
+.hr-search-bar {
+  border: 1.5px solid var(--border-color, #cbd5e1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  width: 100%;
+  background: var(--background-color, #ffffff);
+  color: var(--text-color);
+}
+
+.hr-search-bar:focus {
+  border-color: var(--button-color, #fe4f2d);
+  outline: none;
+}
+
+/* List card styles */
+.hr-entity-item {
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  padding: 16px;
+  cursor: pointer;
+  background: var(--background-color, #f8fafc);
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.hr-entity-item:hover, .hr-entity-item.active {
+  border-color: var(--button-color, #fe4f2d);
+  background: var(--card-bg-color, #ffffff);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+/* Attendance spreadsheet styling */
+.hr-attendance-card {
+  background: var(--card-bg-color, #ffffff);
+  border: 1.5px solid var(--border-color, #e2e8f0);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.hr-attendance-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 16px;
+}
+
+.hr-attendance-table th, .hr-attendance-table td {
+  padding: 12px 16px;
+  border-bottom: 1.5px solid var(--border-color, #cbd5e1);
+  text-align: left;
+}
+
+.hr-attendance-table th {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  color: #64748b;
+  background: var(--background-color, #f8fafc);
+}
+
+/* Action button presets */
+.hr-btn-primary {
+  background: var(--button-color, #fe4f2d);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.hr-btn-primary:hover {
+  opacity: 0.9;
+}
+
+.hr-btn-outline {
+  background: transparent;
+  border: 1.5px solid var(--border-color, #cbd5e1);
+  color: var(--text-color);
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.hr-btn-outline:hover {
+  background: var(--background-color, #f8fafc);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}

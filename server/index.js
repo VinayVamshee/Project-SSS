@@ -104,6 +104,7 @@ app.use('/', require('./src/api/routes/question.routes'));
 app.use('/api/metadata', require('./src/api/routes/metadata.routes'));
 app.use('/api/assessments', require('./src/api/routes/assessment.routes'));
 app.use('/api/assessment-analytics', require('./src/api/routes/assessmentAnalytics.routes'));
+app.use('/api', require('./src/api/routes/hr_payroll_expense.routes'));
 
 
 const PORT = process.env.PORT || 3001;

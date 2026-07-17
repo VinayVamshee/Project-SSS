@@ -171,6 +171,10 @@ export default function Navigation() {
                         <i className="fa-solid fa-clipboard-question fa-lg"></i>
                         {!isCollapsed && " QuestionPaper V2"}
                     </NavLink>
+                    <NavLink to="/HRFinance" className={({ isActive }) => isActive ? "Link active" : "Link"}>
+                        <i className="fa-solid fa-people-roof fa-lg"></i>
+                        {!isCollapsed && " HR & Finance"}
+                    </NavLink>
                     <NavLink to="/Settings" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                         <i className="fa-solid fa-gears fa-lg"></i>
                         {!isCollapsed && " Settings"}
@@ -201,7 +205,7 @@ export default function Navigation() {
 
                 {!isCollapsed && (
                     <div>
-                        <div className="d-flex mt-5">
+                        <div className="d-flex mt-3">
                             {localStorage.getItem("token") ? (
                                 <>
                                     {/* Show Register only if admin */}
@@ -256,7 +260,7 @@ export default function Navigation() {
                                 </button>
                             )}
                         </div>
-                        <div className="d-flex justify-content-center btn btn-info mt-3"> {loggedInUser}</div>
+                        <div className="d-flex justify-content-center btn btn-info mt-2"> {loggedInUser}</div>
                     </div>
                 )}
 

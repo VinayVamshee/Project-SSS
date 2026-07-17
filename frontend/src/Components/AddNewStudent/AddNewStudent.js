@@ -123,6 +123,7 @@ export default function AddNewStudent() {
                                 onSubmit={handleRegisterStudent}
                                 onChange={setLiveValues}
                                 submitLabel="Register Student"
+                                loading={loading}
                             />
                         </div>
                     )}

@@ -320,6 +320,16 @@ export const getSubjectAnalytics = (params) => api.get('/api/assessment-analytic
 export const getClassAnalytics = (params) => api.get('/api/assessment-analytics/class', { params });
 export const getAssessmentAnalytics = (params) => api.get('/api/assessment-analytics/assessment', { params });
 
+// ─── HR & Finance Modules ────────────────────────────────────────────────────
+export const getEmployees = () => api.get('/api/hr/employees');
+export const saveEmployee = (templateId, payload) => api.post('/api/hr/employees', { templateId, payload });
+export const getEmployeeAttendance = (date) => api.get('/api/hr/attendance', { params: { date } });
+export const saveEmployeeAttendance = (records) => api.post('/api/hr/attendance', { records });
+export const getSalaryStructures = () => api.get('/api/payroll/salary-structures');
+export const saveSalaryStructure = (templateId, payload) => api.post('/api/payroll/salary-structures', { templateId, payload });
+export const getExpenses = () => api.get('/api/finance/expenses');
+export const saveExpense = (templateId, payload) => api.post('/api/finance/expenses', { templateId, payload });
+
 // ─── Default export (raw axios instance for one-off calls) ───────────────────
 export default api;
 

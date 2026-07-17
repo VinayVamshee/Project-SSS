@@ -23,7 +23,7 @@
 }
 
 .card-body {
-    background-color: white;
+    background-color: var(--card-bg-color);
 }
 
 .card-header-gradient {

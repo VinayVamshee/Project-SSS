@@ -69,6 +69,16 @@ exports.deleteChapter = async (req, res) => {
     }
 
     try {
+        const QuestionPaper = mongoose.model('QuestionPaper');
+        const hasQuestions = await QuestionPaper.findOne({
+            chapter: new mongoose.Types.ObjectId(chapterId),
+            questions: { $exists: true, $not: { $size: 0 } }
+        });
+
+        if (hasQuestions) {
+            return res.status(400).json({ message: 'The chapter is linked to a question and then it cannot be deleted' });
+        }
+
         const updated = await Chapter.findOneAndUpdate(
             { classId, subjectId },
             { $pull: { chapters: { _id: chapterId } } },

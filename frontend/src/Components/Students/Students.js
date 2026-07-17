@@ -879,6 +879,7 @@ export default function Students() {
                                         template={studentInfoTemplate}
                                         values={getSidebarFormValues(selectedStudent)}
                                         mode={isEditMode ? "edit" : "view"}
+                                        loading={uploading}
                                         onSubmit={async (formData) => {
                                             try {
                                                 setUploading(true);

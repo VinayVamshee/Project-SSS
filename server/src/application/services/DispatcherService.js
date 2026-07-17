@@ -7,13 +7,19 @@ const StudentHandler = require('../handlers/StudentHandler');
 const PaymentHandler = require('../handlers/PaymentHandler');
 const FeeStructureHandler = require('../handlers/FeeStructureHandler');
 const AssessmentHandler = require('../handlers/AssessmentHandler');
+const EmployeeHandler = require('../handlers/EmployeeHandler');
+const PayrollHandler = require('../handlers/PayrollHandler');
+const ExpenseHandler = require('../handlers/ExpenseHandler');
 
 const handlers = {
   'Generic': GenericEntityHandler,
   'Student': StudentHandler,
   'Payment': PaymentHandler,
   'FeeStructure': FeeStructureHandler,
-  'AssessmentHandler': AssessmentHandler
+  'AssessmentHandler': AssessmentHandler,
+  'Employee': EmployeeHandler,
+  'Payroll': PayrollHandler,
+  'Expense': ExpenseHandler
 };
 
 class DispatcherService {

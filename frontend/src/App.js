@@ -15,6 +15,7 @@ import Developer from './Components/Developer/Developer';
 import QuestionPaper from './Components/QuestionPaper/QuestionPaper';
 import QuestionPaperV2 from './Components/QuestionPaperV2/QuestionPaperV2';
 import Login from './Components/Login/Login';
+import HRFinanceHub from './Components/HRFinance/HRFinanceHub';
 
 function AppContent() {
   const location = useLocation();
@@ -83,6 +84,7 @@ function AppContent() {
             <Route path="/Settings" element={<Master />} />
             <Route path="/Developer" element={<Developer />} />
             <Route path="/QuestionPaperV2" element={<QuestionPaperV2 />} />
+            <Route path="/HRFinance" element={<HRFinanceHub />} />
           </Routes>
         </div>
       </div>

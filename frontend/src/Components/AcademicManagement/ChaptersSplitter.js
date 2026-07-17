@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api, { getClasses, getSubjects, getClassSubjects } from '../../API';
+import Notification from '../Shared/Notification';
 
 export default function ChaptersSplitter() {
   const [classes, setClasses] = useState([]);
@@ -22,6 +23,58 @@ export default function ChaptersSplitter() {
   const [editorLoading, setEditorLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', text: '' });
+  
+  // Bottom Right Notifications
+  const [notificationMessage, setNotificationMessage] = useState('');
+  const [notificationType, setNotificationType] = useState('success');
+
+  const triggerNotification = (msg, type = 'success') => {
+    setNotificationMessage(msg);
+    setNotificationType(type);
+    setTimeout(() => {
+      setNotificationMessage('');
+    }, 4000);
+  };
+
+  // Drag and Drop State and Handlers
+  const [draggedIndex, setDraggedIndex] = useState(null);
+
+  const handleDragStart = (e, index) => {
+    setDraggedIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleDragOver = (e, index) => {
+    e.preventDefault();
+    if (draggedIndex === null || draggedIndex === index) return;
+    
+    const reorderedChapters = [...chapters];
+    const draggedItem = reorderedChapters[draggedIndex];
+    reorderedChapters.splice(draggedIndex, 1);
+    reorderedChapters.splice(index, 0, draggedItem);
+    
+    setDraggedIndex(index);
+    setChapters(reorderedChapters);
+  };
+
+  const handleDragEnd = async () => {
+    setDraggedIndex(null);
+    if (!activeClassNode || !activeSubjectNode) return;
+    try {
+      setEditorLoading(true);
+      await api.post('/chapters', {
+        classId: activeClassNode,
+        subjectId: activeSubjectNode,
+        chapters: chapters.map(c => ({ _id: c._id, name: c.name }))
+      });
+      triggerNotification('Chapters reordered successfully!', 'success');
+    } catch (err) {
+      triggerNotification('Failed to save chapter sequence.', 'danger');
+      loadChapters(activeClassNode, activeSubjectNode);
+    } finally {
+      setEditorLoading(false);
+    }
+  };
 
   const loadChapters = useCallback(async (classId, subjectId) => {
     try {
@@ -30,6 +83,7 @@ export default function ChaptersSplitter() {
       setChapters(res.data.chapters || []);
     } catch (err) {
       console.error(err);
+      setChapters([]);
     } finally {
       setEditorLoading(false);
     }
@@ -79,21 +133,41 @@ export default function ChaptersSplitter() {
     loadChapters(classId, subjectId);
   };
 
+  const handleClassChange = (classId) => {
+    setActiveClassNode(classId);
+    setEditId(null);
+    setFeedback({ type: '', text: '' });
+    
+    const classSubs = getLinkedSubjectsForClass(classId);
+    if (classSubs.length > 0) {
+      const firstSubId = classSubs[0]._id;
+      setActiveSubjectNode(firstSubId);
+      loadChapters(classId, firstSubId);
+    } else {
+      setActiveSubjectNode(null);
+      setChapters([]);
+    }
+  };
+
   const handleAddChapter = async (e) => {
     e.preventDefault();
     if (!newChapterName.trim() || !activeClassNode || !activeSubjectNode) return;
     try {
       setSaving(true);
+      const payloadChapters = [
+        ...chapters.map(c => ({ _id: c._id, name: c.name })),
+        { name: newChapterName.trim() }
+      ];
       await api.post('/chapters', {
         classId: activeClassNode,
         subjectId: activeSubjectNode,
-        chapterName: newChapterName.trim()
+        chapters: payloadChapters
       });
       setNewChapterName('');
-      setFeedback({ type: 'success', text: 'Chapter added successfully!' });
+      triggerNotification('Chapter added successfully!', 'success');
       loadChapters(activeClassNode, activeSubjectNode);
     } catch (err) {
-      setFeedback({ type: 'danger', text: 'Failed to register chapter.' });
+      triggerNotification(err.response?.data?.message || 'Failed to register chapter.', 'danger');
     } finally {
       setSaving(false);
     }
@@ -101,15 +175,15 @@ export default function ChaptersSplitter() {
 
   const handleUpdateChapter = async (e) => {
     e.preventDefault();
-    if (!editName.trim()) return;
+    if (!editName.trim() || !activeClassNode || !activeSubjectNode) return;
     try {
       setSaving(true);
-      await api.put(`/chapters/${editId}`, { chapterName: editName.trim() });
+      await api.put(`/chapters/${activeClassNode}/${activeSubjectNode}/${editId}`, { newName: editName.trim() });
       setEditId(null);
-      setFeedback({ type: 'success', text: 'Chapter renamed successfully!' });
+      triggerNotification('Chapter renamed successfully!', 'success');
       loadChapters(activeClassNode, activeSubjectNode);
     } catch (err) {
-      setFeedback({ type: 'danger', text: 'Failed to edit chapter.' });
+      triggerNotification(err.response?.data?.message || 'Failed to edit chapter.', 'danger');
     } finally {
       setSaving(false);
     }
@@ -119,11 +193,11 @@ export default function ChaptersSplitter() {
     if (!window.confirm('Delete this chapter?')) return;
     try {
       setEditorLoading(true);
-      await api.delete(`/chapters/${id}`);
-      setFeedback({ type: 'success', text: 'Chapter removed.' });
+      await api.delete(`/chapters/${activeClassNode}/${activeSubjectNode}/${id}`);
+      triggerNotification('Chapter removed.', 'success');
       loadChapters(activeClassNode, activeSubjectNode);
     } catch (err) {
-      setFeedback({ type: 'danger', text: 'Failed to delete chapter.' });
+      triggerNotification(err.response?.data?.message || 'Failed to delete chapter.', 'danger');
     } finally {
       setEditorLoading(false);
     }
@@ -157,30 +231,44 @@ export default function ChaptersSplitter() {
       ) : (
         <div className="row g-4">
           
-          {/* Left Split-Pane: Class/Subject tree hierarchy */}
+          {/* Left Split-Pane: Class/Subject dropdown & list hierarchy */}
           <div className="col-md-4 border-end">
             <h6 className="fw-bold mb-3 text-muted small"><i className="fa-solid fa-folder me-2"></i>Class Curriculums</h6>
-            <div className="d-flex flex-column gap-2" style={{ maxHeight: '500px', overflowY: 'auto' }}>
-              {classes.map(cls => {
-                const classSubs = getLinkedSubjectsForClass(cls._id);
-                return (
-                  <div key={cls._id} className="mb-2">
-                    <div className="p-2 bg-light rounded text-muted fw-bold small mb-1">
-                      <i className="fa-solid fa-school me-2"></i>Class {cls.class}
-                    </div>
-                    <div className="d-flex flex-column gap-1 ps-3">
+            
+            {/* Class Dropdown Selector */}
+            <div className="mb-3">
+              <label className="form-label small fw-bold text-secondary">Select Class</label>
+              <select 
+                className="form-select form-select-sm" 
+                value={activeClassNode || ''} 
+                onChange={e => handleClassChange(e.target.value)}
+              >
+                <option value="" disabled>-- Select Class --</option>
+                {classes.map(cls => (
+                  <option key={cls._id} value={cls._id}>Class {cls.class}</option>
+                ))}
+              </select>
+            </div>
+
+            <h6 className="fw-bold mb-2 text-muted small"><i className="fa-solid fa-book me-2"></i>Linked Subjects</h6>
+            <div className="d-flex flex-column gap-2" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+              {activeClassNode ? (
+                (() => {
+                  const classSubs = getLinkedSubjectsForClass(activeClassNode);
+                  return (
+                    <div className="d-flex flex-column gap-1">
                       {classSubs.map(sub => {
-                        const isActive = activeClassNode === cls._id && activeSubjectNode === sub._id;
+                        const isActive = activeSubjectNode === sub._id;
                         return (
                           <div 
                             key={sub._id} 
-                            onClick={() => handleNodeSelect(cls._id, sub._id)}
+                            onClick={() => handleNodeSelect(activeClassNode, sub._id)}
                             className={`p-2 rounded cursor-pointer transition-all small fw-semibold d-flex justify-content-between align-items-center ${
                               isActive 
                                 ? 'bg-primary text-white shadow-sm' 
-                                : 'bg-white text-dark hover-bg-light border border-light'
+                                : 'border border-light'
                             }`}
-                            style={{ cursor: 'pointer' }}
+                            style={{ cursor: 'pointer', backgroundColor: isActive ? undefined : 'var(--card-bg-color)', color: isActive ? undefined : 'var(--text-color)' }}
                           >
                             <span>{sub.name}</span>
                             <i className="fa-solid fa-chevron-right" style={{ fontSize: '0.65rem', opacity: isActive ? 1 : 0.4 }}></i>
@@ -188,12 +276,14 @@ export default function ChaptersSplitter() {
                         );
                       })}
                       {classSubs.length === 0 && (
-                        <p className="text-muted small m-0 ps-2" style={{ fontSize: '0.75rem' }}>No subjects linked yet</p>
+                        <p className="text-muted small m-0 ps-2" style={{ fontSize: '0.75rem' }}>No subjects linked to this class yet.</p>
                       )}
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })()
+              ) : (
+                <p className="text-muted small m-0">Please select a class first.</p>
+              )}
             </div>
           </div>
 
@@ -257,25 +347,40 @@ export default function ChaptersSplitter() {
                 ) : (
                   <div className="d-flex flex-column gap-2" style={{ maxHeight: '350px', overflowY: 'auto' }}>
                     {chapters.map((ch, idx) => (
-                      <div key={ch._id} className="d-flex justify-content-between align-items-center p-3 border rounded shadow-sm bg-white">
+                      <div 
+                        key={ch._id} 
+                        className={`d-flex justify-content-between align-items-center p-3 border rounded shadow-sm transition-all ${
+                          draggedIndex === idx ? 'opacity-50 border-primary border-dashed' : ''
+                        }`} 
+                        style={{ 
+                          backgroundColor: 'var(--card-bg-color)', 
+                          color: 'var(--text-color)',
+                          cursor: 'grab'
+                        }}
+                        draggable={true}
+                        onDragStart={(e) => handleDragStart(e, idx)}
+                        onDragOver={(e) => handleDragOver(e, idx)}
+                        onDragEnd={handleDragEnd}
+                      >
                         <div className="d-flex align-items-center gap-2">
+                          <i className="fa-solid fa-grip-vertical text-muted me-2" style={{ cursor: 'grab' }}></i>
                           <span className="badge bg-light text-muted border">{idx + 1}</span>
                           <span className="fw-bold small">{ch.name}</span>
                         </div>
                         <div>
-                          <button className="btn btn-sm btn-outline-warning border-0 me-2" onClick={() => { setEditId(ch._id); setEditName(ch.name); }}>
+                          <button className="btn btn-sm btn-outline-warning border-0 me-2" onClick={(e) => { e.stopPropagation(); setEditId(ch._id); setEditName(ch.name); }}>
                             <i className="fa-solid fa-pen-to-square"></i>
                           </button>
-                          <button className="btn btn-sm btn-outline-danger border-0" onClick={() => handleDeleteChapter(ch._id)}>
+                          <button className="btn btn-sm btn-outline-danger border-0" onClick={(e) => { e.stopPropagation(); handleDeleteChapter(ch._id); }}>
                             <i className="fa-regular fa-trash-can"></i>
                           </button>
                         </div>
                       </div>
                     ))}
                     {chapters.length === 0 && (
-                      <div className="text-center p-5 text-muted border rounded border-dashed">
+                      <div className="text-center p-5 text-muted border rounded border-dashed" style={{ backgroundColor: 'var(--card-bg-color)', color: 'var(--text-color)' }}>
                         <i className="fa-solid fa-bookmark fa-2x mb-2 text-secondary"></i>
-                        <p className="small m-0">No chapters configured. Register the first chapter above!</p>
+                        <p className="small m-0">No chapters are there for this subject!</p>
                       </div>
                     )}
                   </div>
@@ -291,6 +396,7 @@ export default function ChaptersSplitter() {
 
         </div>
       )}
+      <Notification message={notificationMessage} type={notificationType} />
     </div>
   );
 }

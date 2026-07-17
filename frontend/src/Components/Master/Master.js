@@ -905,7 +905,7 @@ export default function Master() {
                                             ) : (
                                                 academicYears.map((yearObj) => (
                                                     <div className="col-md-6" key={yearObj._id}>
-                                                        <div className="border rounded p-3 d-flex justify-content-between align-items-center shadow-sm bg-white">
+                                                        <div className="border rounded p-3 d-flex justify-content-between align-items-center shadow-sm" style={{ backgroundColor: 'var(--card-bg-color)' }}>
                                                             <span className="fw-semibold">
                                                                 <i className="fas fa-calendar me-2 text-muted"></i>{yearObj.year}
                                                             </span>

@@ -32,16 +32,19 @@ class StudentHandler {
       }
     }
 
-    if (!studentData.studentCode) {
-      const count = await StudentModel.countDocuments({ schoolId });
-      studentData.studentCode = `S${String(count + 1).padStart(3, '0')}`;
-    }
-
     let studentDoc;
     if (payload.studentId || payload._id) {
       const studentId = payload.studentId || payload._id;
+      const existingStudent = await StudentModel.findById(studentId);
+      if (existingStudent && existingStudent.studentCode && !studentData.studentCode) {
+        studentData.studentCode = existingStudent.studentCode;
+      }
       studentDoc = await StudentModel.findByIdAndUpdate(studentId, studentData, { new: true, runValidators: true });
     } else {
+      if (!studentData.studentCode) {
+        const count = await StudentModel.countDocuments({ schoolId });
+        studentData.studentCode = `S${String(count + 1).padStart(3, '0')}`;
+      }
       studentDoc = new StudentModel(studentData);
       await studentDoc.save();
     }

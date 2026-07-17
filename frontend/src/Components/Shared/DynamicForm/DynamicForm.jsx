@@ -20,7 +20,8 @@ export default function DynamicForm({
   onSubmit,
   onChange,
   submitLabel,
-  className = ''
+  className = '',
+  loading = false
 }) {
   const isReadOnly = mode === 'readonly' || mode === 'view';
   const templateRef = useRef(null);
@@ -173,8 +174,12 @@ export default function DynamicForm({
       {/* Action buttons (hidden in read-only / view modes) */}
       {!isReadOnly && (
         <div className="col-12 pt-4 text-end">
-          <button type="submit" className="df-submit-btn px-4 py-2 fw-bold text-white border-0 rounded">
-            {btnLabel}
+          <button type="submit" className="df-submit-btn px-4 py-2 fw-bold text-white border-0 rounded" disabled={loading}>
+            {loading ? (
+              <>
+                <i className="fa-solid fa-spinner fa-spin me-2"></i>Saving...
+              </>
+            ) : btnLabel}
           </button>
         </div>
       )}
