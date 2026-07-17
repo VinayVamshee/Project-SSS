@@ -33,7 +33,6 @@ export default function ExpenseSubmodule({ showMessage }) {
 
   const handleSave = async (formData) => {
     if (!templateForm) return;
-    setLoading(true);
     try {
       // Validate or construct expense details
       const payload = { ...formData };
@@ -50,8 +49,6 @@ export default function ExpenseSubmodule({ showMessage }) {
     } catch (err) {
       console.error(err);
       showMessage('Failed to save expense entry: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
     }
   };
 

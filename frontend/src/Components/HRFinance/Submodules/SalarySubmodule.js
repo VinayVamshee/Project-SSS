@@ -36,7 +36,6 @@ export default function SalarySubmodule({ showMessage }) {
 
   const handleSave = async (formData) => {
     if (!templateForm || !selectedEmployee) return;
-    setLoading(true);
     try {
       const existing = salaryStructures.find(s => (s.employeeId?._id || s.employeeId) === selectedEmployee._id);
       const payload = { ...formData, employeeId: selectedEmployee._id };
@@ -49,8 +48,6 @@ export default function SalarySubmodule({ showMessage }) {
     } catch (err) {
       console.error(err);
       showMessage('Failed to save salary structure: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
     }
   };
 

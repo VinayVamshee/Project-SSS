@@ -35,7 +35,6 @@ export default function EmployeeSubmodule({ showMessage }) {
 
   const handleSave = async (formData) => {
     if (!templateForm) return;
-    setLoading(true);
     try {
       const payload = { ...formData };
       if (formMode === 'edit' && selectedEmployee) {
@@ -49,8 +48,6 @@ export default function EmployeeSubmodule({ showMessage }) {
     } catch (err) {
       console.error(err);
       showMessage('Error saving employee profile: ' + (err.response?.data?.message || err.message));
-    } finally {
-      setLoading(false);
     }
   };
 
