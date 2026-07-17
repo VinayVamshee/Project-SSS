@@ -8,10 +8,8 @@ export default function SalarySubmodule({ showMessage }) {
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [templateForm, setTemplateForm] = useState(null);
-  const [loading, setLoading] = useState(false);
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const empRes = await getEmployees();
       setEmployees((empRes.data.data || []).filter(e => e.status === 'Active'));
@@ -28,8 +26,6 @@ export default function SalarySubmodule({ showMessage }) {
     } catch (err) {
       console.error(err);
       showMessage('Failed to load salary structures configuration.');
-    } finally {
-      setLoading(false);
     }
   };
 

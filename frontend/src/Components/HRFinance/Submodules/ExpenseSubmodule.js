@@ -5,13 +5,11 @@ import DynamicForm from '../../Shared/DynamicForm/DynamicForm';
 export default function ExpenseSubmodule({ showMessage }) {
   const [expenses, setExpenses] = useState([]);
   const [templateForm, setTemplateForm] = useState(null);
-  const [loading, setLoading] = useState(false);
   const [selectedExpense, setSelectedExpense] = useState(null);
   const [formMode, setFormMode] = useState('create'); // 'create' | 'view'
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const expRes = await getExpenses();
       setExpenses(expRes.data.data || []);
@@ -25,8 +23,6 @@ export default function ExpenseSubmodule({ showMessage }) {
     } catch (err) {
       console.error(err);
       showMessage('Failed to load expenses configuration.');
-    } finally {
-      setLoading(false);
     }
   };
 

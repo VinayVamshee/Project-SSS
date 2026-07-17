@@ -4,7 +4,6 @@ import DynamicForm from '../../Shared/DynamicForm/DynamicForm';
 
 export default function EmployeeSubmodule({ showMessage }) {
   const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
@@ -13,7 +12,6 @@ export default function EmployeeSubmodule({ showMessage }) {
   const [formMode, setFormMode] = useState('create'); // 'create' | 'edit'
 
   const loadData = async () => {
-    setLoading(true);
     try {
       const empRes = await getEmployees();
       setEmployees(empRes.data.data || []);
@@ -27,8 +25,6 @@ export default function EmployeeSubmodule({ showMessage }) {
     } catch (err) {
       console.error(err);
       showMessage('Failed to load employee metadata configuration.');
-    } finally {
-      setLoading(false);
     }
   };
 
