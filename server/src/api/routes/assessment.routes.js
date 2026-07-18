@@ -8,6 +8,7 @@ router.use(protect);
 // Configuration
 router.post('/config', assessmentController.saveConfiguration);
 router.get('/config', assessmentController.getConfigurations);
+router.delete('/config/:id', assessmentController.deleteConfiguration);
 
 // Marks Entry
 router.post('/marks/bulk-save', assessmentController.bulkSaveMarks);
@@ -15,6 +16,7 @@ router.get('/marks/register', assessmentController.getMarksRegister);
 
 // Clone academic sessions
 router.post('/config/copy-previous', assessmentController.copyPreviousYear);
+router.post('/copy-configuration', assessmentController.copyConfiguration);
 
 // Analytics
 router.get('/analytics/subject', assessmentController.getSubjectReport);

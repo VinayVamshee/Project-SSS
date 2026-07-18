@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api, { 
-  getAcademicYears, getClasses, getSubjects,
+  getAcademicYears, getClasses, getSubjects, getClassSubjects,
   getAnalyticsDashboard, getStudentAnalytics, getSubjectAnalytics, getClassAnalytics, getAssessmentAnalytics 
 } from '../../API';
 import { 
@@ -33,6 +33,7 @@ export default function AssessmentAnalytics() {
   const [years, setYears] = useState([]);
   const [classes, setClasses] = useState([]);
   const [subjects, setSubjects] = useState([]);
+  const [classSubjectLinks, setClassSubjectLinks] = useState([]);
   const [students, setStudents] = useState([]);
 
   // Selection Dropdowns
@@ -40,6 +41,7 @@ export default function AssessmentAnalytics() {
   const [selectedClass, setSelectedClass] = useState('');
   const [selectedAssessment, setSelectedAssessment] = useState('');
   const [selectedSubject, setSelectedSubject] = useState('');
+  const [selectedSubjectAssessment, setSelectedSubjectAssessment] = useState('all');
   const [selectedStudent, setSelectedStudent] = useState('');
 
   // Loaded Config List for Class
@@ -56,6 +58,14 @@ export default function AssessmentAnalytics() {
   const [loading, setLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
+  // Helper/Memoized list of subjects for the currently selected class
+  const filteredSubjects = React.useMemo(() => {
+    const link = classSubjectLinks.find(l => l.classId?.toString() === selectedClass || l.classId?._id?.toString() === selectedClass);
+    if (!link) return [];
+    const linkedIds = new Set(link.subjectIds?.map(id => id.toString()));
+    return subjects.filter(sub => linkedIds.has(sub._id?.toString()));
+  }, [selectedClass, classSubjectLinks, subjects]);
+
   // 1. Initial Load of Sessions & Classes
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -66,10 +76,11 @@ export default function AssessmentAnalytics() {
 
     async function fetchInitialData() {
       try {
-        const [yrsRes, clsRes, subRes] = await Promise.all([
+        const [yrsRes, clsRes, subRes, linksRes] = await Promise.all([
           getAcademicYears(),
           getClasses(),
-          getSubjects()
+          getSubjects(),
+          getClassSubjects()
         ]);
 
         const yearList = yrsRes.data.data || [];
@@ -85,6 +96,7 @@ export default function AssessmentAnalytics() {
         }
 
         setSubjects(subRes.data.subjects || []);
+        setClassSubjectLinks(linksRes.data.data || []);
       } catch (err) {
         console.error('Error loading masters for analytics:', err);
       }
@@ -172,16 +184,19 @@ export default function AssessmentAnalytics() {
           });
           setStudentData(res.data.data);
         } else if (activeTab === 'subject') {
-          if (!selectedSubject) {
-            if (subjects.length > 0) {
-              setSelectedSubject(subjects[0]._id);
+          if (!selectedSubject || !filteredSubjects.some(s => s._id === selectedSubject)) {
+            if (filteredSubjects.length > 0) {
+              setSelectedSubject(filteredSubjects[0]._id);
+            } else {
+              setSubjectData(null);
             }
             return;
           }
           const res = await getSubjectAnalytics({
             academicYearId: selectedYear,
             classId: selectedClass,
-            subjectId: selectedSubject
+            subjectId: selectedSubject,
+            assessmentConfigurationId: selectedSubjectAssessment
           });
           setSubjectData(res.data.data);
         } else if (activeTab === 'class') {
@@ -207,7 +222,7 @@ export default function AssessmentAnalytics() {
       }
     };
     loadData();
-  }, [activeTab, selectedYear, selectedClass, selectedAssessment, selectedSubject, selectedStudent, subjects]);
+   }, [activeTab, selectedYear, selectedClass, selectedAssessment, selectedSubject, selectedSubjectAssessment, selectedStudent, subjects, filteredSubjects]);
 
   const handlePrint = () => {
     window.print();
@@ -277,14 +292,25 @@ export default function AssessmentAnalytics() {
           )}
 
           {activeTab === 'subject' && (
-            <div className="ov-academic-selector">
-              <i className="fa-solid fa-book-open me-2"></i>
-              <select className="ov-session-select" value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)}>
-                {subjects.map(sub => (
-                  <option key={sub._id} value={sub._id}>{sub.name}</option>
-                ))}
-              </select>
-            </div>
+            <>
+              <div className="ov-academic-selector">
+                <i className="fa-solid fa-book-open me-2"></i>
+                <select className="ov-session-select" value={selectedSubject} onChange={(e) => setSelectedSubject(e.target.value)}>
+                  {filteredSubjects.map(sub => (
+                    <option key={sub._id} value={sub._id}>{sub.name}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="ov-academic-selector ms-2">
+                <i className="fa-solid fa-file-invoice me-2"></i>
+                <select className="ov-session-select" value={selectedSubjectAssessment} onChange={(e) => setSelectedSubjectAssessment(e.target.value)}>
+                  <option value="all">Average of All Exams</option>
+                  {classAssessments.map(ass => (
+                    <option key={ass._id} value={ass._id}>{ass.assessmentName}</option>
+                  ))}
+                </select>
+              </div>
+            </>
           )}
 
           {activeTab === 'assessment' && (
@@ -451,7 +477,10 @@ export default function AssessmentAnalytics() {
               {/* Performance Trend Charts */}
               <div className="ov-charts-grid">
                 <div className="ov-chart-card">
-                  <div className="ov-chart-header"><i className="fa-solid fa-chart-line me-2"></i>Class overall performance progression trend</div>
+                  <div className="ov-chart-header">
+                    <h4 className="ov-chart-header-title"><i className="fa-solid fa-chart-line"></i> Class overall performance progression trend</h4>
+                    <p className="ov-chart-header-subtitle">Performance timeline progression over academic terms</p>
+                  </div>
                   <div style={{ height: '300px' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <AreaChart data={dashboardData.charts?.performanceTimeline || []}>
@@ -472,7 +501,10 @@ export default function AssessmentAnalytics() {
                 </div>
 
                 <div className="ov-chart-card">
-                  <div className="ov-chart-header"><i className="fa-solid fa-chart-pie me-2"></i>Grade matrix standings</div>
+                  <div className="ov-chart-header">
+                    <h4 className="ov-chart-header-title"><i className="fa-solid fa-chart-pie"></i> Grade matrix standings</h4>
+                    <p className="ov-chart-header-subtitle">Distribution of grades achieved across class level</p>
+                  </div>
                   <div style={{ height: '300px' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={dashboardData.charts?.gradeDistribution || []}>
@@ -618,10 +650,13 @@ export default function AssessmentAnalytics() {
               {/* Student Timeline Progression and Subject Radar charts */}
               <div className="ov-charts-grid">
                 <div className="ov-chart-card">
-                  <div className="ov-chart-header"><i className="fa-solid fa-chart-line me-2"></i>Subject-wise progress curve timeline</div>
-                  <div style={{ height: '320px' }}>
+                  <div className="ov-chart-header">
+                    <h4 className="ov-chart-header-title"><i className="fa-solid fa-chart-line"></i> Subject-wise progress curve timeline</h4>
+                    <p className="ov-chart-header-subtitle">Student academic progression curves across assessments</p>
+                  </div>
+                  <div style={{ height: '320px', padding: '10px 10px 0 10px' }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={studentData.timeline || []}>
+                      <AreaChart data={studentData.timeline || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                         <defs>
                           {Object.keys(studentData.timeline?.[0] || {})
                             .filter(k => k !== 'assessmentName')
@@ -629,17 +664,74 @@ export default function AssessmentAnalytics() {
                               const color = COLORS[idx % COLORS.length];
                               return (
                                 <linearGradient key={sub} id={`colorUv-${idx}`} x1="0" y1="0" x2="0" y2="1">
-                                  <stop offset="5%" stopColor={color} stopOpacity={0.25} />
-                                  <stop offset="95%" stopColor={color} stopOpacity={0.02} />
+                                  <stop offset="5%" stopColor={color} stopOpacity={0.06} />
+                                  <stop offset="95%" stopColor={color} stopOpacity={0.00} />
                                 </linearGradient>
                               );
                             })}
                         </defs>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-                        <XAxis dataKey="assessmentName" stroke="var(--text-secondary)" tickLine={false} axisLine={false} />
-                        <YAxis domain={[0, 100]} stroke="var(--text-secondary)" tickLine={false} axisLine={false} />
-                        <Tooltip contentStyle={{ backgroundColor: '#1e293b', color: '#fff', borderRadius: '8px', border: 'none' }} />
-                        <Legend iconType="circle" />
+                        <CartesianGrid stroke="var(--border-color, rgba(0,0,0,0.03))" vertical={false} />
+                        <XAxis 
+                          dataKey="assessmentName" 
+                          stroke="var(--text-color)" 
+                          tickLine={false} 
+                          axisLine={false} 
+                          dy={10}
+                          style={{ fontSize: '11px', opacity: 0.65, fontWeight: 500 }}
+                        />
+                        <YAxis 
+                          domain={[0, 100]} 
+                          ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                          stroke="var(--text-color)" 
+                          tickLine={false} 
+                          axisLine={false} 
+                          dx={-5}
+                          style={{ fontSize: '11px', opacity: 0.65, fontWeight: 500 }}
+                        />
+                        <Tooltip
+                          content={({ active, payload, label }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div style={{
+                                  background: 'var(--card-bg-color, #ffffff)',
+                                  border: '1px solid var(--border-color, #e2e8f0)',
+                                  borderRadius: '8px',
+                                  padding: '12px 16px',
+                                  boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.02)',
+                                  color: 'var(--text-color, #1e293b)'
+                                }}>
+                                  <p style={{ margin: '0 0 8px 0', fontWeight: 700, fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</p>
+                                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                    {payload.map((pld, index) => (
+                                      <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
+                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                          <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: pld.color, display: 'inline-block' }} />
+                                          <span style={{ fontSize: '12px', fontWeight: 500 }}>{pld.name}</span>
+                                        </div>
+                                        <span style={{ fontSize: '12px', fontWeight: 700 }}>{pld.value}%</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Legend
+                          verticalAlign="top"
+                          height={40}
+                          content={({ payload }) => (
+                            <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-start', flexWrap: 'wrap', marginBottom: '16px', paddingLeft: '20px' }}>
+                              {payload.map((entry, index) => (
+                                <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-color)' }}>
+                                  <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: entry.color, display: 'inline-block' }} />
+                                  <span style={{ opacity: 0.85 }}>{entry.value}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        />
                         {Object.keys(studentData.timeline?.[0] || {})
                           .filter(k => k !== 'assessmentName')
                           .map((sub, idx) => (
@@ -648,10 +740,12 @@ export default function AssessmentAnalytics() {
                               type="monotone" 
                               dataKey={sub} 
                               stroke={COLORS[idx % COLORS.length]} 
-                              strokeWidth={3}
+                              strokeWidth={2}
                               fill={`url(#colorUv-${idx})`}
-                              dot={{ r: 4 }}
-                              activeDot={{ r: 6 }}
+                              dot={false}
+                              activeDot={{ r: 4, strokeWidth: 1 }}
+                              animationDuration={850}
+                              animationEasing="ease-in-out"
                             />
                           ))}
                       </AreaChart>
@@ -660,7 +754,10 @@ export default function AssessmentAnalytics() {
                 </div>
 
                 <div className="ov-chart-card">
-                  <div className="ov-chart-header"><i className="fa-solid fa-circle-half-stroke me-2"></i>Subject averages radar</div>
+                  <div className="ov-chart-header">
+                    <h4 className="ov-chart-header-title"><i className="fa-solid fa-circle-half-stroke"></i> Subject averages radar</h4>
+                    <p className="ov-chart-header-subtitle">Overview of student subject score balances</p>
+                  </div>
                   <div style={{ height: '320px' }}>
                     <ResponsiveContainer width="100%" height="100%">
                       <RadarChart cx="50%" cy="50%" outerRadius="80%" data={studentData.subjectAverages || []}>
@@ -677,82 +774,221 @@ export default function AssessmentAnalytics() {
 
               {/* Subject comparison Bar Chart */}
               <div className="ov-chart-card">
-                <div className="ov-chart-header"><i className="fa-solid fa-chart-bar me-2"></i>Subject-wise score comparison (Student score vs Class highest score)</div>
+                <div className="ov-chart-header">
+                  <h4 className="ov-chart-header-title"><i className="fa-solid fa-chart-bar"></i> Subject-wise score comparison</h4>
+                  <p className="ov-chart-header-subtitle">Student score compared against class highest scores</p>
+                </div>
                 <div style={{ height: '300px' }}>
                   <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={studentData.subjectTable || []} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.05)" vertical={false} />
-                      <XAxis dataKey="subject" stroke="var(--text-secondary)" tickLine={false} axisLine={false} />
-                      <YAxis stroke="var(--text-secondary)" tickLine={false} axisLine={false} />
-                      <Tooltip contentStyle={{ backgroundColor: '#1e293b', color: '#fff', borderRadius: '8px', border: 'none' }} />
-                      <Legend />
-                      <Bar dataKey="average" name="Student Score" fill={palette.blue} radius={[8, 8, 0, 0]} />
-                      <Bar dataKey="highest" name="Class Highest Score" fill={palette.gold} radius={[8, 8, 0, 0]} />
+                    <BarChart data={studentData.subjectTable || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid stroke="var(--border-color, rgba(0,0,0,0.03))" vertical={false} />
+                      <XAxis 
+                        dataKey="subject" 
+                        stroke="var(--text-color)" 
+                        tickLine={false} 
+                        axisLine={false} 
+                        dy={10}
+                        style={{ fontSize: '11px', opacity: 0.65, fontWeight: 500 }}
+                      />
+                      <YAxis 
+                        domain={[0, 100]}
+                        ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                        stroke="var(--text-color)" 
+                        tickLine={false} 
+                        axisLine={false} 
+                        dx={-5}
+                        style={{ fontSize: '11px', opacity: 0.65, fontWeight: 500 }}
+                      />
+                      <Tooltip
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div style={{
+                                background: 'var(--card-bg-color, #ffffff)',
+                                border: '1px solid var(--border-color, #e2e8f0)',
+                                borderRadius: '8px',
+                                padding: '12px 16px',
+                                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.02)',
+                                color: 'var(--text-color, #1e293b)'
+                              }}>
+                                <p style={{ margin: '0 0 8px 0', fontWeight: 700, fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {payload.map((pld, index) => (
+                                    <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: pld.color, display: 'inline-block' }} />
+                                        <span style={{ fontSize: '12px', fontWeight: 500 }}>{pld.name}</span>
+                                      </div>
+                                      <span style={{ fontSize: '12px', fontWeight: 700 }}>{pld.value}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Legend
+                        verticalAlign="top"
+                        height={40}
+                        content={({ payload }) => (
+                          <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-start', flexWrap: 'wrap', marginBottom: '16px', paddingLeft: '20px' }}>
+                            {payload.map((entry, index) => (
+                              <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-color)' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: entry.color, display: 'inline-block' }} />
+                                <span style={{ opacity: 0.85 }}>{entry.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      />
+                      <Bar dataKey="average" name="Student Score" fill={palette.blue} radius={[4, 4, 0, 0]} maxBarSize={30} />
+                      <Bar dataKey="highest" name="Class Highest Score" fill={palette.gold} radius={[4, 4, 0, 0]} maxBarSize={30} />
                     </BarChart>
                   </ResponsiveContainer>
                 </div>
               </div>
 
               {/* Subject Breakdown & Chapter Covered tables */}
-              <div className="row g-4">
-                <div className="col-lg-6">
-                  <div className="ov-chart-card">
-                    <div className="ov-chart-header"><i className="fa-solid fa-book me-2"></i>Subject performance breakdowns</div>
-                    <div className="table-responsive">
-                      <table className="table table-glass m-0">
-                        <thead>
-                          <tr>
-                            <th>Subject</th>
-                            <th>Average</th>
-                            <th>High Score</th>
-                            <th>Grade</th>
+              <div className="analytics-panels-grid">
+                <div className="analytics-custom-panel">
+                  <div className="ov-chart-header">
+                    <h4 className="ov-chart-header-title"><i className="fa-solid fa-book"></i> Subject performance breakdowns</h4>
+                    <p className="ov-chart-header-subtitle">Performance breakdown by enrolled curriculum subjects</p>
+                  </div>
+                  <div className="table-responsive">
+                    <table className="analytics-custom-table">
+                      <thead>
+                        <tr>
+                          <th>Subject</th>
+                          <th>Average</th>
+                          <th>High Score</th>
+                          <th>Grade</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentData.subjectTable?.map((s, idx) => (
+                          <tr key={idx}>
+                            <td>{s.subject}</td>
+                            <td className="fw-bold">{s.average}%</td>
+                            <td className="analytics-high-score">{s.highest}</td>
+                            <td><span className="analytics-grade-badge">{s.grade}</span></td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {studentData.subjectTable?.map((s, idx) => (
-                            <tr key={idx}>
-                              <td>{s.subject}</td>
-                              <td className="fw-bold">{s.average}%</td>
-                              <td className="text-muted">{s.highest}</td>
-                              <td><span className="badge badge-premium">{s.grade}</span></td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
-                <div className="col-lg-6">
-                  <div className="ov-chart-card">
-                    <div className="ov-chart-header"><i className="fa-solid fa-bookmark me-2"></i>Syllabus & chapter coverage standings</div>
-                    <div className="table-responsive">
-                      <table className="table table-glass m-0">
-                        <thead>
-                          <tr>
-                            <th>Subject</th>
-                            <th>Chapter Cover</th>
-                            <th>Score</th>
-                            <th>Status</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {studentData.chapterPerformance?.map((c, idx) => (
-                            <tr key={idx}>
-                              <td>{c.subject}</td>
-                              <td><code>{c.chapter}</code></td>
-                              <td>{c.average}%</td>
-                              <td>
-                                <span className={`badge bg-${c.weakness === 'Strong' ? 'success' : 'warning'} text-white`}>
-                                  {c.weakness}
-                                </span>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
+                <div className="analytics-custom-panel">
+                  <div className="ov-chart-header">
+                    <h4 className="ov-chart-header-title"><i className="fa-solid fa-bookmark"></i> Syllabus & chapter coverage standings</h4>
+                    <p className="ov-chart-header-subtitle">Syllabus coverage progress and strengths by chapter</p>
                   </div>
+                  <div className="table-responsive">
+                    <table className="analytics-custom-table">
+                      <thead>
+                        <tr>
+                          <th>Subject</th>
+                          <th>Chapter Cover</th>
+                          <th>Score</th>
+                          <th>Status</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {studentData.chapterPerformance?.map((c, idx) => (
+                          <tr key={idx}>
+                            <td>{c.subject}</td>
+                            <td><code>{c.chapter}</code></td>
+                            <td>{c.average}%</td>
+                            <td>
+                              <span className={`badge bg-${c.weakness === 'Strong' ? 'success' : 'warning'} text-white`}>
+                                {c.weakness}
+                              </span>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              {/* Exam-wise Overall Percentage Trend Chart */}
+              <div className="ov-chart-card mt-4">
+                <div className="ov-chart-header">
+                  <h4 className="ov-chart-header-title"><i className="fa-solid fa-chart-line"></i> Exam-wise overall percentage trend</h4>
+                  <p className="ov-chart-header-subtitle">Aggregate academic term scores percentage compared chronologically</p>
+                </div>
+                <div style={{ height: '300px', padding: '10px 10px 0 10px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={studentData.assessmentHistory || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                      <CartesianGrid stroke="var(--border-color, rgba(0,0,0,0.03))" vertical={false} />
+                      <XAxis 
+                        dataKey="assessment" 
+                        stroke="var(--text-color)" 
+                        tickLine={false} 
+                        axisLine={false} 
+                        dy={10}
+                        style={{ fontSize: '11px', opacity: 0.65, fontWeight: 500 }}
+                      />
+                      <YAxis 
+                        domain={[0, 100]}
+                        ticks={[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100]}
+                        stroke="var(--text-color)" 
+                        tickLine={false} 
+                        axisLine={false} 
+                        dx={-5}
+                        style={{ fontSize: '11px', opacity: 0.65, fontWeight: 500 }}
+                      />
+                      <Tooltip
+                        content={({ active, payload, label }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div style={{
+                                background: 'var(--card-bg-color, #ffffff)',
+                                border: '1px solid var(--border-color, #e2e8f0)',
+                                borderRadius: '8px',
+                                padding: '12px 16px',
+                                boxShadow: '0 10px 15px -3px rgba(0,0,0,0.05), 0 4px 6px -2px rgba(0,0,0,0.02)',
+                                color: 'var(--text-color, #1e293b)'
+                              }}>
+                                <p style={{ margin: '0 0 8px 0', fontWeight: 700, fontSize: '11px', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{label}</p>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                  {payload.map((pld, index) => (
+                                    <div key={index} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '24px' }}>
+                                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: pld.color, display: 'inline-block' }} />
+                                        <span style={{ fontSize: '12px', fontWeight: 500 }}>{pld.name}</span>
+                                      </div>
+                                      <span style={{ fontSize: '12px', fontWeight: 700 }}>{pld.value}%</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Legend
+                        verticalAlign="top"
+                        height={40}
+                        content={({ payload }) => (
+                          <div style={{ display: 'flex', gap: '16px', justifyContent: 'flex-start', flexWrap: 'wrap', marginBottom: '16px', paddingLeft: '20px' }}>
+                            {payload.map((entry, index) => (
+                              <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', fontWeight: 600, color: 'var(--text-color)' }}>
+                                <span style={{ width: '8px', height: '8px', borderRadius: '50%', backgroundColor: entry.color, display: 'inline-block' }} />
+                                <span style={{ opacity: 0.85 }}>{entry.value}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      />
+                      <Bar dataKey="percentage" name="Total Percentage" fill="var(--button-color, #8b5cf6)" radius={[4, 4, 0, 0]} maxBarSize={45} />
+                    </BarChart>
+                  </ResponsiveContainer>
                 </div>
               </div>
             </div>
@@ -954,7 +1190,7 @@ export default function AssessmentAnalytics() {
               <div className="ov-chart-card">
                 <div className="ov-chart-header"><i className="fa-solid fa-table-cells me-2"></i>Class subject performance EAV heatmap</div>
                 <p className="text-muted small">Instant visual diagnosis tool of subject score densities across the class list.</p>
-                <div className="table-responsive" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <div className="table-responsive" style={{ maxHeight: '400px', overflow: 'auto' }}>
                   <table className="table table-glass m-0 text-center">
                     <thead>
                       <tr>

@@ -45,7 +45,7 @@
 /* Premium Form Elements */
 .premium-label {
     font-weight: 600;
-    color: var(--text-color, #475569);
+    color: var(--text-secondary, #475569);
     margin-bottom: 0.4rem;
     font-size: 0.8rem;
     text-transform: uppercase;
@@ -168,7 +168,7 @@
 
 .developer-container .table th {
     background-color: var(--table-header-bg, #f8fafc) !important;
-    color: var(--text-color, #475569) !important;
+    color: var(--text-secondary, #475569) !important;
     font-weight: 600;
     padding: 0.75rem 1rem !important;
     border-bottom: 2px solid var(--border-color, #e2e8f0) !important;
@@ -461,7 +461,13 @@
     background: var(--tab-background, var(--card-bg-color));
     border: 1px solid var(--border-color);
     border-radius: 12px;
-    overflow: auto;
+    overflow-x: auto;
+    scrollbar-width: none; /* Hide default scrollbar on Firefox */
+    -ms-overflow-style: none; /* Hide default scrollbar on IE/Edge */
+}
+
+.tab-list-container::-webkit-scrollbar {
+    display: none; /* Hide default scrollbar on Chrome, Safari, Opera */
 }
 
 .tab-trigger {
@@ -471,27 +477,183 @@
     border-radius: 8px;
     color: var(--muted-text, var(--text-color));
     font-weight: 600;
+    white-space: nowrap;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .tab-trigger:hover {
     background: var(--tab-hover, rgba(0, 0, 0, .05));
+    color: var(--text-color);
 }
 
 .tab-trigger.active {
     background: var(--tab-active, var(--button-color));
     color: var(--tab-active-text, #fff);
+    box-shadow: 0 4px 12px rgba(254, 79, 45, 0.2);
 }
 
-::-webkit-scrollbar {
-    width: 10px;
-    height: 10px;
+/* Premium Rounded Tables */
+.table-responsive {
+    border-radius: 12px;
+    border: 1px solid var(--border-color, #e2e8f0);
+    background-color: var(--card-bg-color, #ffffff);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
 }
 
-::-webkit-scrollbar-track {
-    background: var(--scrollbar-track, #e5e7eb);
+.developer-container .table {
+    margin-top: 0 !important;
+    margin-bottom: 0 !important;
+    border: none !important;
 }
 
-::-webkit-scrollbar-thumb {
-    background: var(--scrollbar-thumb, #94a3b8);
-    border-radius: 20px;
+.developer-container .table thead th {
+    border-top: none !important;
+}
+
+.developer-container .table td.text-end,
+.developer-container .table th.text-end {
+    white-space: nowrap !important;
+}
+
+/* Mobile & Tablet Fine-tuning */
+@media (max-width: 1199.98px) {
+    .developer-container {
+        padding: 1.5rem 1rem;
+    }
+}
+
+@media (max-width: 768px) {
+    .developer-container {
+        padding: 1rem 0.5rem;
+    }
+    .premium-card {
+        padding: 1rem !important;
+    }
+    .developer-form {
+        padding: 1rem;
+    }
+    .tab-list-container {
+        gap: .5rem;
+        padding: .35rem;
+    }
+    .tab-trigger {
+        padding: .5rem .75rem;
+        font-size: .82rem;
+    }
+    .developer-container .table td, 
+    .developer-container .table th {
+        padding: .7rem .6rem !important;
+        font-size: .82rem !important;
+    }
+}
+
+/* Hidden elements custom scrollbars */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb, #cbd5e1);
+    border-radius: 99px;
+}
+
+/* Custom CSS Sub-Cards & Badges */
+.sub-card {
+    background-color: var(--input-bg-color, var(--background-color)) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    color: var(--text-color) !important;
+}
+
+.sub-card-light {
+    background-color: var(--table-header-bg) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 8px !important;
+    color: var(--text-color) !important;
+}
+
+.developer-container .badge.bg-light.text-dark,
+.developer-container .badge.bg-white.text-dark {
+    background-color: var(--table-header-bg, #f1f5f9) !important;
+    color: var(--text-color, #1e293b) !important;
+    border-color: var(--border-color, #cbd5e1) !important;
+}
+
+/* Global Overrides for dark texts to prevent unreadability */
+.developer-container .text-dark,
+.developer-container h4.text-dark,
+.developer-container h5.text-dark,
+.developer-container h6.text-dark,
+.developer-container span.text-dark,
+.developer-container div.text-dark {
+    color: var(--text-color, #1e293b) !important;
+}
+
+/* Input Placeholders variables alignment */
+.developer-container input::placeholder,
+.developer-container textarea::placeholder {
+    color: var(--input-placeholder-color, #94a3b8) !important;
+    opacity: 0.75 !important;
+}
+
+/* Global Overrides for background utilities to respect themes */
+.developer-container .bg-white {
+    background-color: var(--card-bg-color, #ffffff) !important;
+    color: var(--text-color, #1e293b) !important;
+}
+
+.developer-container .bg-light {
+    background-color: var(--table-header-bg, #f1f5f9) !important;
+    color: var(--text-color, #1e293b) !important;
+}
+
+.developer-container .text-muted {
+    color: var(--text-muted, #64748b) !important;
+}
+
+/* Global Overrides for table header row backgrounds */
+.developer-container .table-light,
+.developer-container .table-light th,
+.developer-container .table-light td {
+    background-color: var(--table-header-bg, #f1f5f9) !important;
+    color: var(--text-color, #1e293b) !important;
+}
+
+/* Force standard table cells to inherit card background color */
+.developer-container .table th,
+.developer-container .table td {
+    background-color: var(--card-bg-color, #ffffff) !important;
+    color: var(--text-color, #1e293b) !important;
+    border-color: var(--border-color, #e2e8f0) !important;
+}
+
+/* Row Hover states */
+.developer-container .table tbody tr:hover td {
+    background-color: var(--table-row-hover, rgba(254, 79, 45, 0.05)) !important;
+}
+
+/* Code block tags */
+.developer-container code {
+    background-color: var(--table-header-bg, #f1f5f9) !important;
+    color: var(--text-color, #1e293b) !important;
+    padding: 0.15rem 0.35rem;
+    border-radius: 4px;
+    font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    font-size: 0.82rem;
+}
+
+/* Theme-compatible button styles */
+.developer-container .btn-light {
+    background-color: var(--table-header-bg, #f1f5f9) !important;
+    border-color: var(--border-color, #cbd5e1) !important;
+    color: var(--text-color, #1e293b) !important;
+}
+
+.developer-container .btn-light:hover {
+    background-color: var(--scrollbar-track, #e2e8f0) !important;
 }

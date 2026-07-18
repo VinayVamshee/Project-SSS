@@ -59,7 +59,7 @@ class AssessmentAnalyticsService {
       return {
         id: st._id.toString(),
         name: studentNameMap[st._id.toString()] || st.studentCode || 'Student',
-        rollNumber: st.studentCode,
+        rollNumber: st.rollNumber || st.studentCode || '',
         average: Number(avg.toFixed(1)),
         attendance,
         improvementDelta: delta
@@ -73,10 +73,22 @@ class AssessmentAnalyticsService {
     const configIds = configs.map(c => c._id);
 
     const marks = await StudentAssessmentMark.find({ assessmentConfigurationId: { $in: configIds }, schoolId }).populate('subjectId');
-    const students = await Student.find({ schoolId });
-    const enrolledStudents = students.filter(st => {
-      return st.enrollments?.some(e => e.class?._id?.toString() === classId || e.class?.toString() === classId);
-    });
+    const StudentEnrollment = mongoose.model('StudentEnrollment');
+    const enrollments = await StudentEnrollment.find({
+      schoolId,
+      academicYearId,
+      classId,
+      academicStatus: 'Active'
+    }).populate('studentId');
+
+    const enrolledStudents = enrollments.map(e => {
+      const studentObj = e.studentId?._id ? e.studentId : { _id: e.studentId };
+      return {
+        _id: studentObj._id,
+        studentCode: studentObj.studentCode || '',
+        rollNumber: e.rollNumber || ''
+      };
+    }).filter(st => st._id);
 
     const studentNameMap = await this.getStudentNameMap(schoolId);
     const studentAverages = this.calculateStudentAverages(marks, enrolledStudents, studentNameMap);
@@ -219,14 +231,29 @@ class AssessmentAnalyticsService {
     const nameField = enrollment?.dynamicFields?.find(f => f.fieldId?.key === 'fullname' || f.fieldId?.key === 'firstname');
     const studentName = nameField ? nameField.value : (student.studentCode || 'Unknown Student');
 
-    const configs = await AssessmentConfiguration.find({ academicYearId, classId, schoolId }).sort({ displayOrder: 1 });
+    const configs = await AssessmentConfiguration.find({ academicYearId, classId, schoolId })
+      .populate('subjects.subjectId')
+      .sort({ displayOrder: 1 });
     const configIds = configs.map(c => c._id);
 
-    const marks = await StudentAssessmentMark.find({
+    const rawMarks = await StudentAssessmentMark.find({
       studentId: new mongoose.Types.ObjectId(studentId),
       assessmentConfigurationId: { $in: configIds },
       schoolId
     }).populate('subjectId assessmentConfigurationId');
+
+    // Filter to only include subjects configured in the class assessment configurations
+    const classSubjectIds = new Set();
+    configs.forEach(c => {
+      c.subjects?.forEach(sub => {
+        const subId = sub.subjectId?._id || sub.subjectId;
+        if (subId) {
+          classSubjectIds.add(subId.toString());
+        }
+      });
+    });
+
+    const marks = rawMarks.filter(m => m.subjectId?._id && classSubjectIds.has(m.subjectId._id.toString()));
 
     // Chronological Timeline Multi-line data builder
     const timeline = configs.map(c => {
@@ -271,23 +298,26 @@ class AssessmentAnalyticsService {
       }
     });
 
-    // Rank Calculation inside the class
-    const allClassStudents = await Student.find({ schoolId });
-    const enrolledStudents = allClassStudents.filter(st => {
-      return st.enrollments?.some(e => e.class?._id?.toString() === classId || e.class?.toString() === classId);
-    });
+    // Rank Calculation inside the class using StudentEnrollment model
+    const enrollmentsList = await StudentEnrollment.find({ classId, schoolId, academicYearId });
+    const enrolledStudentIds = enrollmentsList.map(e => e.studentId.toString());
+
+    // Fallback: if current student is not in the list, push it
+    if (!enrolledStudentIds.includes(studentId.toString())) {
+      enrolledStudentIds.push(studentId.toString());
+    }
 
     const studentScoreMap = [];
-    for (const st of enrolledStudents) {
+    for (const stId of enrolledStudentIds) {
       const stMarks = await StudentAssessmentMark.find({
-        studentId: st._id,
+        studentId: new mongoose.Types.ObjectId(stId),
         assessmentConfigurationId: { $in: configIds },
         schoolId
       });
       const validMarks = stMarks.filter(m => m.attendanceStatus !== 'absent' && m.obtainedMarks !== undefined);
       const total = validMarks.reduce((a, b) => a + (b.obtainedMarks || 0), 0);
       const avg = validMarks.length > 0 ? (total / validMarks.length) : 0;
-      studentScoreMap.push({ id: st._id.toString(), avg });
+      studentScoreMap.push({ id: stId, avg });
     }
 
     studentScoreMap.sort((a, b) => b.avg - a.avg);
@@ -341,7 +371,7 @@ class AssessmentAnalyticsService {
         const subName = sub.subjectId?.name || 'Subject';
         sub.selectedChapterIds?.forEach(chapId => {
           // Find if student has score in this configuration subject
-          const sm = marks.find(m => m.assessmentConfigurationId?._id.toString() === c._id.toString() && m.subjectId?._id?.toString() === sub.subjectId?._id?.toString());
+          const sm = marks.find(m => m.assessmentConfigurationId?._id.toString() === c._id.toString() && m.subjectId?._id?.toString() === (sub.subjectId?._id || sub.subjectId)?.toString());
           if (sm) {
             chapterPerformance.push({
               subject: subName,
@@ -389,17 +419,26 @@ class AssessmentAnalyticsService {
   }
 
   // 3. SUBJECT ANALYTICS
-  async getSubjectAnalytics(schoolId, academicYearId, classId, subjectId) {
+  async getSubjectAnalytics(schoolId, academicYearId, classId, subjectId, assessmentConfigurationId) {
     const configs = await AssessmentConfiguration.find({ academicYearId, classId, schoolId });
     const configIds = configs.map(c => c._id);
 
     const studentNameMap = await this.getStudentNameMap(schoolId);
 
-    const marks = await StudentAssessmentMark.find({
+    const query = {
       assessmentConfigurationId: { $in: configIds },
       subjectId: new mongoose.Types.ObjectId(subjectId),
       schoolId
-    }).populate('studentId');
+    };
+
+    // Query all marks for the class subject to keep trend charts stable
+    const allMarks = await StudentAssessmentMark.find(query).populate('studentId');
+
+    if (assessmentConfigurationId && assessmentConfigurationId !== 'all') {
+      query.assessmentConfigurationId = new mongoose.Types.ObjectId(assessmentConfigurationId);
+    }
+
+    const marks = await StudentAssessmentMark.find(query).populate('studentId');
 
     const presentMarks = marks.filter(m => m.attendanceStatus !== 'absent' && m.obtainedMarks !== undefined);
     const scores = presentMarks.map(m => m.obtainedMarks || 0);
@@ -407,6 +446,7 @@ class AssessmentAnalyticsService {
     const average = scores.length > 0 ? (scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
     const highest = scores.length > 0 ? Math.max(...scores) : 0;
     const lowest = scores.length > 0 ? Math.min(...scores) : 0;
+
     const median = this.calculateMedian(scores);
     const stdDev = this.calculateStdDev(scores, average);
 
@@ -417,12 +457,26 @@ class AssessmentAnalyticsService {
     // Difficulty score based on average mark
     const difficultyIndex = average >= 75 ? 'Easy' : average >= 50 ? 'Medium' : 'Hard';
 
-    // Top & Weak performers lists
-    const studentPerformanceList = presentMarks.map(m => {
+    // Group by student and calculate their subject average to avoid duplicate listings
+    const studentStats = {};
+    presentMarks.forEach(m => {
       const sidStr = m.studentId?._id?.toString() || m.studentId?.toString();
+      if (!sidStr) return;
+      if (!studentStats[sidStr]) {
+        studentStats[sidStr] = {
+          name: studentNameMap[sidStr] || m.studentId?.studentCode || 'Student',
+          scores: []
+        };
+      }
+      studentStats[sidStr].scores.push(m.obtainedMarks || 0);
+    });
+
+    const studentPerformanceList = Object.values(studentStats).map(st => {
+      const total = st.scores.reduce((a, b) => a + b, 0);
+      const avg = st.scores.length > 0 ? (total / st.scores.length) : 0;
       return {
-        name: studentNameMap[sidStr] || m.studentId?.studentCode || 'Student',
-        obtainedMarks: m.obtainedMarks || 0
+        name: st.name,
+        obtainedMarks: Number(avg.toFixed(1))
       };
     }).sort((a, b) => b.obtainedMarks - a.obtainedMarks);
 
@@ -437,9 +491,10 @@ class AssessmentAnalyticsService {
       }
     });
 
-    // Assessment trend comparison
+    // Assessment trend comparison (always uses unfiltered allMarks to keep chart stable)
+    const allPresentMarks = allMarks.filter(m => m.attendanceStatus !== 'absent' && m.obtainedMarks !== undefined);
     const assessmentTrend = configs.map(c => {
-      const cMarks = presentMarks.filter(m => m.assessmentConfigurationId.toString() === c._id.toString());
+      const cMarks = allPresentMarks.filter(m => m.assessmentConfigurationId.toString() === c._id.toString());
       const cScores = cMarks.map(m => m.obtainedMarks || 0);
       const cAvg = cScores.length > 0 ? (cScores.reduce((a, b) => a + b, 0) / cScores.length) : 0;
       return {
@@ -493,10 +548,22 @@ class AssessmentAnalyticsService {
 
     const studentNameMap = await this.getStudentNameMap(schoolId);
 
-    const students = await Student.find({ schoolId });
-    const enrolledStudents = students.filter(st => {
-      return st.enrollments?.some(e => e.class?._id?.toString() === classId || e.class?.toString() === classId);
-    });
+    const StudentEnrollment = mongoose.model('StudentEnrollment');
+    const enrollments = await StudentEnrollment.find({
+      schoolId,
+      academicYearId,
+      classId,
+      academicStatus: 'Active'
+    }).populate('studentId');
+
+    const enrolledStudents = enrollments.map(e => {
+      const studentObj = e.studentId?._id ? e.studentId : { _id: e.studentId };
+      return {
+        _id: studentObj._id,
+        studentCode: studentObj.studentCode || '',
+        rollNumber: e.rollNumber || ''
+      };
+    }).filter(st => st._id);
 
     const marks = await StudentAssessmentMark.find({
       assessmentConfigurationId: { $in: configIds },
@@ -516,7 +583,7 @@ class AssessmentAnalyticsService {
       return {
         id: st._id.toString(),
         name: studentNameMap[st._id.toString()] || st.studentCode || 'Student',
-        rollNumber: st.studentCode,
+        rollNumber: st.rollNumber || st.studentCode || '',
         average: Number(avg.toFixed(1)),
         attendance,
         passStatus: avg >= 33 ? 'Passed' : 'Needs Focus'

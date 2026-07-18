@@ -35,6 +35,22 @@ export default function AssessmentWizard() {
   const [saving, setSaving] = useState(false);
   const [feedback, setFeedback] = useState({ type: '', text: '' });
 
+  // Copy configuration state
+  const [copyModalOpen, setCopyModalOpen] = useState(false);
+  const [copySourceYearId, setCopySourceYearId] = useState('');
+  const [copySourceAssessments, setCopySourceAssessments] = useState([]);
+  const [selectedCopyAssessments, setSelectedCopyAssessments] = useState([]);
+  const [copyOptions, setCopyOptions] = useState({
+    copySubjects: true,
+    copyChapters: true,
+    copyMarks: true,
+    copyDuration: true,
+    copyExamDates: true,
+    copyStatus: false
+  });
+  const [copyProgress, setCopyProgress] = useState(-1);
+  const [copyResult, setCopyResult] = useState(null);
+
   useEffect(() => {
     async function fetchMasters() {
       try {
@@ -242,6 +258,85 @@ export default function AssessmentWizard() {
     }
   };
 
+  const openCopyModal = () => {
+    setCopySourceYearId('');
+    setCopySourceAssessments([]);
+    setSelectedCopyAssessments([]);
+    setCopyResult(null);
+    setCopyProgress(-1);
+    setCopyModalOpen(true);
+  };
+
+  const handleCopySourceYearChange = async (yearId) => {
+    setCopySourceYearId(yearId);
+    setSelectedCopyAssessments([]);
+    setCopyResult(null);
+    if (!yearId) {
+      setCopySourceAssessments([]);
+      return;
+    }
+    try {
+      const res = await api.get('/api/assessments/config', {
+        params: { academicYearId: yearId }
+      });
+      setCopySourceAssessments(res.data.data || []);
+    } catch (err) {
+      console.error(err);
+      setFeedback({ type: 'danger', text: 'Failed to load source year assessments.' });
+    }
+  };
+
+  const handleToggleCopyAssessment = (id) => {
+    if (selectedCopyAssessments.includes(id)) {
+      setSelectedCopyAssessments(selectedCopyAssessments.filter(x => x !== id));
+    } else {
+      setSelectedCopyAssessments([...selectedCopyAssessments, id]);
+    }
+  };
+
+  const handleSelectAllAssessments = () => {
+    setSelectedCopyAssessments(copySourceAssessments.map(a => a._id));
+  };
+
+  const handleClearAllAssessments = () => {
+    setSelectedCopyAssessments([]);
+  };
+
+  const executeCopyConfig = async () => {
+    setCopyProgress(10);
+    setCopyResult(null);
+    const interval = setInterval(() => {
+      setCopyProgress(prev => (prev >= 90 ? 90 : prev + 15));
+    }, 100);
+
+    try {
+      const res = await api.post('/api/assessments/copy-configuration', {
+        sourceAcademicYearId: copySourceYearId,
+        targetAcademicYearId: selectedYear,
+        assessmentIds: selectedCopyAssessments,
+        copySubjects: copyOptions.copySubjects,
+        copyChapters: copyOptions.copyChapters,
+        copyMarks: copyOptions.copyMarks,
+        copyDuration: copyOptions.copyDuration,
+        copyExamDates: copyOptions.copyExamDates,
+        copyStatus: copyOptions.copyStatus
+      });
+
+      clearInterval(interval);
+      setCopyProgress(100);
+      setTimeout(() => {
+        setCopyProgress(-1);
+        setCopyResult(res.data);
+        loadClassAssessments();
+      }, 500);
+    } catch (err) {
+      clearInterval(interval);
+      setCopyProgress(-1);
+      setFeedback({ type: 'danger', text: err.response?.data?.message || 'Failed to copy configurations.' });
+      setCopyModalOpen(false);
+    }
+  };
+
   return (
     <div className="erp-module-card">
       <div className="erp-card-header mb-4">
@@ -271,9 +366,14 @@ export default function AssessmentWizard() {
             </select>
           </div>
 
-          <button className="btn btn-sm text-white fw-bold px-4" style={{ backgroundColor: 'var(--button-color)' }} onClick={startCreate}>
-            + Configure Assessment
-          </button>
+          <div className="d-flex gap-2">
+            <button className="btn btn-sm text-white fw-bold px-4" style={{ backgroundColor: 'var(--button-color)' }} onClick={startCreate}>
+              + New Assessment
+            </button>
+            <button className="btn btn-sm btn-outline-primary fw-bold px-3" onClick={openCopyModal}>
+              Copy From Previous Year
+            </button>
+          </div>
         </div>
       )}
 
@@ -568,6 +668,161 @@ export default function AssessmentWizard() {
                 )}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* Copy Configuration Modal */}
+      {copyModalOpen && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', overflowY: 'auto', zIndex: 1050 }}>
+          <div className="modal-dialog modal-lg">
+            <div className="modal-content" style={{ backgroundColor: 'var(--card-bg-color)', color: 'var(--text-color)' }}>
+              <div className="modal-header border-bottom">
+                <h5 className="modal-title fw-bold"><i className="fa-solid fa-copy me-2 text-primary"></i>Copy Assessment Configuration</h5>
+                <button type="button" className="btn-close" onClick={() => setCopyModalOpen(false)}></button>
+              </div>
+              <div className="modal-body">
+                <p className="small text-muted">Import assessment configurations from a previous academic year into the currently selected academic year.</p>
+                
+                {/* Step 1: Target Year */}
+                <div className="mb-3">
+                  <label className="form-label small fw-bold text-muted">Current Academic Year (Target)</label>
+                  <input type="text" className="form-control form-control-sm premium-input w-100" value={years.find(y => y._id === selectedYear)?.name || ''} readOnly />
+                </div>
+
+                {/* Step 2: Source Year */}
+                <div className="mb-3">
+                  <label className="form-label small fw-bold">Select Source Academic Year</label>
+                  <select className="form-select form-select-sm premium-input" value={copySourceYearId} onChange={e => handleCopySourceYearChange(e.target.value)}>
+                    <option value="">-- Choose Academic Year --</option>
+                    {years.filter(y => y._id !== selectedYear).map(y => (
+                      <option key={y._id} value={y._id}>{y.name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Step 3: Available Assessments */}
+                {copySourceYearId && (
+                  <div className="mb-3">
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <label className="form-label small fw-bold">Select Assessments to Copy</label>
+                      <div className="d-flex gap-2">
+                        <button type="button" className="btn btn-xs btn-outline-secondary py-0 px-2" style={{ fontSize: '0.75rem' }} onClick={handleSelectAllAssessments}>Select All</button>
+                        <button type="button" className="btn btn-xs btn-outline-secondary py-0 px-2" style={{ fontSize: '0.75rem' }} onClick={handleClearAllAssessments}>Clear All</button>
+                      </div>
+                    </div>
+                    <div className="border rounded p-3" style={{ maxHeight: '200px', overflowY: 'auto', backgroundColor: 'var(--background-color)' }}>
+                      {copySourceAssessments.length === 0 ? (
+                        <span className="small text-muted">No assessments configured for this year.</span>
+                      ) : (
+                        <div className="row g-2">
+                          {copySourceAssessments.map(ass => {
+                            const isChecked = selectedCopyAssessments.includes(ass._id);
+                            return (
+                              <div className="col-md-6" key={ass._id}>
+                                <div className="form-check">
+                                  <input 
+                                    className="form-check-input" 
+                                    type="checkbox" 
+                                    id={`ass_${ass._id}`} 
+                                    checked={isChecked} 
+                                    onChange={() => handleToggleCopyAssessment(ass._id)} 
+                                  />
+                                  <label className="form-check-label small text-truncate d-block" htmlFor={`ass_${ass._id}`}>
+                                    <strong>Class {classes.find(c => c._id === (ass.classId?._id || ass.classId))?.class || 'N/A'}</strong> - {ass.assessmentName}
+                                  </label>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Step 4: Copy Options */}
+                <div className="mb-4">
+                  <label className="form-label small fw-bold text-muted border-bottom w-100 pb-1">Copy Options</label>
+                  <div className="row g-2">
+                    {[
+                      { key: 'copySubjects', label: 'Copy Subject Mapping' },
+                      { key: 'copyChapters', label: 'Copy Chapter Selection' },
+                      { key: 'copyMarks', label: 'Copy Maximum & Passing Marks' },
+                      { key: 'copyDuration', label: 'Copy Duration' },
+                      { key: 'copyExamDates', label: 'Copy Exam Dates' },
+                      { key: 'copyStatus', label: 'Copy Status (Defaults to Draft if unchecked)' }
+                    ].map(opt => (
+                      <div className="col-md-6" key={opt.key}>
+                        <div className="form-check">
+                          <input 
+                            className="form-check-input" 
+                            type="checkbox" 
+                            id={opt.key} 
+                            checked={copyOptions[opt.key]} 
+                            onChange={() => setCopyOptions(prev => ({ ...prev, [opt.key]: !prev[opt.key] }))} 
+                          />
+                          <label className="form-check-label small" htmlFor={opt.key}>
+                            {opt.label}
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Step 5: Summary */}
+                {copySourceYearId && selectedCopyAssessments.length > 0 && (
+                  <div className="p-3 border rounded mb-3" style={{ backgroundColor: 'rgba(0,0,0,0.02)' }}>
+                    <h6 className="fw-bold mb-2 small text-primary">Summary</h6>
+                    <div className="row g-2 text-center">
+                      <div className="col-4 border-end">
+                        <span className="small text-muted d-block">Source Year</span>
+                        <strong className="small">{years.find(y => y._id === copySourceYearId)?.name}</strong>
+                      </div>
+                      <div className="col-4 border-end">
+                        <span className="small text-muted d-block">Target Year</span>
+                        <strong className="small">{years.find(y => y._id === selectedYear)?.name}</strong>
+                      </div>
+                      <div className="col-4">
+                        <span className="small text-muted d-block">Selected Exams</span>
+                        <strong>{selectedCopyAssessments.length}</strong>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Copy Progress bar */}
+                {copyProgress !== -1 && (
+                  <div className="mb-3">
+                    <label className="small fw-bold">Copying Assessment Configuration...</label>
+                    <div className="progress mt-1" style={{ height: '20px' }}>
+                      <div className="progress-bar progress-bar-striped progress-bar-animated bg-success" role="progressbar" style={{ width: `${copyProgress}%` }}>
+                        {copyProgress}%
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Copy Results feedback */}
+                {copyResult && (
+                  <div className={`alert ${copyResult.created > 0 ? 'alert-success' : 'alert-warning'} small mb-0 mt-3`}>
+                    <h6 className="fw-bold mb-1"><i className="fa-solid fa-circle-check me-2"></i>Copy Result</h6>
+                    <p className="m-0">Assessment configuration copied successfully.</p>
+                    <ul className="m-0 mt-1 ps-3">
+                      <li><strong>{copyResult.created}</strong> assessments created.</li>
+                      <li><strong>{copyResult.skipped}</strong> skipped because they already exist.</li>
+                    </ul>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer border-top">
+                <button type="button" className="btn btn-sm btn-outline-secondary" onClick={() => setCopyModalOpen(false)} disabled={copyProgress !== -1}>Cancel</button>
+                <button type="button" className="btn btn-sm text-white fw-bold" style={{ backgroundColor: 'var(--button-color)' }} onClick={executeCopyConfig} disabled={copyProgress !== -1 || !copySourceYearId || selectedCopyAssessments.length === 0}>
+                  Copy Configuration
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

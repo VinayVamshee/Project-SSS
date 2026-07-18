@@ -1,11 +1,12 @@
-const ReceiptBookRepository = require('../../domain/finance/repositories/ReceiptBookRepository');
+const mongoose = require('mongoose');
 const CounterRepository = require('../../domain/shared/repositories/CounterRepository');
 
 class ReceiptService {
   async getReceiptBook(schoolId) {
-    let receiptBook = await ReceiptBookRepository.findOne({ schoolId });
-    if (!receiptBook) {
-      receiptBook = await ReceiptBookRepository.create({
+    const ReceiptSeries = mongoose.model('ReceiptSeries');
+    let series = await ReceiptSeries.findOne({ schoolId, name: "Default Book" });
+    if (!series) {
+      series = await ReceiptSeries.create({
         schoolId,
         name: "Default Book",
         prefix: "REC",
@@ -13,7 +14,7 @@ class ReceiptService {
         active: true
       });
     }
-    return receiptBook;
+    return series;
   }
 
   async generateReceiptNumber(schoolId) {

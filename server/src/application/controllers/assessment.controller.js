@@ -207,3 +207,140 @@ exports.getSubjectReport = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+exports.copyConfiguration = async (req, res) => {
+  try {
+    const {
+      sourceAcademicYearId,
+      targetAcademicYearId,
+      assessmentIds,
+      copySubjects,
+      copyChapters,
+      copyMarks,
+      copyDuration,
+      copyExamDates,
+      copyStatus
+    } = req.body;
+
+    const schoolId = req.schoolId || req.user?.schoolId;
+    const userId = req.user?._id || req.user?.username || 'system';
+
+    if (!sourceAcademicYearId || !targetAcademicYearId) {
+      return res.status(400).json({ success: false, message: 'Source and Target Academic Years are required.' });
+    }
+
+    if (sourceAcademicYearId === targetAcademicYearId) {
+      return res.status(400).json({ success: false, message: 'Source and Target Academic Years cannot be the same.' });
+    }
+
+    if (!Array.isArray(assessmentIds) || assessmentIds.length === 0) {
+      return res.status(400).json({ success: false, message: 'No assessments selected to copy.' });
+    }
+
+    // Load source configurations
+    const sourceConfigs = await AssessmentConfiguration.find({
+      _id: { $in: assessmentIds.map(id => new mongoose.Types.ObjectId(id)) },
+      schoolId
+    });
+
+    if (sourceConfigs.length === 0) {
+      return res.status(404).json({ success: false, message: 'No source configurations found.' });
+    }
+
+    // Load existing configs in target year for duplicate prevention
+    const targetConfigs = await AssessmentConfiguration.find({
+      academicYearId: new mongoose.Types.ObjectId(targetAcademicYearId),
+      schoolId
+    });
+
+    const existingKeys = new Set(targetConfigs.map(c => `${c.classId.toString()}_${c.assessmentName.toLowerCase().trim()}`));
+
+    const newConfigsArray = [];
+    let skippedCount = 0;
+
+    for (const config of sourceConfigs) {
+      const uniqueKey = `${config.classId.toString()}_${config.assessmentName.toLowerCase().trim()}`;
+      if (existingKeys.has(uniqueKey)) {
+        skippedCount++;
+        continue;
+      }
+
+      const newConfig = {
+        schoolId,
+        academicYearId: new mongoose.Types.ObjectId(targetAcademicYearId),
+        classId: config.classId,
+        assessmentName: config.assessmentName,
+        displayOrder: config.displayOrder || 1,
+        weightage: config.weightage || 100,
+        status: copyStatus ? config.status : 'Draft',
+        subjects: (config.subjects || []).map(sub => {
+          const newSub = {
+            subjectId: sub.subjectId,
+            selectedChapterIds: copyChapters ? sub.selectedChapterIds : [],
+            maximumMarks: copyMarks ? sub.maximumMarks : 100,
+            passingMarks: copyMarks ? sub.passingMarks : 35
+          };
+
+          if (copyDuration && typeof sub.duration === 'number') {
+            newSub.duration = sub.duration;
+          }
+          if (copyExamDates && sub.examDate) {
+            newSub.examDate = sub.examDate;
+          }
+
+          return newSub;
+        })
+      };
+
+      newConfigsArray.push(newConfig);
+    }
+
+    if (newConfigsArray.length > 0) {
+      await AssessmentConfiguration.insertMany(newConfigsArray);
+    }
+
+    // Audit Log
+    console.log(`[AUDIT] Assessment Configuration Copy:
+      Source Academic Year: ${sourceAcademicYearId}
+      Target Academic Year: ${targetAcademicYearId}
+      User: ${userId}
+      Timestamp: ${new Date().toISOString()}
+      Total Copied: ${newConfigsArray.length}
+      Total Skipped: ${skippedCount}
+    `);
+
+    res.status(201).json({
+      success: true,
+      created: newConfigsArray.length,
+      skipped: skippedCount,
+      message: 'Assessment configuration copied successfully.'
+    });
+  } catch (err) {
+    console.error('Error copying configuration:', err);
+    res.status(500).json({ success: false, message: 'Internal server error', error: err.message });
+  }
+};
+
+exports.deleteConfiguration = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const schoolId = req.schoolId || req.user?.schoolId;
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      return res.status(400).json({ success: false, message: 'Invalid configuration ID.' });
+    }
+
+    // Delete associated student marks
+    await StudentAssessmentMark.deleteMany({ assessmentConfigurationId: id, schoolId });
+
+    const deleted = await AssessmentConfiguration.findOneAndDelete({ _id: id, schoolId });
+    if (!deleted) {
+      return res.status(404).json({ success: false, message: 'Assessment configuration not found.' });
+    }
+
+    res.json({ success: true, message: 'Assessment configuration and associated marks deleted successfully.' });
+  } catch (err) {
+    console.error('Error deleting configuration:', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+};

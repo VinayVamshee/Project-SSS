@@ -179,7 +179,10 @@ export default function Navigation() {
                         <i className="fa-solid fa-gears fa-lg"></i>
                         {!isCollapsed && " Settings"}
                     </NavLink>
-                    {localStorage.getItem("isDev") === 'true' && (
+                    {(localStorage.getItem("isDev") === 'true' || 
+                      userRole === 'template-admin' || 
+                      userRole === 'template_admin' || 
+                      userRole?.toLowerCase().replace(/[^a-z0-9]/g, '') === 'templateadmin') && (
                         <NavLink to="/Developer" className={({ isActive }) => isActive ? "Link active" : "Link"}>
                             <i className="fa-solid fa-lock fa-lg"></i>
                             {!isCollapsed && " Developer"}

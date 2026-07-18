@@ -4,7 +4,7 @@ const userSchema = new mongoose.Schema({
   isGlobalRegistry: { type: Boolean, default: true },
   username: { type: String, required: true },
   password: { type: String, required: true },
-  role: { type: String, enum: ['admin', 'viewer', 'student-enrollment', 'qp-editor', 'payment-manager', 'payment'], default: 'viewer' },
+  role: { type: String, enum: ['admin', 'viewer', 'student-enrollment', 'qp-editor', 'payment-manager', 'payment', 'template-admin'], default: 'viewer' },
   isDev: { type: Boolean, default: false }, 
   schoolId: { type: mongoose.Schema.Types.ObjectId, ref: 'School', required: false }
 }, { timestamps: true });

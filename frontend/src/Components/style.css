@@ -771,6 +771,7 @@
     --input-bg-color:#273548;
     --input-text-color:#ffffff;
     --input-border-color:#475569;
+    --input-placeholder-color:#cbd5e1;
     --input-focus-border:#f97316;
 
     --scrollbar-thumb:#64748b;
@@ -811,6 +812,7 @@
     --input-bg-color:#153454;
     --input-text-color:#ffffff;
     --input-border-color:#2c5f8d;
+    --input-placeholder-color:#8eb3d8;
     --input-focus-border:#60a5fa;
 
     --scrollbar-thumb:#3b82f6;
@@ -851,6 +853,7 @@
     --input-bg-color:#2e3642;
     --input-text-color:#ffffff;
     --input-border-color:#495463;
+    --input-placeholder-color:#9bb5bd;
     --input-focus-border:#22d3ee;
 
     --scrollbar-thumb:#64748b;
@@ -891,6 +894,7 @@
     --input-bg-color:#3a3655;
     --input-text-color:#ffffff;
     --input-border-color:#62608a;
+    --input-placeholder-color:#a7a9be;
     --input-focus-border:#a78bfa;
 
     --scrollbar-thumb:#7c3aed;

@@ -1,4 +1,3 @@
-const PaymentRepository = require('../../domain/finance/repositories/PaymentRepository');
 const FeeStructureRepository = require('../../domain/finance/repositories/FeeStructureRepository');
 const StudentEnrollmentRepository = require('../../domain/student/repositories/StudentEnrollmentRepository');
 const AcademicYear = require('../../domain/academics/models/AcademicYear');
@@ -19,79 +18,175 @@ class FinanceService {
     const { studentId, academicYear, totalFees, discount, newPayment, isNewStudent } = data;
     const resolvedYearId = await resolveAcademicYearId(academicYear, schoolId) || new mongoose.Types.ObjectId("6a49704e31d281a6130aa86b");
 
-    let paymentEntry = await PaymentRepository.findOne({ studentId });
+    const StudentFeeAssignment = mongoose.model('StudentFeeAssignment');
+    const StudentPaymentLedger = mongoose.model('StudentPaymentLedger');
+    const FinancialTransactionService = require('./FinancialTransactionService');
 
-    const basePaymentRecord = {
-      amount: newPayment?.amount || 0,
-      date: newPayment?.date ? new Date(newPayment.date) : new Date(),
-      paymentMethod: newPayment?.paymentMethod || "Unknown",
-      paymentBy: newPayment?.paymentBy || "Unknown",
-      components: newPayment?.components || [],
-      receiptBookName: newPayment?.receiptBookName || "",
-      receiptNumber: newPayment?.receiptNumber || 0,
-    };
-
-    if (!paymentEntry) {
-      paymentEntry = await PaymentRepository.create({
+    // 1. Fetch or create StudentFeeAssignment
+    let assignment = await StudentFeeAssignment.findOne({ studentId, academicYearId: resolvedYearId });
+    if (!assignment) {
+      const StudentEnrollment = mongoose.model('StudentEnrollment');
+      const enrollment = await StudentEnrollment.findOne({ studentId, academicYearId: resolvedYearId });
+      const classId = enrollment ? enrollment.classId : new mongoose.Types.ObjectId();
+      
+      assignment = new StudentFeeAssignment({
         studentId,
         schoolId,
-        academicYears: [{
-          academicYear: resolvedYearId,
-          totalFees,
-          discount,
-          isNewStudent,
-          payments: newPayment ? [basePaymentRecord] : []
-        }]
+        academicYearId: resolvedYearId,
+        classId,
+        feeComponents: newPayment?.components || [],
+        discount: discount || 0,
+        totalAmount: totalFees || 0,
+        status: 'pending'
+      });
+      await assignment.save();
+    } else {
+      assignment.totalAmount = totalFees;
+      assignment.discount = discount;
+      await assignment.save();
+    }
+
+    // 2. Fetch or create StudentPaymentLedger
+    let ledger = await StudentPaymentLedger.findOne({ studentId, academicYearId: resolvedYearId });
+    if (!ledger) {
+      ledger = new StudentPaymentLedger({
+        studentId,
+        schoolId,
+        academicYearId: resolvedYearId,
+        feeAssignmentId: assignment._id,
+        totalFees: assignment.totalAmount,
+        discount: assignment.discount,
+        balance: assignment.totalAmount - assignment.discount,
+        payments: []
       });
     } else {
-      const index = paymentEntry.academicYears.findIndex(ay => ay.academicYear?.toString() === resolvedYearId.toString());
-      if (index !== -1) {
-        paymentEntry.academicYears[index].totalFees = totalFees;
-        paymentEntry.academicYears[index].discount = discount;
-        paymentEntry.academicYears[index].isNewStudent = isNewStudent;
-        if (newPayment) paymentEntry.academicYears[index].payments.push(basePaymentRecord);
-      } else {
-        paymentEntry.academicYears.push({
-          academicYear: resolvedYearId,
-          totalFees,
-          discount,
-          isNewStudent,
-          payments: newPayment ? [basePaymentRecord] : []
-        });
-      }
-      await paymentEntry.save();
+      ledger.totalFees = assignment.totalAmount;
+      ledger.discount = assignment.discount;
+      ledger.balance = ledger.totalFees - ledger.discount - ledger.payments.reduce((sum, p) => sum + p.amount, 0);
     }
-    return paymentEntry;
+
+    // 3. Add new payment record if present
+    if (newPayment) {
+      const basePaymentRecord = {
+        receiptNumber: newPayment.receiptNumber || '0000',
+        amount: newPayment.amount || 0,
+        paymentDate: newPayment.date ? new Date(newPayment.date) : new Date(),
+        paymentMethod: newPayment.paymentMethod || "Unknown",
+        paymentBy: newPayment.paymentBy || "Unknown",
+        transactionReference: newPayment.transactionReference || "",
+        remarks: newPayment.remarks || "",
+        status: 'completed',
+        createdBy: data.userId || null,
+        feeComponents: newPayment.components || []
+      };
+
+      ledger.payments.push(basePaymentRecord);
+      ledger.balance -= basePaymentRecord.amount;
+
+      // Update assignment status
+      if (ledger.balance <= 0) {
+        assignment.status = 'fully_paid';
+      } else if (ledger.balance < (ledger.totalFees - ledger.discount)) {
+        assignment.status = 'partially_paid';
+      } else {
+        assignment.status = 'pending';
+      }
+      await assignment.save();
+      await ledger.save();
+
+      // 4. Create financial transaction log
+      try {
+        await FinancialTransactionService.recordTransaction({
+          schoolId,
+          transactionType: 'income',
+          sourceModule: 'student_fee',
+          referenceId: ledger._id,
+          amount: basePaymentRecord.amount,
+          paymentMethod: basePaymentRecord.paymentMethod,
+          remarks: `Student Fee Payment for receipt ${basePaymentRecord.receiptNumber}`,
+          createdBy: data.userId || null,
+          transactionDate: basePaymentRecord.paymentDate
+        });
+      } catch (txErr) {
+        console.error('⚠️ Failed to log financial transaction:', txErr);
+      }
+    } else {
+      await ledger.save();
+    }
+
+    return ledger;
   }
 
   async getFees(schoolId, studentId, academicYear) {
     if (!studentId || !academicYear) {
-      return PaymentRepository.find({});
+      const StudentPaymentLedger = mongoose.model('StudentPaymentLedger');
+      const ledgers = await StudentPaymentLedger.find({});
+      
+      const studentMap = {};
+      for (const ledger of ledgers) {
+        const sId = ledger.studentId.toString();
+        
+        const AcademicYear = mongoose.model('AcademicYear');
+        const yearDoc = await AcademicYear.findById(ledger.academicYearId);
+        const yearName = yearDoc ? yearDoc.name : ledger.academicYearId.toString();
+
+        const yearData = {
+          academicYear: yearName,
+          totalFees: ledger.totalFees,
+          discount: ledger.discount,
+          isNewStudent: false,
+          payments: ledger.payments.map(p => {
+            const pObj = p.toObject ? p.toObject() : p;
+            pObj.date = pObj.paymentDate; // Alias paymentDate to date for PDF/UI mapping
+            return pObj;
+          })
+        };
+
+        if (!studentMap[sId]) {
+          studentMap[sId] = {
+            _id: ledger._id,
+            studentId: ledger.studentId,
+            schoolId: ledger.schoolId,
+            academicYears: [yearData]
+          };
+        } else {
+          studentMap[sId].academicYears.push(yearData);
+        }
+      }
+      
+      return Object.values(studentMap);
     }
 
     const resolvedYearId = await resolveAcademicYearId(academicYear, schoolId);
     if (!resolvedYearId) throw new Error("Academic year not found");
 
-    const enrollment = await StudentEnrollmentRepository.findOne({ studentId, academicYearId: resolvedYearId });
-    if (!enrollment) throw new Error("No enrollment found for this student in the target academic year.");
+    const StudentFeeAssignment = mongoose.model('StudentFeeAssignment');
+    const StudentPaymentLedger = mongoose.model('StudentPaymentLedger');
 
-    const paymentRecord = await PaymentRepository.findOne({ studentId });
+    const assignment = await StudentFeeAssignment.findOne({ studentId, academicYearId: resolvedYearId });
+    const ledger = await StudentPaymentLedger.findOne({ studentId, academicYearId: resolvedYearId });
+
     let payments = [];
-    let isNewStudent = false;
     let discount = 0;
     let totalFees = 0;
+    let balance = 0;
 
-    if (paymentRecord) {
-      const yearData = paymentRecord.academicYears.find(year => year.academicYear?.toString() === resolvedYearId.toString());
-      if (yearData) {
-        payments = yearData.payments;
-        isNewStudent = yearData.isNewStudent ?? false;
-        discount = yearData.discount ?? 0;
-        totalFees = yearData.totalFees ?? 0;
-      }
+    if (assignment) {
+      totalFees = assignment.totalAmount;
+      discount = assignment.discount;
+    }
+    if (ledger) {
+      payments = ledger.payments.map(p => {
+        const pObj = p.toObject ? p.toObject() : p;
+        pObj.date = pObj.paymentDate; // Alias for PDF compatibility
+        return pObj;
+      });
+      balance = ledger.balance;
+    } else {
+      balance = totalFees - discount;
     }
 
-    return { totalFees, discount, isNewStudent, payments };
+    return { totalFees, discount, isNewStudent: false, payments, balance };
   }
 
   async saveClassFees(schoolId, data) {

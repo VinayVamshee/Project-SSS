@@ -46,7 +46,7 @@ exports.getStudentAnalytics = async (req, res) => {
 
 exports.getSubjectAnalytics = async (req, res) => {
   try {
-    const { academicYearId, classId, subjectId } = req.query;
+    const { academicYearId, classId, subjectId, assessmentConfigurationId } = req.query;
     const schoolId = req.schoolId || req.user?.schoolId;
 
     if (!academicYearId || !classId || !subjectId) {
@@ -57,7 +57,8 @@ exports.getSubjectAnalytics = async (req, res) => {
       schoolId,
       academicYearId,
       classId,
-      subjectId
+      subjectId,
+      assessmentConfigurationId
     );
     res.json({ success: true, data });
   } catch (err) {

@@ -55,7 +55,34 @@ const restrictTo = (...roles) => {
       return next();
     }
 
-    if (!req.user || !roles.includes(req.user.role)) {
+    const userRole = req.user?.role;
+    
+    // template-admin custom logic
+    if (userRole === 'template-admin') {
+      const url = req.originalUrl || '';
+      const isWriteMethod = ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method);
+      
+      if (url.includes('/templates')) {
+        if (req.method === 'DELETE') {
+          return next(new AppError('Permission Denied: template-admin is restricted from deleting templates.', 403));
+        }
+        return next(); // Allow other write operations on templates
+      }
+      
+      const isMetadataNonTemplate = url.includes('/entities') || url.includes('/fields');
+      const isSystemAdminWrite = url.includes('/schools') || url.includes('/users');
+      
+      if ((isMetadataNonTemplate || isSystemAdminWrite) && isWriteMethod) {
+        return next(new AppError('Permission Denied: template-admin is restricted from modifying entities, fields, schools, or users.', 403));
+      }
+    }
+
+    const allowed = req.user && (
+      roles.includes(userRole) || 
+      (userRole === 'template-admin' && roles.includes('viewer'))
+    );
+
+    if (!allowed) {
       return next(new AppError('You do not have permission to perform this action', 403));
     }
 

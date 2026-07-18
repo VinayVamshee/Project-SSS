@@ -998,5 +998,78 @@
     }
 }
 
+/* Modal styling overrides to support dark mode themes */
+.modal-content {
+    background-color: var(--card-bg-color, #ffffff) !important;
+    color: var(--text-color, #1e293b) !important;
+    border-color: var(--border-color, #cbd5e1) !important;
+}
+
+.modal-header,
+.modal-footer {
+    background-color: var(--table-header-bg, #f8fafc) !important;
+    color: var(--text-color, #1e293b) !important;
+    border-color: var(--border-color, #cbd5e1) !important;
+}
+
+.modal-header.bg-light,
+.modal-footer.bg-light {
+    background-color: var(--table-header-bg, #f8fafc) !important;
+}
+
+.modal-header .text-dark,
+.modal-body .text-dark,
+.modal-header h5,
+.modal-header h4 {
+    color: var(--text-color, #1e293b) !important;
+}
+
+.modal-body .text-muted,
+.modal-body label.text-muted,
+.modal-body .form-label.text-muted {
+    color: var(--text-secondary, #64748b) !important;
+}
+
+.modal-body .form-select,
+.modal-body .form-control {
+    background-color: var(--input-bg-color, #ffffff) !important;
+    color: var(--input-text-color, var(--text-color)) !important;
+    border-color: var(--input-border-color, #cbd5e1) !important;
+}
+
+.modal-body .form-select:focus,
+.modal-body .form-control:focus {
+    border-color: var(--input-focus-border, var(--primary-color)) !important;
+    box-shadow: 0 0 0 2px var(--input-focus-shadow, rgba(37, 99, 235, 0.2)) !important;
+}
+
+.modal-body .btn-outline-primary {
+    border-color: var(--primary-color, #fe4f2d) !important;
+    color: var(--primary-color, #fe4f2d) !important;
+}
+
+.modal-body .btn-outline-primary:hover {
+    background-color: var(--primary-color, #fe4f2d) !important;
+    color: #ffffff !important;
+}
+
+/* Modal Body Background Overrides (e.g., Chapter selection lists) */
+.modal-body .bg-white {
+    background-color: var(--input-bg-color, var(--card-bg-color, #ffffff)) !important;
+    color: var(--text-color, #1e293b) !important;
+    border-color: var(--border-color, #cbd5e1) !important;
+}
+
+.modal-body .bg-light {
+    background-color: var(--table-header-bg, #f1f5f9) !important;
+    color: var(--text-secondary, #64748b) !important;
+    border-color: var(--border-color, #cbd5e1) !important;
+}
+
+.modal-body label,
+.modal-body span.text-slate-800 {
+    color: var(--text-color, #1e293b) !important;
+}
+
 
 

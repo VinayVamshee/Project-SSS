@@ -11,9 +11,11 @@ import DynamicForm from '../Shared/DynamicForm';
 import Notification from '../Shared/Notification';
 import LoadingIndicator from '../Shared/LoadingIndicator';
 import ConfirmModal from '../Shared/ConfirmModal';
+import VisualFormDesigner from './VisualFormDesigner';
 import './Developer.css';
 
 export default function Developer() {
+  const userRole = localStorage.getItem("userRole") || localStorage.getItem("userType") || "viewer";
   const [activeTab, setActiveTab] = useState('entity_registry');
   const [notification, setNotification] = useState({ message: '', type: 'success' });
   const [loading, setLoading] = useState(false);
@@ -100,9 +102,7 @@ export default function Developer() {
     sections: [],
     fields: []
   });
-  const [editingTemplateFieldId, setEditingTemplateFieldId] = useState(null);
-  const [fieldFilterText, setFieldFilterText] = useState('');
-  const [activeSectionIndex, setActiveSectionIndex] = useState(0);
+
 
   // 4. Form Preview States
   const [previewTemplateId, setPreviewTemplateId] = useState('');
@@ -141,6 +141,7 @@ export default function Developer() {
   const [importType, setImportType] = useState('students'); // 'students' or 'fees'
   const [bulkSchool, setBulkSchool] = useState('');
   const [bulkAcademicYear, setBulkAcademicYear] = useState('');
+  // eslint-disable-next-line no-unused-vars
   const [academicYears, setAcademicYears] = useState([]);
   const [bulkFileText, setBulkFileText] = useState('');
   const [bulkFileName, setBulkFileName] = useState('');
@@ -1002,8 +1003,9 @@ export default function Developer() {
 
           <div className="row g-4">
             {/* Left Side: Creation Form */}
-            <div className="col-lg-4">
-              <form onSubmit={handleCreateEntity} className="premium-card row g-3">
+            {userRole !== 'template-admin' && (
+              <div className="col-xl-4">
+                <form onSubmit={handleCreateEntity} className="premium-card row g-3">
                 <div className="col-12">
                   <label className="premium-label">Entity Key * (lowercase, e.g. student)</label>
                   <input
@@ -1171,9 +1173,10 @@ export default function Developer() {
                 </div>
               </form>
             </div>
+            )}
 
             {/* Right Side: Registered Entities Catalog */}
-            <div className="col-lg-8">
+            <div className={userRole === 'template-admin' ? "col-12" : "col-xl-8"}>
               <div className="premium-card">
                 <h5 className="fw-bold mb-3"><i className="fa-solid fa-list-check me-2"></i>Registered Entities Catalog</h5>
                 <div className="table-responsive">
@@ -1210,15 +1213,21 @@ export default function Developer() {
                               {ent.status}
                             </span>
                           </td>
-                          <td className="text-end">
-                            <button onClick={() => setSelectedEntityForView(ent)} className="btn-action-edit me-2"><i className="fa-solid fa-eye me-1"></i>View</button>
-                            {ent.status === 'active' ? (
-                              <button onClick={() => handleArchiveEntity(ent._id)} className="btn-action-warning me-2"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
-                            ) : (
-                              <button onClick={() => handleActivateEntity(ent._id)} className="btn-action-success me-2"><i className="fa-solid fa-circle-check me-1"></i>Activate</button>
-                            )}
-                            <button onClick={() => handleDeleteEntity(ent._id)} className="btn-action-delete"><i className="fa-solid fa-trash me-1"></i>Delete</button>
-                          </td>
+                           <td className="text-end">
+                            <div className="d-flex flex-nowrap gap-2 justify-content-end align-items-center">
+                              <button onClick={() => setSelectedEntityForView(ent)} className="btn-action-edit"><i className="fa-solid fa-eye me-1"></i>View</button>
+                              {userRole !== 'template-admin' && (
+                                <>
+                                  {ent.status === 'active' ? (
+                                    <button onClick={() => handleArchiveEntity(ent._id)} className="btn-action-warning"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
+                                  ) : (
+                                    <button onClick={() => handleActivateEntity(ent._id)} className="btn-action-success"><i className="fa-solid fa-circle-check me-1"></i>Activate</button>
+                                  )}
+                                  <button onClick={() => handleDeleteEntity(ent._id)} className="btn-action-delete"><i className="fa-solid fa-trash me-1"></i>Delete</button>
+                                </>
+                              )}
+                            </div>
+                           </td>
                         </tr>
                       ))}
                     </tbody>
@@ -1236,8 +1245,9 @@ export default function Developer() {
 
           <div className="row g-4">
             {/* Left Side: Form */}
-            <div className="col-lg-4">
-              <form onSubmit={handleCreateField} className="premium-card row g-3">
+            {userRole !== 'template-admin' && (
+              <div className="col-xl-4">
+                <form onSubmit={handleCreateField} className="premium-card row g-3">
                 <div className="col-12">
                   <label className="premium-label">Machine Key Name *</label>
                   <input
@@ -1654,9 +1664,10 @@ export default function Developer() {
                 </div>
               </form>
             </div>
+            )}
 
             {/* Right Side: Fields Catalog */}
-            <div className="col-lg-8">
+            <div className={userRole === 'template-admin' ? "col-12" : "col-xl-8"}>
               <div className="premium-card">
                 <h5 className="fw-bold mb-3"><i className="fa-solid fa-list-check me-2"></i>Global Inputs Catalog</h5>
 
@@ -1694,25 +1705,33 @@ export default function Developer() {
                               <td>{f.category || 'General'}</td>
                               <td><span className={`status-pill ${f.status}`}>{f.status}</span></td>
                               <td className="text-end">
-                                <button onClick={() => handleStartEditingField(f)} className="btn-action-edit me-2"><i className="fa-solid fa-pen me-1"></i>Edit</button>
-                                {f.status === 'draft' && (
-                                  <>
-                                    <button onClick={() => handleActivateField(f._id)} className="btn-action-success me-2"><i className="fa-solid fa-check me-1"></i>Publish</button>
-                                    <button onClick={() => handleDeleteDraftField(f._id)} className="btn-action-delete"><i className="fa-solid fa-trash me-1"></i>Delete</button>
-                                  </>
-                                )}
-                                {f.status === 'active' && (
-                                  <button onClick={() => handleArchiveField(f._id)} className="btn-action-warning"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
-                                )}
-                                {f.status === 'archived' && (
-                                  <button onClick={() => handleActivateField(f._id)} className="btn-action-success"><i className="fa-solid fa-box-open me-1"></i>Activate</button>
-                                )}
+                                <div className="d-flex flex-nowrap gap-2 justify-content-end align-items-center">
+                                  {userRole === 'template-admin' ? (
+                                    <span className="text-muted small">Restricted</span>
+                                  ) : (
+                                    <>
+                                      <button onClick={() => handleStartEditingField(f)} className="btn-action-edit"><i className="fa-solid fa-pen me-1"></i>Edit</button>
+                                      {f.status === 'draft' && (
+                                        <>
+                                          <button onClick={() => handleActivateField(f._id)} className="btn-action-success"><i className="fa-solid fa-check me-1"></i>Publish</button>
+                                          <button onClick={() => handleDeleteDraftField(f._id)} className="btn-action-delete"><i className="fa-solid fa-trash me-1"></i>Delete</button>
+                                        </>
+                                      )}
+                                      {f.status === 'active' && (
+                                        <button onClick={() => handleArchiveField(f._id)} className="btn-action-warning"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
+                                      )}
+                                      {f.status === 'archived' && (
+                                        <button onClick={() => handleActivateField(f._id)} className="btn-action-success"><i className="fa-solid fa-box-open me-1"></i>Activate</button>
+                                      )}
+                                    </>
+                                  )}
+                                </div>
                               </td>
                             </tr>
                             {isExpanded && (
                               <tr className="bg-light">
                                 <td colSpan="7" className="p-3">
-                                  <div className="card p-3 shadow-sm border-0" style={{ backgroundColor: '#fafafa', borderRadius: '6px' }}>
+                                  <div className="sub-card p-3">
                                     <h6 className="fw-bold mb-3 text-muted"><i className="fa-solid fa-circle-info me-2 text-primary"></i>Advanced Field Definition Details</h6>
                                     <div className="row g-3 small text-dark">
                                       <div className="col-md-4">
@@ -1882,598 +1901,16 @@ export default function Developer() {
             )}
 
             <div className="col-12 border-top pt-4">
-              <label className="premium-label fs-5 mb-3"><i className="fa-solid fa-gears me-2 text-primary"></i>Layout Sections & Fields Configuration Workspace</label>
-
-              <div className="row g-4">
-                {/* Left Side: Available Fields Library & Section Manager */}
-                <div className="col-lg-4">
-                  {/* Section Management */}
-                  <div className="card shadow-sm border p-3 bg-white mb-3" style={{ borderRadius: '8px' }}>
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                      <h6 className="fw-bold mb-0 text-dark"><i className="fa-solid fa-folder me-2 text-primary"></i>Form Sections</h6>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const newSec = {
-                            label: `Section ${((newTemplate.sections || []).length + 1)}`,
-                            description: '',
-                            icon: 'fa-user',
-                            order: ((newTemplate.sections || []).length + 1),
-                            fields: []
-                          };
-                          const updatedSecs = [...(newTemplate.sections || []), newSec];
-                          setNewTemplate({
-                            ...newTemplate,
-                            sections: updatedSecs,
-                            fields: updatedSecs.flatMap(s => s.fields || [])
-                          });
-                          setActiveSectionIndex(updatedSecs.length - 1);
-                        }}
-                        className="btn btn-xs btn-primary fw-bold"
-                      >
-                        <i className="fa-solid fa-plus me-1"></i>Add Section
-                      </button>
-                    </div>
-
-                    {!(newTemplate.sections && newTemplate.sections.length > 0) ? (
-                      <div className="text-center py-3 text-muted small">No sections created yet. Add a section to organize your fields.</div>
-                    ) : (
-                      <div className="d-flex flex-column gap-2" style={{ maxHeight: '200px', overflowY: 'auto' }}>
-                        {newTemplate.sections.map((sec, idx) => (
-                          <div
-                            key={idx}
-                            onClick={() => setActiveSectionIndex(idx)}
-                            className={`d-flex align-items-center justify-content-between p-2 rounded border cursor-pointer ${activeSectionIndex === idx ? 'border-primary bg-light fw-bold' : 'border-light bg-white'}`}
-                          >
-                            <span className="text-truncate" style={{ fontSize: '0.85rem' }}>
-                              {sec.icon && <i className={`fas ${sec.icon} me-2 text-muted`}></i>}
-                              {sec.label || `Section ${idx + 1}`}
-                            </span>
-                            <div className="d-flex align-items-center gap-1">
-                              {/* Reorder Buttons */}
-                              <button
-                                type="button"
-                                disabled={idx === 0}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const updated = [...newTemplate.sections];
-                                  const temp = updated[idx];
-                                  updated[idx] = updated[idx - 1];
-                                  updated[idx - 1] = temp;
-                                  // Re-assign order values
-                                  updated.forEach((s, sIdx) => { s.order = sIdx + 1; });
-                                  setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
-                                  setActiveSectionIndex(idx - 1);
-                                }}
-                                className="btn btn-xs btn-outline-secondary py-0 px-1"
-                                style={{ fontSize: '9px' }}
-                              >
-                                <i className="fa-solid fa-arrow-up"></i>
-                              </button>
-                              <button
-                                type="button"
-                                disabled={idx === newTemplate.sections.length - 1}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const updated = [...newTemplate.sections];
-                                  const temp = updated[idx];
-                                  updated[idx] = updated[idx + 1];
-                                  updated[idx + 1] = temp;
-                                  // Re-assign order values
-                                  updated.forEach((s, sIdx) => { s.order = sIdx + 1; });
-                                  setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
-                                  setActiveSectionIndex(idx + 1);
-                                }}
-                                className="btn btn-xs btn-outline-secondary py-0 px-1"
-                                style={{ fontSize: '9px' }}
-                              >
-                                <i className="fa-solid fa-arrow-down"></i>
-                              </button>
-                              {/* Delete Section */}
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  const updated = newTemplate.sections.filter((_, sIdx) => sIdx !== idx);
-                                  updated.forEach((s, sIdx) => { s.order = sIdx + 1; });
-                                  setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
-                                  setActiveSectionIndex(Math.max(0, idx - 1));
-                                }}
-                                className="btn btn-xs btn-outline-danger py-0 px-1"
-                                style={{ fontSize: '9px' }}
-                              >
-                                <i className="fa-solid fa-trash"></i>
-                              </button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Inputs Library Catalog */}
-                  <div className="card shadow-sm border p-3 bg-light" style={{ borderRadius: '8px' }}>
-                    <div className="d-flex justify-content-between align-items-center mb-2">
-                      <h6 className="fw-bold mb-0 text-muted"><i className="fa-solid fa-folder-open me-2"></i>Inputs Library</h6>
-                      <span className="badge bg-secondary">{fields.length} available</span>
-                    </div>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm mb-3"
-                      placeholder="Search inputs library by name or key..."
-                      value={fieldFilterText}
-                      onChange={e => setFieldFilterText(e.target.value)}
-                    />
-
-                    <div style={{ maxHeight: '300px', overflowY: 'auto', paddingRight: '4px' }}>
-                      {fields.filter(f =>
-                        f.label.toLowerCase().includes(fieldFilterText.toLowerCase()) ||
-                        f.key.toLowerCase().includes(fieldFilterText.toLowerCase())
-                      ).map(f => {
-                        const allSelectedFields = (newTemplate.sections || []).flatMap(s => s.fields || []);
-                        const isSelected = allSelectedFields.some(tf => tf.fieldId === f._id);
-                        return (
-                          <div key={f._id} className="d-flex align-items-center justify-content-between p-2 mb-2 bg-white rounded border border-light shadow-xs hover-bg-light transition-02">
-                            <div className="overflow-hidden me-2">
-                              <div className="fw-bold text-dark text-truncate" style={{ fontSize: '0.85rem' }}>{f.label}</div>
-                              <div className="text-muted text-truncate" style={{ fontSize: '0.72rem', fontFamily: 'monospace' }}>{f.key}</div>
-                            </div>
-                            <div className="d-flex align-items-center gap-2">
-                              <span className="badge bg-light text-dark border small" style={{ fontSize: '10px' }}>{f.type}</span>
-                              {isSelected ? (
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    const updatedSections = (newTemplate.sections || []).map(sec => ({
-                                      ...sec,
-                                      fields: (sec.fields || []).filter(tf => tf.fieldId !== f._id)
-                                    }));
-                                    setNewTemplate({
-                                      ...newTemplate,
-                                      sections: updatedSections,
-                                      fields: updatedSections.flatMap(s => s.fields || [])
-                                    });
-                                  }}
-                                  className="btn btn-xs btn-outline-danger py-1 px-2"
-                                  title="Remove from layout"
-                                  style={{ fontSize: '10px' }}
-                                >
-                                  <i className="fa-solid fa-minus"></i>
-                                </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  disabled={!(newTemplate.sections && newTemplate.sections.length > 0)}
-                                  onClick={() => {
-                                    const updatedSections = (newTemplate.sections || []).map((sec, sIdx) => {
-                                      if (sIdx !== activeSectionIndex) return sec;
-                                      const nextOrder = (sec.fields || []).length + 1;
-                                      return {
-                                        ...sec,
-                                        fields: [...(sec.fields || []), {
-                                          fieldId: f._id,
-                                          order: nextOrder,
-                                          required: false,
-                                          unique: false,
-                                          readOnly: false,
-                                          hidden: false,
-                                          width: 12,
-                                          placeholder: '',
-                                          helperText: '',
-                                          defaultValue: '',
-                                          validation: {
-                                            min: undefined,
-                                            max: undefined,
-                                            minLength: undefined,
-                                            maxLength: undefined,
-                                            pattern: '',
-                                            message: ''
-                                          }
-                                        }]
-                                      };
-                                    });
-                                    setNewTemplate({
-                                      ...newTemplate,
-                                      sections: updatedSections,
-                                      fields: updatedSections.flatMap(s => s.fields || [])
-                                    });
-                                  }}
-                                  className="btn btn-xs btn-outline-primary py-1 px-2"
-                                  title="Add to active section"
-                                  style={{ fontSize: '10px' }}
-                                >
-                                  <i className="fa-solid fa-plus"></i>
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right Side: Configured Layout Sections Workspace */}
-                <div className="col-lg-8">
-                  {!(newTemplate.sections && newTemplate.sections.length > 0) ? (
-                    <div className="card shadow-sm border p-5 bg-white text-center" style={{ borderRadius: '8px', minHeight: '400px' }}>
-                      <div className="d-flex flex-column align-items-center justify-content-center text-muted" style={{ height: '300px' }}>
-                        <i className="fa-solid fa-folder-plus fa-3x mb-3 text-secondary"></i>
-                        <p className="fw-semibold">No Sections Configured</p>
-                        <p className="small text-center px-4" style={{ maxWidth: '300px' }}>Click the <span className="text-primary fw-bold">Add Section</span> button on the left to initialize your template form canvas.</p>
-                      </div>
-                    </div>
-                  ) : (() => {
-                    const activeSection = newTemplate.sections[activeSectionIndex];
-                    if (!activeSection) return null;
-                    return (
-                      <div className="card shadow-sm border p-4 bg-white" style={{ borderRadius: '8px', minHeight: '450px' }}>
-                        {/* Active Section Info Editor */}
-                        <div className="row g-3 mb-4 pb-3 border-bottom">
-                          <div className="col-md-6">
-                            <label className="premium-label fw-bold">Active Section Header Label</label>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm premium-input"
-                              placeholder="e.g. Personal Information"
-                              value={activeSection.label || ''}
-                              onChange={e => {
-                                const updated = newTemplate.sections.map((s, sIdx) => 
-                                  sIdx === activeSectionIndex ? { ...s, label: e.target.value } : s
-                                );
-                                setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
-                              }}
-                            />
-                          </div>
-                          <div className="col-md-3">
-                            <label className="premium-label fw-bold">Section Icon</label>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm premium-input"
-                              placeholder="e.g. fa-user"
-                              value={activeSection.icon || ''}
-                              onChange={e => {
-                                const updated = newTemplate.sections.map((s, sIdx) => 
-                                  sIdx === activeSectionIndex ? { ...s, icon: e.target.value } : s
-                                );
-                                setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
-                              }}
-                            />
-                          </div>
-                          <div className="col-md-3 d-flex align-items-end">
-                            <div className="form-check form-switch w-100">
-                              <input
-                                type="checkbox"
-                                role="switch"
-                                className="form-check-input"
-                                id="collapsibleSwitch"
-                                checked={activeSection.collapsible || false}
-                                onChange={e => {
-                                  const updated = newTemplate.sections.map((s, sIdx) => 
-                                    sIdx === activeSectionIndex ? { ...s, collapsible: e.target.checked } : s
-                                  );
-                                  setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
-                                }}
-                              />
-                              <label className="form-check-label small mb-0 ms-2" htmlFor="collapsibleSwitch">Collapsible</label>
-                            </div>
-                          </div>
-                          <div className="col-12 mt-2">
-                            <label className="premium-label fw-bold">Section Subtitle / Description</label>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm premium-input"
-                              placeholder="Describe the category of information to collect..."
-                              value={activeSection.description || ''}
-                              onChange={e => {
-                                const updated = newTemplate.sections.map((s, sIdx) => 
-                                  sIdx === activeSectionIndex ? { ...s, description: e.target.value } : s
-                                );
-                                setNewTemplate({ ...newTemplate, sections: updated, fields: updated.flatMap(s => s.fields || []) });
-                              }}
-                            />
-                          </div>
-                        </div>
-
-                        {/* Fields Canvas inside Active Section */}
-                        <h6 className="fw-bold text-muted mb-3">
-                          <i className="fa-solid fa-list-check me-2"></i>Fields in "{activeSection.label || `Section ${activeSectionIndex + 1}`}" ({(activeSection.fields || []).length} selected)
-                        </h6>
-
-                        {!(activeSection.fields && activeSection.fields.length > 0) ? (
-                          <div className="d-flex flex-column align-items-center justify-content-center text-muted py-5">
-                            <i className="fa-solid fa-arrows-to-dot fa-2x mb-2 text-secondary"></i>
-                            <p className="small mb-0">No inputs added to this section yet.</p>
-                            <p className="small text-muted">Click the <span className="text-primary fw-bold">[+]</span> icon next to any input on the left menu to add it.</p>
-                          </div>
-                        ) : (
-                          <div className="table-responsive">
-                            <table className="table align-middle table-sm" style={{ fontSize: '12px' }}>
-                              <thead>
-                                <tr className="table-light">
-                                  <th style={{ width: '80px' }}>Order</th>
-                                  <th>Field Label</th>
-                                  <th>Type</th>
-                                  <th className="text-center" style={{ width: '85px' }}>Width</th>
-                                  <th className="text-center" style={{ width: '70px' }}>Req</th>
-                                  <th className="text-center" style={{ width: '70px' }}>Hide</th>
-                                  <th className="text-center" style={{ width: '70px' }}>Read</th>
-                                  <th className="text-end" style={{ width: '120px' }}>Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {(activeSection.fields || [])
-                                  .map(tf => {
-                                    const fObj = fields.find(f => f._id === tf.fieldId);
-                                    return { ...tf, fObj };
-                                  })
-                                  .filter(item => !!item.fObj)
-                                  .sort((a, b) => a.order - b.order)
-                                  .map((tf, index, arr) => {
-                                    return (
-                                      <React.Fragment key={tf.fieldId}>
-                                        <tr>
-                                          <td>
-                                            <input
-                                              type="number"
-                                              className="form-control form-control-sm text-center py-0 px-1"
-                                              value={tf.order}
-                                              style={{ height: '24px', fontSize: '11px' }}
-                                              onChange={e => {
-                                                const val = parseInt(e.target.value) || 0;
-                                                const updatedFields = activeSection.fields.map(item =>
-                                                  item.fieldId === tf.fieldId ? { ...item, order: val } : item
-                                                );
-                                                const updatedSections = newTemplate.sections.map((s, sIdx) => 
-                                                  sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
-                                                );
-                                                setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
-                                              }}
-                                            />
-                                          </td>
-                                          <td>
-                                            <div className="fw-semibold text-dark">{tf.fObj.label}</div>
-                                            <div className="text-muted" style={{ fontSize: '10px' }}>{tf.fObj.key}</div>
-                                          </td>
-                                          <td>
-                                            <span className="badge bg-light text-dark border">{tf.fObj.type}</span>
-                                          </td>
-                                          <td>
-                                            <select
-                                              className="form-select form-select-sm py-0 px-1"
-                                              value={tf.width || 12}
-                                              style={{ height: '24px', fontSize: '11px' }}
-                                              onChange={e => {
-                                                const val = parseInt(e.target.value) || 12;
-                                                const updatedFields = activeSection.fields.map(item =>
-                                                  item.fieldId === tf.fieldId ? { ...item, width: val } : item
-                                                );
-                                                const updatedSections = newTemplate.sections.map((s, sIdx) => 
-                                                  sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
-                                                );
-                                                setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
-                                              }}
-                                            >
-                                              <option value={12}>12 (Full)</option>
-                                              <option value={8}>8 (2/3)</option>
-                                              <option value={6}>6 (Half)</option>
-                                              <option value={4}>4 (1/3)</option>
-                                              <option value={3}>3 (1/4)</option>
-                                            </select>
-                                          </td>
-                                          <td className="text-center">
-                                            <input
-                                              type="checkbox"
-                                              className="form-check-input"
-                                              checked={tf.required}
-                                              onChange={e => {
-                                                const updatedFields = activeSection.fields.map(item =>
-                                                  item.fieldId === tf.fieldId ? { ...item, required: e.target.checked } : item
-                                                );
-                                                const updatedSections = newTemplate.sections.map((s, sIdx) => 
-                                                  sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
-                                                );
-                                                setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
-                                              }}
-                                            />
-                                          </td>
-                                          <td className="text-center">
-                                            <input
-                                              type="checkbox"
-                                              className="form-check-input"
-                                              checked={tf.hidden}
-                                              onChange={e => {
-                                                const updatedFields = activeSection.fields.map(item =>
-                                                  item.fieldId === tf.fieldId ? { ...item, hidden: e.target.checked } : item
-                                                );
-                                                const updatedSections = newTemplate.sections.map((s, sIdx) => 
-                                                  sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
-                                                );
-                                                setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
-                                              }}
-                                            />
-                                          </td>
-                                          <td className="text-center">
-                                            <input
-                                              type="checkbox"
-                                              className="form-check-input"
-                                              checked={tf.readOnly}
-                                              onChange={e => {
-                                                const updatedFields = activeSection.fields.map(item =>
-                                                  item.fieldId === tf.fieldId ? { ...item, readOnly: e.target.checked } : item
-                                                );
-                                                const updatedSections = newTemplate.sections.map((s, sIdx) => 
-                                                  sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
-                                                );
-                                                setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
-                                              }}
-                                            />
-                                          </td>
-                                          <td className="text-end">
-                                            <div className="d-flex align-items-center justify-content-end gap-1">
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  setEditingTemplateFieldId(editingTemplateFieldId === tf.fieldId ? null : tf.fieldId);
-                                                }}
-                                                className={`btn btn-xs ${editingTemplateFieldId === tf.fieldId ? 'btn-secondary' : 'btn-outline-secondary'} py-0 px-1`}
-                                                title="Settings overrides"
-                                              >
-                                                <i className="fa-solid fa-cog"></i>
-                                              </button>
-                                              <button
-                                                type="button"
-                                                onClick={() => {
-                                                  const updatedFields = activeSection.fields.filter(item => item.fieldId !== tf.fieldId);
-                                                  const updatedSections = newTemplate.sections.map((s, sIdx) => 
-                                                    sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
-                                                  );
-                                                  setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
-                                                }}
-                                                className="btn btn-xs btn-outline-danger py-0 px-1"
-                                                title="Remove Field"
-                                              >
-                                                <i className="fa-solid fa-trash-can"></i>
-                                              </button>
-                                            </div>
-                                          </td>
-                                        </tr>
-
-                                        {editingTemplateFieldId === tf.fieldId && (
-                                          <tr className="table-light">
-                                            <td colSpan={8} className="p-3 border-bottom">
-                                              <div className="card shadow-none border p-3 bg-white" style={{ borderRadius: '6px' }}>
-                                                <h6 className="fw-bold mb-3 text-secondary" style={{ fontSize: '11px' }}>
-                                                  <i className="fa-solid fa-sliders me-1"></i>Overrides: {tf.fObj.label} ({tf.fObj.key})
-                                                </h6>
-                                                <div className="row g-3">
-                                                  <div className="col-md-6">
-                                                    <label className="premium-label">Custom Placeholder</label>
-                                                    <input
-                                                      type="text"
-                                                      className="form-control form-control-sm premium-input"
-                                                      value={tf.placeholder || ''}
-                                                      onChange={e => {
-                                                        const updatedFields = activeSection.fields.map(item =>
-                                                          item.fieldId === tf.fieldId ? { ...item, placeholder: e.target.value } : item
-                                                        );
-                                                        const updatedSections = newTemplate.sections.map((s, sIdx) => 
-                                                          sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
-                                                        );
-                                                        setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
-                                                      }}
-                                                    />
-                                                  </div>
-                                                  <div className="col-md-6">
-                                                    <label className="premium-label">Custom Helper Text</label>
-                                                    <input
-                                                      type="text"
-                                                      className="form-control form-control-sm premium-input"
-                                                      value={tf.helperText || ''}
-                                                      onChange={e => {
-                                                        const updatedFields = activeSection.fields.map(item =>
-                                                          item.fieldId === tf.fieldId ? { ...item, helperText: e.target.value } : item
-                                                        );
-                                                        const updatedSections = newTemplate.sections.map((s, sIdx) => 
-                                                          sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
-                                                        );
-                                                        setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
-                                                      }}
-                                                    />
-                                                  </div>
-
-                                                  <div className="col-md-6">
-                                                    <label className="premium-label">Default Value</label>
-                                                    <input
-                                                      type="text"
-                                                      className="form-control form-control-sm premium-input"
-                                                      value={tf.defaultValue || ''}
-                                                      onChange={e => {
-                                                        const updatedFields = activeSection.fields.map(item =>
-                                                          item.fieldId === tf.fieldId ? { ...item, defaultValue: e.target.value } : item
-                                                        );
-                                                        const updatedSections = newTemplate.sections.map((s, sIdx) => 
-                                                          sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
-                                                        );
-                                                        setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
-                                                      }}
-                                                    />
-                                                  </div>
-
-                                                  <div className="col-md-6">
-                                                    <label className="premium-label">Unique Constraint</label>
-                                                    <div className="form-check pt-1">
-                                                      <input
-                                                        type="checkbox"
-                                                        className="form-check-input"
-                                                        id={`unique-check-${tf.fieldId}`}
-                                                        checked={tf.unique || false}
-                                                        onChange={e => {
-                                                          const updatedFields = activeSection.fields.map(item =>
-                                                            item.fieldId === tf.fieldId ? { ...item, unique: e.target.checked } : item
-                                                          );
-                                                          const updatedSections = newTemplate.sections.map((s, sIdx) => 
-                                                            sIdx === activeSectionIndex ? { ...s, fields: updatedFields } : s
-                                                          );
-                                                          setNewTemplate({ ...newTemplate, sections: updatedSections, fields: updatedSections.flatMap(s => s.fields || []) });
-                                                        }}
-                                                      />
-                                                      <label className="form-check-label small" htmlFor={`unique-check-${tf.fieldId}`}>Is Field Unique</label>
-                                                    </div>
-                                                  </div>
-
-                                                </div>
-                                              </div>
-                                            </td>
-                                          </tr>
-                                        )}
-                                      </React.Fragment>
-                                    );
-                                  })}
-                              </tbody>
-                            </table>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })()}
-                </div>
-              </div>
-            </div>
-
-            <div className="col-12 d-flex justify-content-end gap-2">
-              {editingTemplateId && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setEditingTemplateId(null);
-                    setNewTemplate({
-                      key: '',
-                      label: '',
-                      description: '',
-                      entity: '',
-                      purpose: '',
-                      scope: 'global',
-                      schools: [],
-                      fields: []
-                    });
-                  }}
-                  className="btn btn-outline-secondary px-4 py-2 fw-semibold"
-                >
-                  Cancel Edit
-                </button>
-              )}
-              <button
-                type="submit"
-                className="btn px-5 py-2 fw-bold text-white"
-                style={{ backgroundColor: 'var(--button-color)', border: 'none' }}
-              >
-                {editingTemplateId ? (
-                  <><i className="fa-solid fa-floppy-disk me-1"></i>Save Changes</>
-                ) : (
-                  <><i className="fa-solid fa-plus me-1"></i>Create Template</>
-                )}
-              </button>
+              <VisualFormDesigner
+                newTemplate={newTemplate}
+                setNewTemplate={setNewTemplate}
+                fields={fields}
+                entities={entities}
+                onSave={handleCreateTemplate}
+                onPublish={editingTemplateId ? () => handlePublishTemplate(editingTemplateId) : undefined}
+                editingTemplateId={editingTemplateId}
+                setEditingTemplateId={setEditingTemplateId}
+              />
             </div>
           </form>
 
@@ -2502,19 +1939,23 @@ export default function Developer() {
                     <td>{t.fields?.length || 0} fields</td>
                     <td><span className={`status-pill ${t.status}`}>{t.status}</span></td>
                     <td className="text-end">
-                      <button onClick={() => handleStartEditingTemplate(t)} className="btn-action-edit me-2"><i className="fa-solid fa-pen me-1"></i>Edit</button>
-                      {t.status === 'draft' && (
-                        <>
-                          <button onClick={() => handlePublishTemplate(t._id)} className="btn-action-success me-2"><i className="fa-solid fa-check me-1"></i>Publish</button>
-                          <button onClick={() => handleDeleteTemplate(t._id)} className="btn-action-delete"><i className="fa-solid fa-trash me-1"></i>Delete</button>
-                        </>
-                      )}
-                      {t.status === 'active' && (
-                        <button onClick={() => handleArchiveTemplate(t._id)} className="btn-action-warning"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
-                      )}
-                      {t.status === 'archived' && (
-                        <button onClick={() => handleRestoreTemplate(t._id)} className="btn-action-neutral"><i className="fa-solid fa-rotate-left me-1"></i>Restore</button>
-                      )}
+                      <div className="d-flex flex-nowrap gap-2 justify-content-end align-items-center">
+                        <button onClick={() => handleStartEditingTemplate(t)} className="btn-action-edit"><i className="fa-solid fa-pen me-1"></i>Edit</button>
+                        {t.status === 'draft' && (
+                          <>
+                            <button onClick={() => handlePublishTemplate(t._id)} className="btn-action-success"><i className="fa-solid fa-check me-1"></i>Publish</button>
+                            {userRole !== 'template-admin' && (
+                              <button onClick={() => handleDeleteTemplate(t._id)} className="btn-action-delete"><i className="fa-solid fa-trash me-1"></i>Delete</button>
+                            )}
+                          </>
+                        )}
+                        {t.status === 'active' && (
+                          <button onClick={() => handleArchiveTemplate(t._id)} className="btn-action-warning"><i className="fa-solid fa-box-archive me-1"></i>Archive</button>
+                        )}
+                        {t.status === 'archived' && (
+                          <button onClick={() => handleRestoreTemplate(t._id)} className="btn-action-neutral"><i className="fa-solid fa-rotate-left me-1"></i>Restore</button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -2611,186 +2052,190 @@ export default function Developer() {
           <div className="ov-animate-fade">
             <div className="row g-4">
               {/* Left Column: Form Setup */}
-              <div className="col-md-7">
-                <h4 className="fw-bold text-dark mb-4">
-                  <i className="fa-solid fa-circle-plus me-2" style={{ color: 'var(--button-color)' }}></i>Register School Tenant
-                </h4>
-                <form onSubmit={handleCreateSchool} className="premium-card row g-3">
-                  <div className="col-md-6">
-                    <label className="premium-label">School Name *</label>
-                    <input
-                      type="text"
-                      className="form-control premium-input"
-                      value={newSchool.name}
-                      onChange={e => setNewSchool({ ...newSchool, name: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="premium-label">Subdomain Slug *</label>
-                    <input
-                      type="text"
-                      className="form-control premium-input"
-                      value={newSchool.slug}
-                      onChange={e => setNewSchool({ ...newSchool, slug: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="premium-label">Custom Domain</label>
-                    <input
-                      type="text"
-                      className="form-control premium-input"
-                      value={newSchool.customDomain}
-                      placeholder="e.g. schoolname.com"
-                      onChange={e => setNewSchool({ ...newSchool, customDomain: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="premium-label">Logo Image URL</label>
-                    <input
-                      type="text"
-                      className="form-control premium-input"
-                      value={newSchool.logoUrl}
-                      onChange={e => setNewSchool({ ...newSchool, logoUrl: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="premium-label">Motto / Slogan</label>
-                    <input
-                      type="text"
-                      className="form-control premium-input"
-                      value={newSchool.motto}
-                      onChange={e => setNewSchool({ ...newSchool, motto: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="premium-label">Hero Background Image URL</label>
-                    <input
-                      type="text"
-                      className="form-control premium-input"
-                      value={newSchool.backgroundImage}
-                      onChange={e => setNewSchool({ ...newSchool, backgroundImage: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="premium-label">Email Address *</label>
-                    <input
-                      type="email"
-                      className="form-control premium-input"
-                      value={newSchool.email}
-                      onChange={e => setNewSchool({ ...newSchool, email: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="premium-label">Contact Phone No *</label>
-                    <input
-                      type="text"
-                      className="form-control premium-input"
-                      value={newSchool.phoneNo}
-                      onChange={e => setNewSchool({ ...newSchool, phoneNo: e.target.value })}
-                      required
-                    />
-                  </div>
-                  <div className="col-12">
-                    <label className="premium-label">Address</label>
-                    <input
-                      type="text"
-                      className="form-control premium-input"
-                      value={newSchool.address}
-                      onChange={e => setNewSchool({ ...newSchool, address: e.target.value })}
-                    />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="premium-label">Active Theme</label>
-                    <select
-                      className="form-select premium-input"
-                      value={newSchool.themeName}
-                      onChange={e => setNewSchool({ ...newSchool, themeName: e.target.value })}
-                    >
-                      <option value="light">Light</option>
-                      <option value="dark">Dark</option>
-                      <option value="midnight">Midnight</option>
-                      <option value="emerald">Emerald</option>
-                      <option value="crimson">Crimson</option>
-                    </select>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="premium-label">Plan Tier</label>
-                    <select
-                      className="form-select premium-input"
-                      value={newSchool.plan}
-                      onChange={e => setNewSchool({ ...newSchool, plan: e.target.value })}
-                    >
-                      <option value="basic">Basic Plan</option>
-                      <option value="premium">Premium Pro</option>
-                      <option value="enterprise">Enterprise</option>
-                    </select>
-                  </div>
-                  <div className="col-md-4">
-                    <label className="premium-label">Status</label>
-                    <select
-                      className="form-select premium-input"
-                      value={newSchool.subscriptionStatus}
-                      onChange={e => setNewSchool({ ...newSchool, subscriptionStatus: e.target.value })}
-                    >
-                      <option value="active">Active</option>
-                      <option value="suspended">Suspended</option>
-                    </select>
-                  </div>
-                  <div className="col-12">
-                    <div className="form-check form-switch pt-2">
+            {userRole !== 'template-admin' && (
+              <>
+                <div className="col-md-7">
+                  <h4 className="fw-bold text-dark mb-4">
+                    <i className="fa-solid fa-circle-plus me-2" style={{ color: 'var(--button-color)' }}></i>Register School Tenant
+                  </h4>
+                  <form onSubmit={handleCreateSchool} className="premium-card row g-3">
+                    <div className="col-md-6">
+                      <label className="premium-label">School Name *</label>
                       <input
-                        type="checkbox"
-                        className="form-check-input"
-                        checked={newSchool.questionPaperModule}
-                        onChange={e => setNewSchool({ ...newSchool, questionPaperModule: e.target.checked })}
+                        type="text"
+                        className="form-control premium-input"
+                        value={newSchool.name}
+                        onChange={e => setNewSchool({ ...newSchool, name: e.target.value })}
+                        required
                       />
-                      <label className="form-check-label fw-bold text-muted ms-1 small">Enable Question Paper Module</label>
                     </div>
-                  </div>
-                  <div className="col-12 d-flex justify-content-end pt-2">
-                    <button type="submit" className="btn px-5 py-2 fw-bold text-white" style={{ backgroundColor: 'var(--button-color)', border: 'none' }}>
-                      <i className="fa-solid fa-plus me-2"></i>Provision School Tenant
-                    </button>
-                  </div>
-                </form>
-              </div>
-
-              {/* Right Column: Real-Time Preview */}
-              <div className="col-md-5">
-                <div className="premium-card p-4 bg-white mb-4 shadow sticky-top" style={{ top: '20px' }}>
-                  <h4 className="fw-bold text-muted mb-4"><i className="fa-solid fa-eye me-2"></i>Live Theme Card Preview</h4>
-                  <div className="premium-card bg-white overflow-hidden border shadow-lg" style={{ borderTop: `6px solid ${newSchool.themeName === 'emerald' ? '#10b981' : newSchool.themeName === 'crimson' ? '#ef4444' : newSchool.themeName === 'midnight' ? '#6366f1' : newSchool.themeName === 'dark' ? '#1e293b' : '#fe4f2d'}` }}>
-                    {newSchool.backgroundImage ? (
-                      <div style={{ backgroundImage: `url(${newSchool.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center', height: '120px' }} />
-                    ) : (
-                      <div className="bg-light" style={{ height: '120px' }} />
-                    )}
-                    <div className="p-4 position-relative">
-                      <div className="bg-white rounded-circle p-2 shadow position-absolute" style={{ width: '60px', height: '60px', top: '-30px', left: '20px', border: '1px solid #ddd', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
-                        {newSchool.logoUrl ? <img src={newSchool.logoUrl} alt="Logo" className="img-fluid" /> : <i className="fa-solid fa-school text-muted fs-4"></i>}
+                    <div className="col-md-6">
+                      <label className="premium-label">Subdomain Slug *</label>
+                      <input
+                        type="text"
+                        className="form-control premium-input"
+                        value={newSchool.slug}
+                        onChange={e => setNewSchool({ ...newSchool, slug: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="premium-label">Custom Domain</label>
+                      <input
+                        type="text"
+                        className="form-control premium-input"
+                        value={newSchool.customDomain}
+                        placeholder="e.g. schoolname.com"
+                        onChange={e => setNewSchool({ ...newSchool, customDomain: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="premium-label">Logo Image URL</label>
+                      <input
+                        type="text"
+                        className="form-control premium-input"
+                        value={newSchool.logoUrl}
+                        onChange={e => setNewSchool({ ...newSchool, logoUrl: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="premium-label">Motto / Slogan</label>
+                      <input
+                        type="text"
+                        className="form-control premium-input"
+                        value={newSchool.motto}
+                        onChange={e => setNewSchool({ ...newSchool, motto: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="premium-label">Hero Background Image URL</label>
+                      <input
+                        type="text"
+                        className="form-control premium-input"
+                        value={newSchool.backgroundImage}
+                        onChange={e => setNewSchool({ ...newSchool, backgroundImage: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="premium-label">Email Address *</label>
+                      <input
+                        type="email"
+                        className="form-control premium-input"
+                        value={newSchool.email}
+                        onChange={e => setNewSchool({ ...newSchool, email: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="col-md-6">
+                      <label className="premium-label">Contact Phone No *</label>
+                      <input
+                        type="text"
+                        className="form-control premium-input"
+                        value={newSchool.phoneNo}
+                        onChange={e => setNewSchool({ ...newSchool, phoneNo: e.target.value })}
+                        required
+                      />
+                    </div>
+                    <div className="col-12">
+                      <label className="premium-label">Address</label>
+                      <input
+                        type="text"
+                        className="form-control premium-input"
+                        value={newSchool.address}
+                        onChange={e => setNewSchool({ ...newSchool, address: e.target.value })}
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="premium-label">Active Theme</label>
+                      <select
+                        className="form-select premium-input"
+                        value={newSchool.themeName}
+                        onChange={e => setNewSchool({ ...newSchool, themeName: e.target.value })}
+                      >
+                        <option value="light">Light</option>
+                        <option value="dark">Dark</option>
+                        <option value="midnight">Midnight</option>
+                        <option value="emerald">Emerald</option>
+                        <option value="crimson">Crimson</option>
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="premium-label">Plan Tier</label>
+                      <select
+                        className="form-select premium-input"
+                        value={newSchool.plan}
+                        onChange={e => setNewSchool({ ...newSchool, plan: e.target.value })}
+                      >
+                        <option value="basic">Basic Plan</option>
+                        <option value="premium">Premium Pro</option>
+                        <option value="enterprise">Enterprise</option>
+                      </select>
+                    </div>
+                    <div className="col-md-4">
+                      <label className="premium-label">Status</label>
+                      <select
+                        className="form-select premium-input"
+                        value={newSchool.subscriptionStatus}
+                        onChange={e => setNewSchool({ ...newSchool, subscriptionStatus: e.target.value })}
+                      >
+                        <option value="active">Active</option>
+                        <option value="suspended">Suspended</option>
+                      </select>
+                    </div>
+                    <div className="col-12">
+                      <div className="form-check form-switch pt-2">
+                        <input
+                          type="checkbox"
+                          className="form-check-input"
+                          checked={newSchool.questionPaperModule}
+                          onChange={e => setNewSchool({ ...newSchool, questionPaperModule: e.target.checked })}
+                        />
+                        <label className="form-check-label fw-bold text-muted ms-1 small">Enable Question Paper Module</label>
                       </div>
-                      <div className="pt-4">
-                        <h5 className="fw-bold text-dark mb-1">{newSchool.name || 'School Name'}</h5>
-                        <p className="text-muted small mb-2"><code>{newSchool.slug || 'slug'}.localhost</code></p>
-                        {newSchool.motto && <p className="text-muted small italic mb-3">"{newSchool.motto}"</p>}
-                        <div className="border-top py-2 my-2 text-muted small">
-                          <div className="d-flex justify-content-between mb-1">
-                            <span>Custom Domain:</span>
-                            <span className="fw-bold text-dark">{newSchool.customDomain || 'None'}</span>
-                          </div>
-                          <div className="d-flex justify-content-between">
-                            <span>Plan level:</span>
-                            <span className="badge bg-light text-primary border">{newSchool.plan.toUpperCase()}</span>
+                    </div>
+                    <div className="col-12 d-flex justify-content-end pt-2">
+                      <button type="submit" className="btn px-5 py-2 fw-bold text-white" style={{ backgroundColor: 'var(--button-color)', border: 'none' }}>
+                        <i className="fa-solid fa-plus me-2"></i>Provision School Tenant
+                      </button>
+                    </div>
+                  </form>
+                </div>
+
+                {/* Right Column: Real-Time Preview */}
+                <div className="col-md-5">
+                  <div className="premium-card p-4 bg-white mb-4 shadow sticky-top" style={{ top: '20px' }}>
+                    <h4 className="fw-bold text-muted mb-4"><i className="fa-solid fa-eye me-2"></i>Live Theme Card Preview</h4>
+                    <div className="premium-card bg-white overflow-hidden border shadow-lg" style={{ borderTop: `6px solid ${newSchool.themeName === 'emerald' ? '#10b981' : newSchool.themeName === 'crimson' ? '#ef4444' : newSchool.themeName === 'midnight' ? '#6366f1' : newSchool.themeName === 'dark' ? '#1e293b' : '#fe4f2d'}` }}>
+                      {newSchool.backgroundImage ? (
+                        <div style={{ backgroundImage: `url(${newSchool.backgroundImage})`, backgroundSize: 'cover', backgroundPosition: 'center', height: '120px' }} />
+                      ) : (
+                        <div className="bg-light" style={{ height: '120px' }} />
+                      )}
+                      <div className="p-4 position-relative">
+                        <div className="bg-white rounded-circle p-2 shadow position-absolute" style={{ width: '60px', height: '60px', top: '-30px', left: '20px', border: '1px solid #ddd', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' }}>
+                          {newSchool.logoUrl ? <img src={newSchool.logoUrl} alt="Logo" className="img-fluid" /> : <i className="fa-solid fa-school text-muted fs-4"></i>}
+                        </div>
+                        <div className="pt-4">
+                          <h5 className="fw-bold text-dark mb-1">{newSchool.name || 'School Name'}</h5>
+                          <p className="text-muted small mb-2"><code>{newSchool.slug || 'slug'}.localhost</code></p>
+                          {newSchool.motto && <p className="text-muted small italic mb-3">"{newSchool.motto}"</p>}
+                          <div className="border-top py-2 my-2 text-muted small">
+                            <div className="d-flex justify-content-between mb-1">
+                              <span>Custom Domain:</span>
+                              <span className="fw-bold text-dark">{newSchool.customDomain || 'None'}</span>
+                            </div>
+                            <div className="d-flex justify-content-between">
+                              <span>Plan level:</span>
+                              <span className="badge bg-light text-primary border">{newSchool.plan.toUpperCase()}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
-              </div>
+              </>
+            )}
             </div>
 
             {/* List School Tenants */}
@@ -2851,12 +2296,14 @@ export default function Developer() {
                           >
                             <i className="fa-solid fa-circle-play me-1"></i>Set In Use
                           </button>
-                          <button
-                            onClick={() => handleDeleteSchool(s._id)}
-                            className="btn btn-outline-danger px-3"
-                          >
-                            <i className="fa-solid fa-trash"></i>
-                          </button>
+                          {userRole !== 'template-admin' && (
+                            <button
+                              onClick={() => handleDeleteSchool(s._id)}
+                              className="btn btn-outline-danger px-3"
+                            >
+                              <i className="fa-solid fa-trash"></i>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -2887,45 +2334,48 @@ export default function Developer() {
               </select>
             </div>
 
-            <form onSubmit={handleCreateUser} className="developer-form row g-3 mb-5">
-              <h5 className="fw-bold text-muted mb-2">Create Tenant User Account</h5>
-              <div className="col-md-4">
-                <label className="premium-label">Username</label>
-                <input
-                  type="text"
-                  className="form-control premium-input"
-                  value={newUser.username}
-                  onChange={e => setNewUser({ ...newUser, username: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="premium-label">Password</label>
-                <input
-                  type="password"
-                  className="form-control premium-input"
-                  value={newUser.password}
-                  onChange={e => setNewUser({ ...newUser, password: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="col-md-4">
-                <label className="premium-label">Role</label>
-                <select
-                  className="form-select premium-input"
-                  value={newUser.role}
-                  onChange={e => setNewUser({ ...newUser, role: e.target.value })}
-                >
-                  <option value="viewer">Viewer</option>
-                  <option value="admin">Admin</option>
-                  <option value="payment-manager">Payment Manager</option>
-                  <option value="student-enrollment">Student Enrollment Officer</option>
-                </select>
-              </div>
-              <div className="col-12 d-flex justify-content-end">
-                <button type="submit" className="btn px-4 py-2 fw-bold text-white" style={{ backgroundColor: 'var(--button-color)', border: 'none' }}><i className="fa-solid fa-plus me-1"></i>Create User Account</button>
-              </div>
-            </form>
+            {userRole !== 'template-admin' && (
+              <form onSubmit={handleCreateUser} className="developer-form row g-3 mb-5">
+                <h5 className="fw-bold text-muted mb-2">Create Tenant User Account</h5>
+                <div className="col-md-4">
+                  <label className="premium-label">Username</label>
+                  <input
+                    type="text"
+                    className="form-control premium-input"
+                    value={newUser.username}
+                    onChange={e => setNewUser({ ...newUser, username: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="col-md-4">
+                  <label className="premium-label">Password</label>
+                  <input
+                    type="password"
+                    className="form-control premium-input"
+                    value={newUser.password}
+                    onChange={e => setNewUser({ ...newUser, password: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="col-md-4">
+                  <label className="premium-label">Role</label>
+                  <select
+                    className="form-select premium-input"
+                    value={newUser.role}
+                    onChange={e => setNewUser({ ...newUser, role: e.target.value })}
+                  >
+                    <option value="viewer">Viewer</option>
+                    <option value="admin">Admin</option>
+                    <option value="payment-manager">Payment Manager</option>
+                    <option value="student-enrollment">Student Enrollment Officer</option>
+                    <option value="template-admin">Template Admin</option>
+                  </select>
+                </div>
+                <div className="col-12 d-flex justify-content-end">
+                  <button type="submit" className="btn px-4 py-2 fw-bold text-white" style={{ backgroundColor: 'var(--button-color)', border: 'none' }}><i className="fa-solid fa-plus me-1"></i>Create User Account</button>
+                </div>
+              </form>
+            )}
 
             <div className="table-responsive">
               <table className="table align-middle table-hover">
@@ -2944,7 +2394,9 @@ export default function Developer() {
                       <tr key={u._id}>
                         <td className="fw-bold">{u.username}</td>
                         <td>
-                          {isEditing ? (
+                          {userRole === 'template-admin' ? (
+                            <span>••••••••</span>
+                          ) : isEditing ? (
                             <input
                               type="text"
                               className="form-control form-control-sm premium-input"
@@ -2969,23 +2421,28 @@ export default function Developer() {
                               <option value="admin">Admin</option>
                               <option value="payment-manager">Payment Manager</option>
                               <option value="student-enrollment">Student Enrollment Officer</option>
+                              <option value="template-admin">Template Admin</option>
                             </select>
                           ) : (
                             <span className="badge bg-light text-dark border">{u.role}</span>
                           )}
                         </td>
                         <td className="text-end">
-                          {isEditing ? (
-                            <>
-                              <button onClick={() => handleSaveUserEdit(u)} className="btn btn-sm btn-outline-success me-2 fw-semibold px-3"><i className="fa-solid fa-floppy-disk me-1"></i>Save</button>
-                              <button onClick={() => setEditingUserId(null)} className="btn btn-sm btn-outline-secondary fw-semibold px-3">Cancel</button>
-                            </>
-                          ) : (
-                            <>
-                              <button onClick={() => handleStartEditingUser(u)} className="btn btn-sm btn-outline-primary me-2 fw-semibold"><i className="fa-solid fa-pen me-1"></i>Edit</button>
-                              <button onClick={() => handleImpersonateUser(u)} className="btn btn-sm text-white py-1 px-3 fw-semibold" style={{ backgroundColor: 'var(--button-color)', border: 'none' }}><i className="fa-solid fa-user-secret me-2"></i>Login As</button>
-                            </>
-                          )}
+                          <div className="d-flex flex-nowrap gap-2 justify-content-end align-items-center">
+                            {userRole === 'template-admin' ? (
+                              <span className="text-muted small">Restricted</span>
+                            ) : isEditing ? (
+                              <>
+                                <button onClick={() => handleSaveUserEdit(u)} className="btn btn-sm btn-outline-success fw-semibold px-3"><i className="fa-solid fa-floppy-disk me-1"></i>Save</button>
+                                <button onClick={() => setEditingUserId(null)} className="btn btn-sm btn-outline-secondary fw-semibold px-3">Cancel</button>
+                              </>
+                            ) : (
+                              <>
+                                <button onClick={() => handleStartEditingUser(u)} className="btn btn-sm btn-outline-primary fw-semibold"><i className="fa-solid fa-pen me-1"></i>Edit</button>
+                                <button onClick={() => handleImpersonateUser(u)} className="btn btn-sm text-white py-1 px-3 fw-semibold" style={{ backgroundColor: 'var(--button-color)', border: 'none' }}><i className="fa-solid fa-user-secret me-2"></i>Login As</button>
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -2997,171 +2454,147 @@ export default function Developer() {
         )
       }
 
-      {/* Tab 7: Bulk Import */}
       {
         activeTab === 'bulk_import' && (
-          <div className="premium-card p-4 bg-white mb-4 text-dark">
-            <h4 className="fw-bold text-dark mb-3"><i className="fa-solid fa-file-import me-2" style={{ color: 'var(--button-color)' }}></i>Bulk Data Importer</h4>
-
-            {/* Import Type Toggle Switch */}
-            <div className="d-flex gap-3 mb-4 border-bottom pb-3">
-              <button 
-                type="button" 
-                onClick={() => {
-                  setImportType('students');
-                  setBulkFileName('');
-                  setBulkFileText('');
-                  setImportStats(null);
-                  setImportLogs([]);
-                }}
-                className={`btn btn-sm px-4 py-2 fw-semibold rounded ${importType === 'students' ? 'btn-primary text-white' : 'btn-light border text-dark'}`}
-                style={importType === 'students' ? { backgroundColor: 'var(--button-color)', borderColor: 'var(--button-color)' } : {}}
-              >
-                <i className="fa-solid fa-users me-2"></i>Students Info
-              </button>
-              <button 
-                type="button" 
-                onClick={() => {
-                  setImportType('fees');
-                  setBulkFileName('');
-                  setBulkFileText('');
-                  setImportStats(null);
-                  setImportLogs([]);
-                }}
-                className={`btn btn-sm px-4 py-2 fw-semibold rounded ${importType === 'fees' ? 'btn-primary text-white' : 'btn-light border text-dark'}`}
-                style={importType === 'fees' ? { backgroundColor: 'var(--button-color)', borderColor: 'var(--button-color)' } : {}}
-              >
-                <i className="fa-solid fa-money-bill-wave me-2"></i>Fee Structures
-              </button>
+          userRole === 'template-admin' ? (
+            <div className="premium-card p-5 bg-white mb-4 text-center text-muted">
+              <i className="fa-solid fa-lock fa-3x mb-3 text-secondary" style={{ color: 'var(--button-color)' }}></i>
+              <h5 className="fw-bold text-dark">Bulk Import Restricted</h5>
+              <p className="small text-muted mb-0">The template-admin role is restricted from bulk importing system data.</p>
             </div>
+          ) : (
+            <div className="premium-card p-4 bg-white mb-4 text-dark">
+              <h4 className="fw-bold text-dark mb-3"><i className="fa-solid fa-file-import me-2" style={{ color: 'var(--button-color)' }}></i>Bulk Data Importer</h4>
 
-            <form onSubmit={handleBulkImport} className="row g-3 mb-4">
-              <div className="col-md-6">
-                <label className="premium-label text-secondary">Select Tenant Context School *</label>
-                <select
-                  className="form-select premium-input text-dark"
-                  value={bulkSchool}
-                  onChange={e => setBulkSchool(e.target.value)}
-                  required
-                >
-                  <option value="">-- Select School --</option>
-                  {schools.map(s => (
-                    <option key={s._id} value={s._id}>{s.name} ({s.slug})</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-md-6">
-                <label className="premium-label text-secondary">Select Target Academic Year *</label>
-                <select
-                  className="form-select premium-input text-dark"
-                  value={bulkAcademicYear}
-                  onChange={e => setBulkAcademicYear(e.target.value)}
-                  required
-                >
-                  <option value="">-- Select Academic Year --</option>
-                  {academicYears.map(ay => (
-                    <option key={ay._id} value={ay._id}>{ay.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-12 mt-4">
-                <label className="premium-label d-block mb-2 text-secondary">Upload Excel / TSV / CSV Data Sheet *</label>
-                <div 
-                  className="p-4 border rounded text-center cursor-pointer bg-light hover-bg-light transition-02"
-                  style={{ borderStyle: 'dashed !important', borderColor: 'var(--button-color) !important' }}
-                  onClick={() => document.getElementById('bulkFileField').click()}
-                >
-                  <i className="fa-solid fa-cloud-arrow-up fs-2 mb-2" style={{ color: 'var(--button-color)' }}></i>
-                  <p className="mb-1 fw-semibold">{bulkFileName ? `Selected: ${bulkFileName}` : 'Drag & Drop or Click to upload TSV/CSV/TXT file'}</p>
-                  
-                  {importType === 'students' ? (
-                    <span className="small text-muted">File must contain headers matching Student Registry keys (e.g. <code>fullname</code>, <code>gender</code>, <code>class</code>, <code>section</code>, <code>rollnumber</code>, <code>dateofbirth</code>)</span>
-                  ) : (
-                    <span className="small text-muted">First column must be <code>class</code>. Remaining columns must match Fee Registry keys (e.g. <code>admission_fees</code>, <code>tuition_fee</code>, <code>development_fee</code>)</span>
-                  )}
-                  
-                  <input
-                    type="file"
-                    id="bulkFileField"
-                    accept=".tsv,.csv,.txt"
-                    onChange={handleFileChange}
-                    style={{ display: 'none' }}
-                  />
-                </div>
-              </div>
-
-              {bulkFileText && (
-                <div className="col-12 mt-3">
-                  <label className="premium-label text-secondary">File Preview (First 5 lines)</label>
-                  <pre className="p-3 bg-light border rounded font-monospace small mb-0 overflow-auto" style={{ maxHeight: '150px' }}>
-                    {bulkFileText.split('\n').slice(0, 5).join('\n')}
-                  </pre>
-                </div>
-              )}
-
-              <div className="col-12 d-flex justify-content-end mt-4">
+              {/* Import Type Toggle Switch */}
+              <div className="d-flex gap-3 mb-4 border-bottom pb-3">
                 <button 
-                  type="submit" 
-                  disabled={isImporting || !bulkFileText} 
-                  className="btn px-5 py-2.5 fw-bold text-white w-100 w-md-auto" 
-                  style={{ backgroundColor: 'var(--button-color)', border: 'none' }}
+                  type="button" 
+                  onClick={() => {
+                    setImportType('students');
+                    setBulkFileName('');
+                    setBulkFileText('');
+                    setImportStats(null);
+                    setImportLogs([]);
+                  }}
+                  className={`btn btn-sm px-4 py-2 fw-semibold rounded ${importType === 'students' ? 'btn-primary text-white' : 'btn-light border text-dark'}`}
+                  style={importType === 'students' ? { backgroundColor: 'var(--button-color)', borderColor: 'var(--button-color)' } : {}}
                 >
-                  {isImporting ? (
-                    <>
-                      <i className="fa-solid fa-circle-notch fa-spin me-2"></i>Importing Students...
-                    </>
-                  ) : (
-                    <>
-                      <i className="fa-solid fa-upload me-2"></i>Run Bulk Import
-                    </>
-                  )}
+                  <i className="fa-solid fa-users me-2"></i>Students Info
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setImportType('fees');
+                    setBulkFileName('');
+                    setBulkFileText('');
+                    setImportStats(null);
+                    setImportLogs([]);
+                  }}
+                  className={`btn btn-sm px-4 py-2 fw-semibold rounded ${importType === 'fees' ? 'btn-primary text-white' : 'btn-light border text-dark'}`}
+                  style={importType === 'fees' ? { backgroundColor: 'var(--button-color)', borderColor: 'var(--button-color)' } : {}}
+                >
+                  <i className="fa-solid fa-file-invoice-dollar me-2"></i>Fee Configurations
                 </button>
               </div>
-            </form>
 
-            {/* Results Console */}
-            {(importStats || importLogs.length > 0) && (
-              <div className="border-top pt-4 mt-4">
-                <h5 className="fw-bold text-dark mb-3"><i className="fa-solid fa-terminal me-2"></i>Import Results Console</h5>
-                
-                {importStats && (
-                  <div className="row g-2 mb-3">
-                    <div className="col-sm-6 col-md-3">
-                      <div className="p-3 bg-success bg-opacity-10 border border-success rounded text-success">
-                        <span className="small d-block fw-semibold">SUCCESSFULLY IMPORTED</span>
-                        <strong className="fs-4">{importStats.successCount}</strong> students
-                      </div>
-                    </div>
-                    <div className="col-sm-6 col-md-3">
-                      <div className="p-3 bg-danger bg-opacity-10 border border-danger rounded text-danger">
-                        <span className="small d-block fw-semibold">FAILED ENTRIES</span>
-                        <strong className="fs-4">{importStats.failCount}</strong> errors
-                      </div>
-                    </div>
+              <form onSubmit={handleBulkImport} className="row g-3 mb-4">
+                <div className="col-12">
+                  <div 
+                    className="p-5 border rounded text-center cursor-pointer bg-light d-flex flex-column align-items-center justify-content-center"
+                    style={{ borderStyle: 'dashed !important', borderColor: 'var(--button-color) !important' }}
+                    onClick={() => document.getElementById('bulkFileField').click()}
+                  >
+                    <i className="fa-solid fa-cloud-arrow-up fs-2 mb-2" style={{ color: 'var(--button-color)' }}></i>
+                    <p className="mb-1 fw-semibold">{bulkFileName ? `Selected: ${bulkFileName}` : 'Drag & Drop or Click to upload TSV/CSV/TXT file'}</p>
+                    
+                    {importType === 'students' ? (
+                      <span className="small text-muted">File must contain headers matching Student Registry keys (e.g. <code>fullname</code>, <code>gender</code>, <code>class</code>, <code>section</code>, <code>rollnumber</code>, <code>dateofbirth</code>)</span>
+                    ) : (
+                      <span className="small text-muted">First column must be <code>class</code>. Remaining columns must match Fee Registry keys (e.g. <code>admission_fees</code>, <code>tuition_fee</code>, <code>development_fee</code>)</span>
+                    )}
+                    
+                    <input
+                      type="file"
+                      id="bulkFileField"
+                      accept=".tsv,.csv,.txt"
+                      onChange={handleFileChange}
+                      style={{ display: 'none' }}
+                    />
+                  </div>
+                </div>
+
+                {bulkFileText && (
+                  <div className="col-12 mt-3">
+                    <label className="premium-label text-secondary">File Preview (First 5 lines)</label>
+                    <pre className="p-3 bg-light border rounded font-monospace small mb-0 overflow-auto" style={{ maxHeight: '150px' }}>
+                      {bulkFileText.split('\n').slice(0, 5).join('\n')}
+                    </pre>
                   </div>
                 )}
 
-                <div 
-                  className="p-3 bg-dark text-white rounded font-monospace small overflow-auto" 
-                  style={{ maxHeight: '300px', WebkitFontSmoothing: 'antialiased' }}
-                >
-                  {importLogs.map((log, idx) => {
-                    let color = '#fff';
-                    if (log.startsWith('[OK]')) color = '#4ade80';
-                    if (log.startsWith('[ERROR]')) color = '#f87171';
-                    return (
-                      <div key={idx} style={{ color, marginBottom: '4px' }}>
-                        {log}
-                      </div>
-                    );
-                  })}
-                  {importLogs.length === 0 && <span className="text-muted">Waiting for import logs...</span>}
+                <div className="col-12 d-flex justify-content-end mt-4">
+                  <button 
+                    type="submit" 
+                    disabled={isImporting || !bulkFileText} 
+                    className="btn px-5 py-2.5 fw-bold text-white w-100 w-md-auto" 
+                    style={{ backgroundColor: 'var(--button-color)', border: 'none' }}
+                  >
+                    {isImporting ? (
+                      <>
+                        <i className="fa-solid fa-circle-notch fa-spin me-2"></i>Importing Students...
+                      </>
+                    ) : (
+                      <>
+                        <i className="fa-solid fa-upload me-2"></i>Run Bulk Import
+                      </>
+                    )}
+                  </button>
                 </div>
-              </div>
-            )}
-          </div>
+              </form>
+
+              {/* Results Console */}
+              {(importStats || importLogs.length > 0) && (
+                <div className="border-top pt-4 mt-4">
+                  <h5 className="fw-bold text-dark mb-3"><i className="fa-solid fa-terminal me-2"></i>Import Results Console</h5>
+                  
+                  {importStats && (
+                    <div className="row g-2 mb-3">
+                      <div className="col-sm-6 col-md-3">
+                        <div className="p-3 bg-success bg-opacity-10 border border-success rounded text-success">
+                          <span className="small d-block fw-semibold">SUCCESSFULLY IMPORTED</span>
+                          <strong className="fs-4">{importStats.successCount}</strong> students
+                        </div>
+                      </div>
+                      <div className="col-sm-6 col-md-3">
+                        <div className="p-3 bg-danger bg-opacity-10 border border-danger rounded text-danger">
+                          <span className="small d-block fw-semibold">FAILED ENTRIES</span>
+                          <strong className="fs-4">{importStats.failCount}</strong> errors
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  <div 
+                    className="p-3 bg-dark text-white rounded font-monospace small overflow-auto" 
+                    style={{ maxHeight: '300px', WebkitFontSmoothing: 'antialiased' }}
+                  >
+                    {importLogs.map((log, idx) => {
+                      let color = '#fff';
+                      if (log.startsWith('[OK]')) color = '#4ade80';
+                      if (log.startsWith('[ERROR]')) color = '#f87171';
+                      return (
+                        <div key={idx} style={{ color, marginBottom: '4px' }}>
+                          {log}
+                        </div>
+                      );
+                    })}
+                    {importLogs.length === 0 && <span className="text-muted">Waiting for import logs...</span>}
+                  </div>
+                </div>
+              )}
+            </div>
+          )
         )
       }
       <LoadingIndicator message={loadingMessage} active={loading} />

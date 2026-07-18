@@ -161,3 +161,24 @@ exports.bulkImportFees = async (req, res) => {
   }
 };
 
+exports.getTransactions = async (req, res) => {
+  try {
+    const mongoose = require('mongoose');
+    const FinancialTransaction = mongoose.model('FinancialTransaction');
+    const list = await FinancialTransaction.find({ schoolId: req.schoolId }).sort({ transactionDate: -1 });
+    res.json({ success: true, data: list });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+};
+
+exports.incrementReceipt = async (req, res) => {
+  try {
+    const ReceiptService = require('../services/ReceiptService');
+    const book = await ReceiptService.getReceiptBook(req.schoolId);
+    res.json({ success: true, data: book });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+

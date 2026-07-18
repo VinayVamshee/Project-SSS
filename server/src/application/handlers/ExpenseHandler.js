@@ -19,6 +19,24 @@ class ExpenseHandler {
       await expenseDoc.save();
     }
 
+    // Log Financial Transaction
+    try {
+      const FinancialTransactionService = require('../services/FinancialTransactionService');
+      await FinancialTransactionService.recordTransaction({
+        schoolId,
+        transactionType: 'expense',
+        sourceModule: 'expense_ledger',
+        referenceId: expenseDoc._id,
+        amount: expenseDoc.amount || 0,
+        paymentMethod: expenseDoc.paymentMethod || 'Cash',
+        remarks: expenseDoc.description || `Expense Voucher ${expenseDoc.expenseCode}`,
+        createdBy: null,
+        transactionDate: expenseDoc.date || new Date()
+      });
+    } catch (txErr) {
+      console.error('⚠️ Failed to log financial transaction for expense:', txErr);
+    }
+
     return {
       expense: expenseDoc
     };

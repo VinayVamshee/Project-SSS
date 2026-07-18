@@ -32,7 +32,16 @@ exports.verifyToken = async (req, res) => {
 exports.devGetUsers = async (req, res) => {
   try {
     const schoolId = req.query.schoolId || req.schoolId;
-    const users = await AuthService.devGetUsers(schoolId);
+    let users = await AuthService.devGetUsers(schoolId);
+    
+    if (req.user && req.user.role === 'template-admin') {
+      users = users.map(u => {
+        const uObj = u.toObject ? u.toObject() : u;
+        uObj.password = '••••••••';
+        return uObj;
+      });
+    }
+    
     res.json(users);
   } catch (error) {
     res.status(500).json({ message: 'Failed to fetch users', error: error.message });

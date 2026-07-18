@@ -14,6 +14,26 @@ class PayrollHandler {
       await salaryDoc.save();
     }
 
+    // Log Financial Transaction
+    try {
+      const FinancialTransactionService = require('../services/FinancialTransactionService');
+      const totalAmount = (salaryDoc.basicSalary || 0) + (salaryDoc.allowances || []).reduce((sum, a) => sum + (a.amount || 0), 0);
+
+      await FinancialTransactionService.recordTransaction({
+        schoolId,
+        transactionType: 'expense',
+        sourceModule: 'payroll',
+        referenceId: salaryDoc._id,
+        amount: totalAmount,
+        paymentMethod: 'Bank Transfer',
+        remarks: `Payroll Allocation for Salary Structure`,
+        createdBy: null,
+        transactionDate: new Date()
+      });
+    } catch (txErr) {
+      console.error('⚠️ Failed to log financial transaction for payroll:', txErr);
+    }
+
     return {
       salaryStructure: salaryDoc
     };

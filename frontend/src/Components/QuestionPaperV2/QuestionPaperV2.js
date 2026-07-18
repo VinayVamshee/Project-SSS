@@ -1476,11 +1476,11 @@ export default function QuestionPaperV2() {
                                                 }} style={{
                                                     flex: '1 1 120px',
                                                     padding: '8px 10px',
-                                                    border: `2px solid ${isSelected ? 'var(--button-color)' : 'rgba(0,0,0,0.08)'}`,
+                                                    border: `2px solid ${isSelected ? 'var(--button-color)' : 'var(--border-color, rgba(0,0,0,0.08))'}`,
                                                     borderRadius: '8px',
                                                     cursor: 'pointer',
                                                     fontSize: '0.75rem',
-                                                    backgroundColor: isSelected ? 'rgba(254, 79, 45, 0.04)' : '#ffffff'
+                                                    backgroundColor: isSelected ? 'var(--primary-light, rgba(254, 79, 45, 0.04))' : 'var(--card-bg-color, #ffffff)'
                                                 }}>
                                                     <strong>{t.schoolName}</strong>
                                                     <div className="text-muted" style={{ fontSize: '0.7rem' }}>{t.examTitle}</div>
