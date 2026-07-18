@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const metadataController = require('../../application/controllers/metadata.controller');
+const academicPolicyController = require('../../application/controllers/academicPolicy.controller');
+require('../../domain/metadata/models/AcademicPolicy');
 const { protect, restrictTo } = require('../middlewares/authMiddleware');
 const {
   validateEntityInput,
@@ -44,5 +46,13 @@ router.get('/lookup', metadataController.lookup);
 
 // ─── Generic Template Form Submission Dispatcher ────────────────────────────────
 router.post('/templates/submit', metadataController.submitForm);
+
+// ─── Academic Policy Engine Routes ────────────────────────────────────────────
+router.get('/academic-policies', academicPolicyController.listPolicies);
+router.get('/academic-policies/active', academicPolicyController.getActivePolicy);
+router.get('/academic-policies/:id', academicPolicyController.getPolicy);
+router.post('/academic-policies', restrictTo('admin', 'developer', 'templateadmin'), academicPolicyController.createPolicy);
+router.put('/academic-policies/:id', restrictTo('admin', 'developer', 'templateadmin'), academicPolicyController.updatePolicy);
+router.delete('/academic-policies/:id', restrictTo('admin', 'developer', 'templateadmin'), academicPolicyController.deletePolicy);
 
 module.exports = router;

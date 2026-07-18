@@ -323,3 +323,62 @@
 .dynamic-form .df-file-input {
     display: none;
 }
+
+/* Lookup Dropdown Result List styling */
+.dynamic-form .df-lookup-list {
+    display: flex;
+    flex-direction: column;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.dynamic-form .df-lookup-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 14px;
+    font-size: 0.9rem;
+    color: var(--text-color, #1e293b);
+    cursor: pointer;
+    transition: all 0.15s ease;
+    background: transparent;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.02);
+}
+
+.dynamic-form .df-lookup-item:hover {
+    background: rgba(254, 79, 45, 0.05) !important;
+    color: var(--active-color, #fe4f2d) !important;
+}
+
+.dynamic-form .df-lookup-item.active {
+    background: rgba(254, 79, 45, 0.1) !important;
+    color: var(--active-color, #fe4f2d) !important;
+    font-weight: 600;
+}
+
+.dynamic-form .df-lookup-item i {
+    font-size: 11px;
+    color: var(--active-color, #fe4f2d);
+}
+
+.dynamic-form .df-lookup-loading,
+.dynamic-form .df-lookup-empty {
+    padding: 20px;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.85rem;
+}
+
+.dynamic-form .df-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color, #e2e8f0);
+    border-top-color: var(--active-color, #fe4f2d);
+    border-radius: 50%;
+    animation: df-spin 0.6s linear infinite;
+    margin: 0 auto;
+}
+
+@keyframes df-spin {
+    to { transform: rotate(360deg); }
+}

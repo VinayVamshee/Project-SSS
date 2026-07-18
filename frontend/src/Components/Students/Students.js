@@ -71,11 +71,11 @@ export default function Students() {
         // Find enrollment for selected year
         const activeEnrollment = student.academicYears?.find(y => y.academicYear === selectedYear);
         if (activeEnrollment) {
-            flatValues.class = activeEnrollment.class;
+            flatValues.class = activeEnrollment.classId ? { _id: activeEnrollment.classId, name: activeEnrollment.class } : activeEnrollment.class;
             flatValues.section = activeEnrollment.section;
             flatValues.admissionnumber = activeEnrollment.admissionNumber || student.admissionNumber;
             flatValues.rollnumber = activeEnrollment.rollNumber || student.rollNumber;
-            flatValues.academicyear = activeEnrollment.academicYear;
+            flatValues.academicyear = activeEnrollment.academicYearId ? { _id: activeEnrollment.academicYearId, name: activeEnrollment.academicYear } : activeEnrollment.academicYear;
             flatValues.academic_status = activeEnrollment.status || student.academicStatus;
         } else {
             flatValues.admissionnumber = student.admissionNumber || student.AdmissionNo || '';
@@ -111,7 +111,9 @@ export default function Students() {
                     academicYears: (s.enrollments || []).map(e => ({
                         enrollmentId: e.enrollmentId,
                         academicYear: e.academicYear?.name || e.academicYear?.toString() || '',
+                        academicYearId: e.academicYear?._id || '',
                         class: e.class || 'N/A',
+                        classId: e.classId || '',
                         section: e.section || '',
                         admissionNumber: e.admissionNumber || '',
                         rollNumber: e.rollNumber || '',
@@ -908,7 +910,9 @@ export default function Students() {
                                                             academicYears: (updated.enrollments || []).map(e => ({
                                                                 enrollmentId: e.enrollmentId,
                                                                 academicYear: e.academicYear?.name || e.academicYear?.toString() || '',
+                                                                academicYearId: e.academicYear?._id || '',
                                                                 class: e.class || 'N/A',
+                                                                classId: e.classId || '',
                                                                 section: e.section || '',
                                                                 admissionNumber: e.admissionNumber || '',
                                                                 rollNumber: e.rollNumber || '',

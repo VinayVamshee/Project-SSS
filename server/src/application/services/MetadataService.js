@@ -427,8 +427,10 @@ class MetadataService {
       return fieldVal || record.name || "";
     };
 
+    const valKey = (typeof valueField === 'string') ? valueField : (valueField?.field || "_id");
+
     return records.map(record => ({
-      value: record[valueField || "_id"],
+      value: record[valKey],
       label: getDisplayValue(record),
     }));
   }

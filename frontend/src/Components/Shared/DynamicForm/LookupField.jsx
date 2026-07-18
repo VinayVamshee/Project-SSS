@@ -15,7 +15,13 @@ export default function LookupField({
   onChange,
   readOnly
 }) {
-
+  const getNormalizedValue = (val) => {
+    if (!val) return "";
+    if (typeof val === "object") {
+      return val._id || val.id || val.value || "";
+    }
+    return String(val);
+  };
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [records, setRecords] = useState([]);
@@ -66,13 +72,13 @@ export default function LookupField({
   // Resolve initial value to search text label
   useEffect(() => {
     if (value) {
-      const match = records.find(r => r.value === value);
+      const match = records.find(r => getNormalizedValue(r.value) === getNormalizedValue(value));
       if (match) {
         setSearch(match.label);
       } else {
         const resolveLabel = async () => {
           const loaded = await fetchRecords("");
-          const found = loaded.find(r => r.value === value);
+          const found = loaded.find(r => getNormalizedValue(r.value) === getNormalizedValue(value));
           if (found) {
             setSearch(found.label);
           }
@@ -182,18 +188,6 @@ export default function LookupField({
 
       {open && (
         <div className="df-lookup-dropdown">
-          {/* Search Box */}
-          <div className="df-lookup-search">
-            <input
-              type="text"
-              className="df-input"
-              placeholder={`Search ${entityName}...`}
-              value={search}
-              onChange={handleSearch}
-              autoFocus
-            />
-          </div>
-
           {/* Results */}
           <div className="df-lookup-list">
             {loading && (
@@ -212,13 +206,13 @@ export default function LookupField({
               records.map((record) => (
                 <div
                   key={record.value}
-                  className={`df-lookup-item ${value === record.value ? "active" : ""
+                  className={`df-lookup-item ${getNormalizedValue(value) === getNormalizedValue(record.value) ? "active" : ""
                     }`}
                   onClick={() => handleSelect(record)}
                 >
                   <span>{record.label}</span>
 
-                  {value === record.value && (
+                  {getNormalizedValue(value) === getNormalizedValue(record.value) && (
                     <i className="fa-solid fa-check" />
                   )}
                 </div>

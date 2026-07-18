@@ -5,6 +5,7 @@ import SubjectLinker from './SubjectLinker';
 import ChaptersSplitter from './ChaptersSplitter';
 import AssessmentWizard from './AssessmentWizard';
 import ReportsCenter from './ReportsCenter';
+import AcademicPolicyManager from './AcademicPolicyManager';
 import './CSS/AcademicManagement.css';
 
 export default function AcademicManagementHub() {
@@ -23,6 +24,8 @@ export default function AcademicManagementHub() {
         return <ChaptersSplitter back={() => setSelectedModule(null)} />;
       case 'assessments':
         return <AssessmentWizard back={() => setSelectedModule(null)} />;
+      case 'policies':
+        return <AcademicPolicyManager back={() => setSelectedModule(null)} />;
       case 'reports':
         return <ReportsCenter back={() => setSelectedModule(null)} />;
       default:
@@ -103,8 +106,7 @@ export default function AcademicManagementHub() {
       <div className="row g-3 mb-4">
         {[
           { key: 'assessments', name: 'Exam Configurations', icon: 'fa-file-signature', desc: 'Configure assessment schemes, weights, and parameters.' },
-          { key: 'grades', name: 'Grade Scales', icon: 'fa-award', desc: 'Set grading matrix limits and boundaries.', disabled: true },
-          { key: 'promotion', name: 'Promotion Rules', icon: 'fa-shield-halved', desc: 'Configure automatic year passing standards.', disabled: true },
+          { key: 'policies', name: 'Academic Policies', icon: 'fa-award', desc: 'Configure grading, ranking, risk, standing, promotion, and GPA rules.' },
           { key: 'schedules', name: 'Exam Schedule', icon: 'fa-calendar-days', desc: 'Track dates and timelines of upcoming exams.', disabled: true }
         ].map(item => (
           <div className="col-md-6 col-lg-3" key={item.key}>

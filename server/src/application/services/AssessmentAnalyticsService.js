@@ -3,6 +3,8 @@ const StudentAssessmentMark = require('../../domain/academics/models/StudentAsse
 const AssessmentConfiguration = require('../../domain/academics/models/AssessmentConfiguration');
 const Student = require('../../domain/student/models/Student');
 
+const AcademicPolicyEngine = require('./AcademicPolicyEngine');
+
 class AssessmentAnalyticsService {
   // Helper to calculate median
   calculateMedian(arr) {
@@ -17,6 +19,21 @@ class AssessmentAnalyticsService {
     if (arr.length <= 1) return 0;
     const variance = arr.reduce((acc, val) => acc + Math.pow(val - mean, 2), 0) / arr.length;
     return Math.sqrt(variance);
+  }
+
+  // Calculate CBSE/Generic letter grade
+  calculateGrade(percentage, policy = null) {
+    if (policy && policy.grading) {
+      return AcademicPolicyEngine.getGrade(percentage, policy.grading);
+    }
+    if (percentage >= 90) return 'A1';
+    if (percentage >= 80) return 'A2';
+    if (percentage >= 70) return 'B1';
+    if (percentage >= 60) return 'B2';
+    if (percentage >= 50) return 'C1';
+    if (percentage >= 40) return 'C2';
+    if (percentage >= 33) return 'D';
+    return 'E';
   }
 
   // Helper to fetch student name map
@@ -72,6 +89,8 @@ class AssessmentAnalyticsService {
     const configs = await AssessmentConfiguration.find({ academicYearId, classId, schoolId }).sort({ displayOrder: 1 });
     const configIds = configs.map(c => c._id);
 
+    const policy = await AcademicPolicyEngine.getActivePolicy(schoolId, academicYearId);
+
     const marks = await StudentAssessmentMark.find({ assessmentConfigurationId: { $in: configIds }, schoolId }).populate('subjectId');
     const StudentEnrollment = mongoose.model('StudentEnrollment');
     const enrollments = await StudentEnrollment.find({
@@ -105,7 +124,7 @@ class AssessmentAnalyticsService {
     const lowestScore = scores.length > 0 ? Math.min(...scores) : 0;
 
     // Pass rate
-    const passingMarks = 33;
+    const passingMarks = policy.grading.passPercentage;
     const passedCount = presentMarks.filter(m => (m.obtainedMarks || 0) >= passingMarks).length;
     const passPercentage = presentMarks.length > 0 ? (passedCount / presentMarks.length) * 100 : 100;
 
@@ -114,25 +133,27 @@ class AssessmentAnalyticsService {
     const averageAttendance = totalAttendanceMarks > 0 ? (presentCount / totalAttendanceMarks) * 100 : 100;
 
     // Best & worst Performing Student
-    const topPerformingStudent = studentAverages.length > 0 ? `${studentAverages[0].name} (${studentAverages[0].average}%)` : 'N/A';
-    const sortedByImprovement = [...studentAverages].sort((a, b) => b.improvementDelta - a.improvementDelta);
-    const mostImprovedStudent = sortedByImprovement.length > 0 && sortedByImprovement[0].improvementDelta > 0 
-      ? `${sortedByImprovement[0].name} (+${sortedByImprovement[0].improvementDelta}%)` 
-      : 'N/A';
+    const topper = AcademicPolicyEngine.calculateTopper(studentAverages, policy.ranking);
+    const topPerformingStudent = topper ? `${topper.name} (${topper.average}%)` : 'N/A';
+    const mostImproved = AcademicPolicyEngine.calculateMostImproved(studentAverages, policy.awards);
+    const mostImprovedStudent = mostImproved ? `${mostImproved.name} (+${mostImproved.improvementDelta}%)` : 'N/A';
 
     // Risk levels
-    const studentsAtRiskList = studentAverages.filter(s => s.average < 45 || s.attendance < 75).map(s => {
-      let reason = 'Low Performance';
-      if (s.attendance < 75 && s.average < 45) reason = 'Critical (Low Attendance + Performance)';
-      else if (s.attendance < 75) reason = 'Low Attendance';
+    const studentsAtRiskList = studentAverages.map(s => {
+      const riskEval = AcademicPolicyEngine.getRisk(s.average, s.attendance, 0, 0, policy.risk);
+      return {
+        ...s,
+        riskEval
+      };
+    }).filter(s => s.riskEval.isAtRisk).map(s => {
       return {
         name: s.name,
         rollNumber: s.rollNumber,
         average: s.average,
         attendance: s.attendance,
-        riskLevel: s.average < 35 ? 'High' : 'Medium',
+        riskLevel: s.riskEval.riskLevel,
         trend: s.improvementDelta >= 0 ? 'Improving' : 'Declining',
-        reason
+        reason: s.riskEval.reason
       };
     });
     const studentsAtRisk = studentsAtRiskList.length;
@@ -168,7 +189,7 @@ class AssessmentAnalyticsService {
       const cMarks = presentMarks.filter(m => m.assessmentConfigurationId.toString() === c._id.toString());
       const cScores = cMarks.map(m => m.obtainedMarks || 0);
       const avg = cScores.length > 0 ? cScores.reduce((a, b) => a + b, 0) / cScores.length : 0;
-      const passed = cMarks.filter(m => (m.obtainedMarks || 0) >= 33).length;
+      const passed = cMarks.filter(m => (m.obtainedMarks || 0) >= passingMarks).length;
       const passRate = cMarks.length > 0 ? (passed / cMarks.length) * 100 : 100;
       return {
         assessment: c.assessmentName,
@@ -223,6 +244,7 @@ class AssessmentAnalyticsService {
 
   // 2. STUDENT ANALYTICS
   async getStudentAnalytics(schoolId, academicYearId, classId, studentId) {
+    const policy = await AcademicPolicyEngine.getActivePolicy(schoolId, academicYearId);
     const student = await Student.findById(studentId);
     if (!student) throw new Error('Student not found');
 
@@ -397,10 +419,10 @@ class AssessmentAnalyticsService {
         classId,
         academicYearId,
         overallPercentage: Number(overallPercentage.toFixed(1)),
-        overallGrade: this.calculateGrade(overallPercentage),
+        overallGrade: this.calculateGrade(overallPercentage, policy),
         rank,
         attendancePercentage,
-        passStatus: overallPercentage >= 33 ? 'Passed' : 'Needs Improvement'
+        passStatus: overallPercentage >= policy.grading.passPercentage ? 'Passed' : 'Needs Improvement'
       },
       timeline,
       subjectAverages,
@@ -420,6 +442,7 @@ class AssessmentAnalyticsService {
 
   // 3. SUBJECT ANALYTICS
   async getSubjectAnalytics(schoolId, academicYearId, classId, subjectId, assessmentConfigurationId) {
+    const policy = await AcademicPolicyEngine.getActivePolicy(schoolId, academicYearId);
     const configs = await AssessmentConfiguration.find({ academicYearId, classId, schoolId });
     const configIds = configs.map(c => c._id);
 
@@ -450,12 +473,12 @@ class AssessmentAnalyticsService {
     const median = this.calculateMedian(scores);
     const stdDev = this.calculateStdDev(scores, average);
 
-    const passed = presentMarks.filter(m => (m.obtainedMarks || 0) >= 33).length;
+    const passed = presentMarks.filter(m => (m.obtainedMarks || 0) >= policy.grading.passPercentage).length;
     const passPercentage = presentMarks.length > 0 ? (passed / presentMarks.length) * 100 : 100;
     const failPercentage = 100 - passPercentage;
 
     // Difficulty score based on average mark
-    const difficultyIndex = average >= 75 ? 'Easy' : average >= 50 ? 'Medium' : 'Hard';
+    const difficultyIndex = AcademicPolicyEngine.calculateDifficulty(average);
 
     // Group by student and calculate their subject average to avoid duplicate listings
     const studentStats = {};
@@ -541,8 +564,8 @@ class AssessmentAnalyticsService {
     };
   }
 
-  // 4. CLASS ANALYTICS
   async getClassAnalytics(schoolId, academicYearId, classId) {
+    const policy = await AcademicPolicyEngine.getActivePolicy(schoolId, academicYearId);
     const configs = await AssessmentConfiguration.find({ academicYearId, classId, schoolId });
     const configIds = configs.map(c => c._id);
 
@@ -571,7 +594,7 @@ class AssessmentAnalyticsService {
     }).populate('subjectId');
 
     // Aggregate averages per student
-    const studentRankings = enrolledStudents.map(st => {
+    const studentRankingsRaw = enrolledStudents.map(st => {
       const stMarks = marks.filter(m => m.studentId.toString() === st._id.toString() && m.attendanceStatus !== 'absent');
       const total = stMarks.reduce((a, b) => a + (b.obtainedMarks || 0), 0);
       const avg = stMarks.length > 0 ? (total / stMarks.length) : 0;
@@ -586,9 +609,11 @@ class AssessmentAnalyticsService {
         rollNumber: st.rollNumber || st.studentCode || '',
         average: Number(avg.toFixed(1)),
         attendance,
-        passStatus: avg >= 33 ? 'Passed' : 'Needs Focus'
+        passStatus: avg >= policy.grading.passPercentage ? 'Passed' : 'Needs Focus'
       };
-    }).sort((a, b) => b.average - a.average);
+    });
+
+    const studentRankings = AcademicPolicyEngine.calculateRank(studentRankingsRaw, policy.ranking);
 
     // Subject wise averages
     const subjectTotals = {};
@@ -622,6 +647,7 @@ class AssessmentAnalyticsService {
 
   // 5. ASSESSMENT ANALYTICS
   async getAssessmentAnalytics(schoolId, academicYearId, classId, assessmentConfigurationId) {
+    const policy = await AcademicPolicyEngine.getActivePolicy(schoolId, academicYearId);
     if (!assessmentConfigurationId || !mongoose.Types.ObjectId.isValid(assessmentConfigurationId)) {
       return { stats: { average: 0, highest: 0, lowest: 0, passPercentage: 100 }, subjectComparison: [] };
     }
@@ -645,7 +671,7 @@ class AssessmentAnalyticsService {
     const median = this.calculateMedian(scores);
     const variance = scores.length > 0 ? scores.reduce((sq, val) => sq + Math.pow(val - average, 2), 0) / scores.length : 0;
 
-    const passed = presentMarks.filter(m => (m.obtainedMarks || 0) >= 33).length;
+    const passed = presentMarks.filter(m => (m.obtainedMarks || 0) >= policy.grading.passPercentage).length;
     const passPercentage = presentMarks.length > 0 ? (passed / presentMarks.length) * 100 : 100;
 
     // Subject-wise breakdown for this assessment
@@ -689,7 +715,7 @@ class AssessmentAnalyticsService {
         highest,
         lowest,
         passPercentage: Number(passPercentage.toFixed(1)),
-        difficultyScore: average >= 75 ? 'Low' : average >= 50 ? 'Medium' : 'High',
+        difficultyScore: AcademicPolicyEngine.calculateDifficulty(average),
         median: Number(median.toFixed(1)),
         variance: Number(variance.toFixed(1)),
         totalAppeared: presentMarks.length,
@@ -701,17 +727,6 @@ class AssessmentAnalyticsService {
     };
   }
 
-  // Calculate CBSE/Generic letter grade
-  calculateGrade(percentage) {
-    if (percentage >= 90) return 'A1';
-    if (percentage >= 80) return 'A2';
-    if (percentage >= 70) return 'B1';
-    if (percentage >= 60) return 'B2';
-    if (percentage >= 50) return 'C1';
-    if (percentage >= 40) return 'C2';
-    if (percentage >= 33) return 'D';
-    return 'E';
-  }
 }
 
 module.exports = new AssessmentAnalyticsService();

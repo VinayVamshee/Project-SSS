@@ -1,0 +1,119 @@
+/* ─────────────────────────────────────────────────────────────────────────── */
+/* Academic Policy Manager Workspace Stylings */
+/* ─────────────────────────────────────────────────────────────────────────── */
+
+.policy-manager-layout {
+  width: 100%;
+  animation: erp-fade-in 0.2s ease-in-out;
+}
+
+.policy-header-bar {
+  border-radius: 12px;
+  background-color: var(--card-bg-color, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+}
+
+.policy-loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 350px;
+}
+
+.policy-workspace-container {
+  display: flex;
+  min-height: 550px;
+}
+
+/* Sidebar Left Navigation */
+.policy-sidebar {
+  width: 250px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background-color: var(--card-bg-color, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+}
+
+.policy-sidebar-tab {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: none;
+  background: transparent;
+  color: var(--text-color, #334155);
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: left;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.policy-sidebar-tab i {
+  font-size: 1.05rem;
+  opacity: 0.7;
+  width: 20px;
+  text-align: center;
+}
+
+.policy-sidebar-tab:hover {
+  background-color: rgba(59, 130, 246, 0.05);
+  color: var(--button-color, #2563eb);
+}
+
+.policy-sidebar-tab:hover i {
+  color: var(--button-color, #2563eb);
+  opacity: 1;
+}
+
+.policy-sidebar-tab.active {
+  background-color: var(--button-color, #2563eb);
+  color: #ffffff;
+}
+
+.policy-sidebar-tab.active i {
+  color: #ffffff;
+  opacity: 1;
+}
+
+/* Content Panel Form Container */
+.policy-content-panel {
+  background-color: var(--card-bg-color, #ffffff);
+  border: 1px solid var(--border-color, #e2e8f0);
+  border-radius: 12px;
+  min-height: 500px;
+  animation: erp-slide-up 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.policy-section-form h5 {
+  color: var(--text-color, #0f172a);
+  border-bottom: 2px solid var(--background-color, #f1f5f9);
+  padding-bottom: 12px;
+}
+
+.policy-section-form .form-label {
+  letter-spacing: 0.5px;
+  color: #64748b;
+}
+
+/* Responsive animations */
+@keyframes erp-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes erp-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

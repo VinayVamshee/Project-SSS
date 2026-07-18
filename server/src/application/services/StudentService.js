@@ -136,6 +136,7 @@ class StudentService {
         enrollmentId: e._id,
         academicYear: e.academicYearId,          // populated object { _id, name, status }
         class: e.classId?.class || 'N/A',
+        classId: e.classId?._id || e.classId,
         section: e.sectionId || '',
         admissionNumber: e.admissionNumber || '',
         rollNumber: e.rollNumber || '',
