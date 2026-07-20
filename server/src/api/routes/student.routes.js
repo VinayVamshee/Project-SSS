@@ -10,6 +10,7 @@ router.use(protect);
 router.post('/addStudent', validateAddStudent, dynamicValidator('StudentEnrollment'), studentController.addStudent);
 router.get('/getStudent', studentController.getStudents);
 router.put('/updateStudent/:id', dynamicValidator('StudentEnrollment'), studentController.updateStudent);
+router.delete('/deleteStudent/:id', studentController.deleteStudent);
 
 router.put('/updateAcademicYearStatus/:id', studentController.updateAcademicYearStatus);
 router.post('/pass-students-to', studentController.passStudentsTo);

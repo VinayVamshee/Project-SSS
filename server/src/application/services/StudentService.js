@@ -150,6 +150,7 @@ class StudentService {
           lifecycleStatus: e.studentId?.lifecycleStatus,
           name: nameField ? nameField.value : 'Unknown',
           image: e.profilePhoto || '',
+          schoolId: e.schoolId,
           // Expose most-recent enrollment's core fields at the top level for easy display
           academicYearId: e.academicYearId?._id || e.academicYearId,
           enrollmentClass: e.classId?._id || e.classId,
@@ -307,6 +308,29 @@ class StudentService {
       { studentId: { $in: studentIds }, academicYearId: yearId },
       { $set: { academicStatus: resolvedStatus } }
     );
+  }
+
+  async deleteStudent(studentId, schoolId) {
+    const Student = mongoose.model('Student');
+    const StudentEnrollment = mongoose.model('StudentEnrollment');
+    const StudentAssessmentMark = mongoose.model('StudentAssessmentMark');
+
+    // 1. Verify student belongs to this school
+    const student = await Student.findOne({ _id: studentId, schoolId });
+    if (!student) {
+      throw new Error('Student not found or does not belong to this school.');
+    }
+
+    // 2. Delete all student enrollments
+    await StudentEnrollment.deleteMany({ studentId, schoolId });
+
+    // 3. Delete all student assessment marks
+    await StudentAssessmentMark.deleteMany({ studentId, schoolId });
+
+    // 4. Delete the student record itself
+    await Student.deleteOne({ _id: studentId, schoolId });
+
+    return { message: 'Student and all related records deleted successfully.' };
   }
 }
 

@@ -9,8 +9,9 @@ const IdentityCardPage = forwardRef(
             .sort((a, b) => (a.AdmissionNo || "").localeCompare(b.AdmissionNo || "", undefined, { numeric: true }));
 
         // Resolve active school master details if latestMaster is returned as a database array
+        const studentSchoolId = String(students[0]?.schoolId?._id || students[0]?.schoolId || '');
         const activeSchool = Array.isArray(latestMaster)
-            ? (latestMaster.find(sch => sch._id === (students[0]?.schoolId?._id || students[0]?.schoolId)) || latestMaster[0])
+            ? (latestMaster.find(sch => String(sch._id) === studentSchoolId) || latestMaster[0])
             : latestMaster;
 
         const getValue = (student, key) => {
@@ -152,7 +153,7 @@ const IdentityCardPage = forwardRef(
                                         {activeSchool?.name || "SCHOOL NAME"}
                                     </h5>
                                     <div style={{ marginTop: '-2px' }}>{activeSchool?.address || "School Address"}</div>
-                                    <div style={{ marginTop: '-5px' }}>(www.vamsheetechnoschool.com)</div>
+                                    <div style={{ marginTop: '-5px' }}>{activeSchool?.email ? `(${activeSchool.email})` : ""}</div>
                                     <div style={{ marginTop: '-4px' }} className="w-100 fw-bold">
                                         IDENTITY CARD: {selectedYear || "YYYY-YY"}
                                     </div>

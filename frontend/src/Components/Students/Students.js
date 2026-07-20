@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import api, { getStudents, getAcademicYears, getClasses, passStudentsTo, updateAcademicYearStatus, addStudent, dropAcademicYear, getAllMasters, submitTemplateForm } from '../../API';
+import api, { getStudents, getAcademicYears, getClasses, passStudentsTo, updateAcademicYearStatus, addStudent, dropAcademicYear, getAllMasters, submitTemplateForm, deleteStudent } from '../../API';
 import boy from "../Images/bussiness-man.png";
 import { useNavigate } from "react-router-dom";
 import * as XLSX from "xlsx";
@@ -9,6 +9,7 @@ import IdentityCard from "../IdentityCard/IdentityCard";
 import DefaultStudentPDF from "../DefaultStudentPDF/DefaultStudentPDF";
 import SearchFilterBar from "../Shared/SearchFilterBar";
 import DynamicForm from "../Shared/DynamicForm";
+import ConfirmModal from "../Shared/ConfirmModal";
 import './Students.css';
 
 export default function Students() {
@@ -46,6 +47,7 @@ export default function Students() {
     }, [navigate]);
 
     const [message, setMessage] = useState("");
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, title: '', message: '', onConfirm: null, type: 'primary' });
     const showMessage = (msg) => {
         setMessage(msg);
         setTimeout(() => setMessage(""), 5000);
@@ -865,7 +867,39 @@ export default function Students() {
                         </div>
 
                         <div className="sidebar-body flex-grow-1 p-3 overflow-auto">
-                            <div className="d-flex justify-content-end mb-2">
+                            <div className="d-flex justify-content-between mb-2">
+                                <div>
+                                    {isEditMode && canEdit && (
+                                        <button 
+                                            className="btn btn-sm btn-danger" 
+                                            onClick={() => {
+                                                setConfirmDialog({
+                                                    isOpen: true,
+                                                    title: 'Delete Student Profile',
+                                                    message: `Are you sure you want to delete ${selectedStudent.name || 'this student'}? This will permanently delete their student record, academic years enrollment history, and assessment marks. This action cannot be undone.`,
+                                                    type: 'danger',
+                                                    onConfirm: async () => {
+                                                        setConfirmDialog(prev => ({ ...prev, isOpen: false }));
+                                                        try {
+                                                            setUploading(true);
+                                                            await deleteStudent(selectedStudent._id);
+                                                            showMessage('🗑️ Student deleted successfully!');
+                                                            setSelectedStudent(null);
+                                                            setIsEditMode(false);
+                                                            await fetchData();
+                                                        } catch (err) {
+                                                            showMessage('❌ Failed to delete student: ' + (err.response?.data?.message || err.message));
+                                                        } finally {
+                                                            setUploading(false);
+                                                        }
+                                                    }
+                                                });
+                                            }}
+                                        >
+                                            <i className="fa-solid fa-trash me-1"></i> Delete Student
+                                        </button>
+                                    )}
+                                </div>
                                 <button className="btn btn-sm btn-outline-warning" onClick={() => {
                                     setIsEditMode(!isEditMode);
                                 }}
@@ -1528,7 +1562,7 @@ export default function Students() {
                     />
                 </div>
 
-                <div style={{ display: 'none' }}>
+                <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
                     <IdentityCard
                         ref={identityRef}
                         selectedStudents={selectedStudents}
@@ -1538,7 +1572,7 @@ export default function Students() {
                     />
                 </div>
 
-                <div style={{ display: "none" }}>
+                <div style={{ position: 'absolute', left: '-9999px', top: '-9999px' }}>
                     <DefaultStudentPDF
                         ref={defaultPDF}
                         selectedStudents={selectedStudents} // already filtered
@@ -1598,6 +1632,14 @@ export default function Students() {
                     </div>
                 )}
 
+                <ConfirmModal 
+                    isOpen={confirmDialog.isOpen} 
+                    title={confirmDialog.title} 
+                    message={confirmDialog.message} 
+                    onConfirm={confirmDialog.onConfirm} 
+                    onCancel={() => setConfirmDialog(prev => ({ ...prev, isOpen: false }))} 
+                    type={confirmDialog.type} 
+                />
             </div>
 
     );

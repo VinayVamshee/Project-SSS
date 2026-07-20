@@ -7,7 +7,7 @@ import api, {
     getSubjects, addSubject, deleteSubject, updateSubject,
     getClassSubjects, linkClassSubject,
     getChaptersByClassAndSubject,
-    getClassFees, getTemplates, getTemplateForm, submitTemplateForm
+    getClassFees, getTemplates, getTemplateForm, submitTemplateForm, copyClassFees
 } from '../../API';
 import './Master.css';
 import AcademicManagementHub from '../AcademicManagement/AcademicManagementHub';
@@ -686,8 +686,8 @@ export default function Master() {
                     </div>
 
                     <div className="setup-content-card mb-4" style={{ padding: '1.5rem' }}>
-                        <div className="row align-items-center">
-                            <div className="col-md-6">
+                        <div className="row align-items-end g-3">
+                            <div className="col-md-5">
                                 <label className="premium-label fw-bold mb-2">
                                     CHOOSE TARGET SESSION
                                 </label>
@@ -702,6 +702,54 @@ export default function Master() {
                                     ))}
                                 </select>
                             </div>
+
+                            {selectedFeeYear && (
+                                <div className="col-md-7 border-start ps-4">
+                                    <label className="premium-label fw-bold mb-2 text-primary">
+                                        <i className="fa-solid fa-copy me-1"></i> COPY STRUCTURE FROM ANOTHER SESSION
+                                    </label>
+                                    <div className="d-flex align-items-center gap-2">
+                                        <select 
+                                            className="form-select premium-input w-auto"
+                                            id="copyFromYearSelect"
+                                            defaultValue=""
+                                        >
+                                            <option value="">-- Source Session Year --</option>
+                                            {academicYears
+                                                .filter(y => y.year !== selectedFeeYear)
+                                                .map((year) => (
+                                                    <option key={year._id} value={year.year}>{year.year}</option>
+                                                ))
+                                            }
+                                        </select>
+                                        <button 
+                                            className="btn btn-primary premium-btn"
+                                            onClick={async () => {
+                                                const sourceSelect = document.getElementById('copyFromYearSelect');
+                                                const sourceYear = sourceSelect ? sourceSelect.value : '';
+                                                if (!sourceYear) {
+                                                    return showMessage('⚠️ Please select a source session year to copy from.');
+                                                }
+                                                if (window.confirm(`Are you sure you want to copy fee structures from session ${sourceYear} to ${selectedFeeYear}? This will overwrite existing schedules for ${selectedFeeYear}.`)) {
+                                                    try {
+                                                        setUploading(true);
+                                                        await copyClassFees({ fromYear: sourceYear, toYear: selectedFeeYear });
+                                                        showMessage('✅ Fee structures copied successfully!');
+                                                        await fetchFeeStructureData();
+                                                    } catch (err) {
+                                                        const msg = err.response?.data?.message || err.message;
+                                                        showMessage(`❌ Failed to copy fee structures: ${msg}`);
+                                                    } finally {
+                                                        setUploading(false);
+                                                    }
+                                                }
+                                            }}
+                                        >
+                                            Copy Structures
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
 

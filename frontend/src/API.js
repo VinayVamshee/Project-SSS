@@ -231,6 +231,7 @@ export const addExam = (payload) => api.post('/addExams', payload);
 export const getStudents = () => api.get('/getStudent');
 export const addStudent = (payload) => api.post('/addStudent', payload);
 export const updateStudent = (id, payload) => api.put(`/updateStudent/${id}`, payload);
+export const deleteStudent = (id) => api.delete(`/deleteStudent/${id}`);
 export const updateAcademicYearStatus = (studentId, payload) =>
     api.put(`/updateAcademicYearStatus/${studentId}`, payload);
 export const passStudentsTo = (payload) => api.post('/pass-students-to', payload);
